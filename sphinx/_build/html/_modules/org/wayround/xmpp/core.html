@@ -1,0 +1,1163 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>org.wayround.xmpp.core &mdash; org_wayround_xmpp 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <link rel="top" title="org_wayround_xmpp 0.1 documentation" href="../../../../index.html" />
+    <link rel="up" title="Module code" href="../../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../index.html">org_wayround_xmpp 0.1 documentation</a> &raquo;</li>
+          <li><a href="../../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for org.wayround.xmpp.core</h1><div class="highlight"><pre>
+<span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">threading</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+<span class="kn">import</span> <span class="nn">lxml.etree</span>
+<span class="kn">import</span> <span class="nn">mako.template</span>
+
+<span class="kn">import</span> <span class="nn">org.wayround.utils.stream</span>
+<span class="kn">import</span> <span class="nn">org.wayround.utils.xml</span>
+
+
+<span class="k">def</span> <span class="nf">start_stream</span><span class="p">(</span>
+<div class="viewcode-block" id="start_stream"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.start_stream">[docs]</a>    <span class="n">fro</span><span class="p">,</span>
+    <span class="n">to</span><span class="p">,</span>
+    <span class="n">version</span><span class="o">=</span><span class="s">&#39;1.0&#39;</span><span class="p">,</span>
+    <span class="n">xml_lang</span><span class="o">=</span><span class="s">&#39;en&#39;</span><span class="p">,</span>
+    <span class="n">xmlns</span><span class="o">=</span><span class="s">&#39;jabber:client&#39;</span><span class="p">,</span>
+    <span class="n">xmlns_stream</span><span class="o">=</span><span class="s">&#39;http://etherx.jabber.org/streams&#39;</span>
+    <span class="p">):</span>
+
+    <span class="k">return</span> <span class="n">mako</span><span class="o">.</span><span class="n">template</span><span class="o">.</span><span class="n">Template</span><span class="p">(</span>
+        <span class="sd">&quot;&quot;&quot;\</span>
+<span class="sd">&lt;?xml version=&quot;1.0&quot;?&gt;\</span>
+<span class="sd">&lt;stream:stream from=&quot;${ fro | x }&quot; to=&quot;${ to | x }&quot; version=&quot;${ version | x }&quot; \</span>
+<span class="sd">xml:lang=&quot;${ xml_lang | x }&quot; xmlns=&quot;${ xmlns | x }&quot; \</span>
+<span class="sd">xmlns:stream=&quot;${ xmlns_stream | x }&quot;&gt;&quot;&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">render</span><span class="p">(</span>
+            <span class="n">fro</span><span class="o">=</span><span class="n">fro</span><span class="p">,</span>
+            <span class="n">to</span><span class="o">=</span><span class="n">to</span><span class="p">,</span>
+            <span class="n">version</span><span class="o">=</span><span class="n">version</span><span class="p">,</span>
+            <span class="n">xml_lang</span><span class="o">=</span><span class="n">xml_lang</span><span class="p">,</span>
+            <span class="n">xmlns</span><span class="o">=</span><span class="n">xmlns</span><span class="p">,</span>
+            <span class="n">xmlns_stream</span><span class="o">=</span><span class="n">xmlns_stream</span>
+            <span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">stop_stream</span><span class="p">():</span></div>
+<div class="viewcode-block" id="stop_stream"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.stop_stream">[docs]</a>    <span class="k">return</span> <span class="s">&#39;&lt;/stream:stream&gt;&#39;</span>
+
+<span class="k">def</span> <span class="nf">starttls</span><span class="p">():</span></div>
+<div class="viewcode-block" id="starttls"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.starttls">[docs]</a>    <span class="k">return</span> <span class="s">&#39;&lt;starttls xmlns=&quot;urn:ietf:params:xml:ns:xmpp-tls&quot;/&gt;&#39;</span>
+
+<span class="k">def</span> <span class="nf">check_stream_handler_correctness</span><span class="p">(</span><span class="n">handler</span><span class="p">):</span></div>
+<div class="viewcode-block" id="check_stream_handler_correctness"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.check_stream_handler_correctness">[docs]</a>
+    <span class="n">ret</span> <span class="o">=</span> <span class="mi">0</span>
+
+
+    <span class="k">return</span> <span class="n">ret</span>
+
+
+<span class="k">def</span> <span class="nf">_info_dict_to_add</span><span class="p">(</span><span class="n">handler</span><span class="p">):</span></div>
+<div class="viewcode-block" id="_info_dict_to_add"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core._info_dict_to_add">[docs]</a>
+    <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span>
+        <span class="n">handler</span><span class="o">=</span><span class="n">handler</span><span class="p">,</span>
+        <span class="n">name</span><span class="o">=</span><span class="n">handler</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+        <span class="n">tag</span><span class="o">=</span><span class="n">handler</span><span class="o">.</span><span class="n">tag</span><span class="p">,</span>
+        <span class="n">ns</span><span class="o">=</span><span class="n">handler</span><span class="o">.</span><span class="n">ns</span>
+        <span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">JID</span><span class="p">:</span></div>
+<div class="viewcode-block" id="JID"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.JID">[docs]</a>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">user</span><span class="o">=</span><span class="s">&#39;name&#39;</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="s">&#39;domain&#39;</span><span class="p">,</span> <span class="n">resource</span><span class="o">=</span><span class="s">&#39;default&#39;</span><span class="p">):</span>
+<div class="viewcode-block" id="JID.__init__"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.JID.__init__">[docs]</a>
+        <span class="bp">self</span><span class="o">.</span><span class="n">user</span> <span class="o">=</span> <span class="n">user</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">domain</span> <span class="o">=</span> <span class="n">domain</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">resource</span> <span class="o">=</span> <span class="n">resource</span>
+
+    <span class="k">def</span> <span class="nf">bare</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+<div class="viewcode-block" id="JID.bare"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.JID.bare">[docs]</a>        <span class="k">return</span> <span class="s">&#39;{user}@{domain}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">user</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">user</span><span class="p">,</span>
+            <span class="n">domain</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">domain</span>
+            <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">full</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+<div class="viewcode-block" id="JID.full"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.JID.full">[docs]</a>        <span class="k">return</span> <span class="s">&#39;{user}@{domain}/{resource}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">user</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">user</span><span class="p">,</span>
+            <span class="n">domain</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">domain</span><span class="p">,</span>
+            <span class="n">resource</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">resource</span>
+            <span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">C2SConnectionInfo</span><span class="p">:</span></div></div>
+<div class="viewcode-block" id="C2SConnectionInfo"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.C2SConnectionInfo">[docs]</a>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span>
+<div class="viewcode-block" id="C2SConnectionInfo.__init__"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.C2SConnectionInfo.__init__">[docs]</a>        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">host</span><span class="o">=</span><span class="s">&#39;localhost&#39;</span><span class="p">,</span>
+        <span class="n">port</span><span class="o">=</span><span class="mi">5222</span><span class="p">,</span>
+        <span class="n">password</span><span class="o">=</span><span class="s">&#39;secret&#39;</span><span class="p">,</span>
+        <span class="n">jid</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+        <span class="n">priority</span><span class="o">=</span><span class="s">&#39;default&#39;</span>
+        <span class="p">):</span>
+
+        <span class="k">if</span> <span class="n">host</span> <span class="o">==</span> <span class="bp">None</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">jid</span><span class="p">,</span> <span class="n">JID</span><span class="p">):</span>
+            <span class="n">host</span> <span class="o">=</span> <span class="n">jid</span><span class="o">.</span><span class="n">domain</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">host</span> <span class="o">=</span> <span class="n">host</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">port</span> <span class="o">=</span> <span class="n">port</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">password</span> <span class="o">=</span> <span class="n">password</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">user_jid</span> <span class="o">=</span> <span class="n">jid</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">priority</span> <span class="o">=</span> <span class="n">priority</span>
+
+
+
+<span class="k">class</span> <span class="nc">XMPPStreamParserTarget</span><span class="p">:</span></div></div>
+<div class="viewcode-block" id="XMPPStreamParserTarget"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPStreamParserTarget">[docs]</a>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span>
+<div class="viewcode-block" id="XMPPStreamParserTarget.__init__"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPStreamParserTarget.__init__">[docs]</a>        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">on_stream_event</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+        <span class="n">on_element_readed</span><span class="o">=</span><span class="bp">None</span>
+        <span class="p">):</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_on_stream_event</span> <span class="o">=</span> <span class="n">on_stream_event</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_on_element_readed</span> <span class="o">=</span> <span class="n">on_element_readed</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">clear</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span></div>
+<div class="viewcode-block" id="XMPPStreamParserTarget.clear"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPStreamParserTarget.clear">[docs]</a>        <span class="bp">self</span><span class="o">.</span><span class="n">_tree_builder</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_tree_builder_start_depth</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_depth_tracker</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stream_element</span> <span class="o">=</span> <span class="bp">None</span>
+
+
+    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">attributes</span><span class="p">):</span></div>
+<div class="viewcode-block" id="XMPPStreamParserTarget.start"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPStreamParserTarget.start">[docs]</a>
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;{} :: start tag: `{}&#39;; attrs: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">attributes</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s">&#39;{http://etherx.jabber.org/streams}stream&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_depth_tracker</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stream_element</span> <span class="o">=</span> <span class="n">lxml</span><span class="o">.</span><span class="n">etree</span><span class="o">.</span><span class="n">Element</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">attrib</span><span class="o">=</span><span class="n">attributes</span><span class="p">)</span>
+
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_depth_tracker</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+
+            <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s">&#39;{http://etherx.jabber.org/streams}stream&#39;</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_stream_event</span><span class="p">:</span>
+                    <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span>
+                        <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_on_stream_event</span><span class="p">,</span>
+                        <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="s">&#39;start&#39;</span><span class="p">,),</span>
+                        <span class="n">kwargs</span><span class="o">=</span><span class="p">{</span><span class="s">&#39;attrs&#39;</span><span class="p">:</span> <span class="n">attributes</span><span class="p">},</span>
+                        <span class="n">name</span><span class="o">=</span><span class="s">&quot;Stream Start Thread&quot;</span>
+                        <span class="p">)</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_stream_start_error</span><span class="p">:</span>
+                    <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span>
+                        <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_on_stream_event</span><span class="p">,</span>
+                        <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="s">&#39;error&#39;</span><span class="p">,),</span>
+                        <span class="n">kwargs</span><span class="o">=</span><span class="p">{</span><span class="s">&#39;attrs&#39;</span><span class="p">:</span><span class="bp">None</span><span class="p">},</span>
+                        <span class="n">name</span><span class="o">=</span><span class="s">&quot;Stream Start Error Thread&quot;</span>
+                        <span class="p">)</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+        <span class="k">else</span><span class="p">:</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tree_builder</span><span class="p">:</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">_tree_builder</span> <span class="o">=</span> <span class="n">lxml</span><span class="o">.</span><span class="n">etree</span><span class="o">.</span><span class="n">TreeBuilder</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_depth_tracker</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_tree_builder</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">attributes</span><span class="p">,</span> <span class="n">nsmap</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_stream_element</span><span class="o">.</span><span class="n">nsmap</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_tree_builder</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">attributes</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_depth_tracker</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+
+        <span class="k">return</span>
+
+    <span class="k">def</span> <span class="nf">end</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span></div>
+<div class="viewcode-block" id="XMPPStreamParserTarget.end"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPStreamParserTarget.end">[docs]</a>
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;{} :: end `{}&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span> <span class="n">name</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_depth_tracker</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_tree_builder</span><span class="o">.</span><span class="n">end</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_depth_tracker</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_depth_tracker</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+
+            <span class="n">element</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tree_builder</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_tree_builder</span> <span class="o">=</span> <span class="bp">None</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_element_readed</span><span class="p">:</span>
+                <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span>
+                    <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_on_element_readed</span><span class="p">,</span>
+                    <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">element</span><span class="p">,),</span>
+                    <span class="n">name</span><span class="o">=</span><span class="s">&#39;Element Readed Thread&#39;</span>
+                    <span class="p">)</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_depth_tracker</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+
+            <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s">&#39;{http://etherx.jabber.org/streams}stream&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="k">return</span>
+
+    <span class="k">def</span> <span class="nf">data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span></div>
+<div class="viewcode-block" id="XMPPStreamParserTarget.data"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPStreamParserTarget.data">[docs]</a>
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;{} :: data `{}&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span> <span class="n">data</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tree_builder</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_tree_builder</span><span class="o">.</span><span class="n">data</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+        <span class="k">return</span>
+
+    <span class="k">def</span> <span class="nf">comment</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">text</span><span class="p">):</span></div>
+<div class="viewcode-block" id="XMPPStreamParserTarget.comment"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPStreamParserTarget.comment">[docs]</a>
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;{} :: comment `{}&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span> <span class="n">text</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tree_builder</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_tree_builder</span><span class="o">.</span><span class="n">comment</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+
+        <span class="k">return</span>
+
+    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+<div class="viewcode-block" id="XMPPStreamParserTarget.close"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPStreamParserTarget.close">[docs]</a>
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;{} :: close&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__name__</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_stream_event</span><span class="p">:</span>
+            <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span>
+                <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_on_stream_event</span><span class="p">,</span>
+                <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="s">&#39;stop&#39;</span><span class="p">,),</span>
+                <span class="n">kwargs</span><span class="o">=</span><span class="p">{</span><span class="s">&#39;attrs&#39;</span><span class="p">:</span><span class="bp">None</span><span class="p">},</span>
+                <span class="n">name</span><span class="o">=</span><span class="s">&quot;Stream Ended Thread&quot;</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+        <span class="k">return</span>
+
+
+
+
+<span class="k">class</span> <span class="nc">XMPPInputStreamReader</span><span class="p">:</span></div></div>
+<div class="viewcode-block" id="XMPPInputStreamReader"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPInputStreamReader">[docs]</a>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span>
+<div class="viewcode-block" id="XMPPInputStreamReader.__init__"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPInputStreamReader.__init__">[docs]</a>        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">read_from</span><span class="p">,</span>
+        <span class="n">xml_parser</span>
+        <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        read_from - xml stream input</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_read_from</span> <span class="o">=</span> <span class="n">read_from</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_xml_parser</span> <span class="o">=</span> <span class="n">xml_parser</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_clear</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stat</span> <span class="o">=</span> <span class="s">&#39;stopped&#39;</span>
+
+
+    <span class="k">def</span> <span class="nf">_clear</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span></div>
+<div class="viewcode-block" id="XMPPInputStreamReader._clear"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPInputStreamReader._clear">[docs]</a>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">init</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span> <span class="o">==</span> <span class="s">&#39;stopped&#39;</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s">&quot;Working. Cleaning not allowed&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stream_reader_thread</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_starting</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stopping</span> <span class="o">=</span> <span class="bp">False</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_termination_event</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stat</span> <span class="o">=</span> <span class="s">&#39;stopped&#39;</span>
+        <span class="k">return</span>
+
+    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+<div class="viewcode-block" id="XMPPInputStreamReader.start"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPInputStreamReader.start">[docs]</a>
+
+        <span class="n">thread_name_in</span> <span class="o">=</span> <span class="s">&#39;Thread feeding data to XML parser&#39;</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_starting</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stopping</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span> <span class="o">==</span> <span class="s">&#39;stopped&#39;</span><span class="p">:</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stat</span> <span class="o">=</span> <span class="s">&#39;hard starting&#39;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_starting</span> <span class="o">=</span> <span class="bp">True</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stream_reader_thread</span><span class="p">:</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">_termination_event</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Event</span><span class="p">()</span>
+
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_stream_reader_thread</span> <span class="o">=</span> <span class="n">org</span><span class="o">.</span><span class="n">wayround</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">stream</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span>
+                        <span class="n">stdin</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_read_from</span><span class="p">,</span>
+                        <span class="n">stdout</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span>
+                        <span class="n">bs</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="mi">1024</span> <span class="o">**</span> <span class="mi">2</span><span class="p">),</span>
+                        <span class="n">threaded</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+                        <span class="n">thread_name</span><span class="o">=</span><span class="n">thread_name_in</span><span class="p">,</span>
+                        <span class="n">verbose</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+                        <span class="n">convert_to_str</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+                        <span class="n">read_method_name</span><span class="o">=</span><span class="s">&#39;read&#39;</span><span class="p">,</span>
+                        <span class="n">write_method_name</span><span class="o">=</span><span class="s">&#39;_feed&#39;</span><span class="p">,</span>
+                        <span class="n">exit_on_input_eof</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+                        <span class="n">flush_after_every_write</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+                        <span class="n">flush_on_input_eof</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+                        <span class="n">close_output_on_eof</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+                        <span class="n">waiting_for_input</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+                        <span class="n">waiting_for_output</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+                        <span class="n">descriptor_to_wait_for_input</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_read_from</span><span class="o">.</span><span class="n">fileno</span><span class="p">(),</span>
+                        <span class="n">descriptor_to_wait_for_output</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                        <span class="n">apply_input_seek</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+                        <span class="n">apply_output_seek</span><span class="o">=</span><span class="bp">False</span><span class="p">,</span>
+                        <span class="n">standard_write_method_result</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+                        <span class="n">termination_event</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_termination_event</span><span class="p">,</span>
+                        <span class="n">on_exit_callback</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_on_stream_reader_thread_exit</span>
+                        <span class="p">)</span>
+                <span class="k">except</span><span class="p">:</span>
+                    <span class="n">logging</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s">&quot;Error on starting {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">thread_name_in</span><span class="p">))</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_stream_reader_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="s">&#39;working&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stat</span> <span class="o">=</span> <span class="s">&#39;hard started&#39;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_starting</span> <span class="o">=</span> <span class="bp">False</span>
+
+        <span class="k">return</span>
+
+
+    <span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+<div class="viewcode-block" id="XMPPInputStreamReader.stop"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPInputStreamReader.stop">[docs]</a>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stopping</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_starting</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stat</span> <span class="o">=</span> <span class="s">&#39;hard stopping&#39;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stopping</span> <span class="o">=</span> <span class="bp">True</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_termination_event</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="s">&#39;stopped&#39;</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_clear</span><span class="p">()</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stopping</span> <span class="o">=</span> <span class="bp">False</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stat</span> <span class="o">=</span> <span class="s">&#39;hard stopped&#39;</span>
+
+        <span class="k">return</span>
+
+    <span class="k">def</span> <span class="nf">stat</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+<div class="viewcode-block" id="XMPPInputStreamReader.stat"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPInputStreamReader.stat">[docs]</a>
+        <span class="n">ret</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="k">if</span> <span class="nb">bool</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_stream_reader_thread</span><span class="p">):</span>
+            <span class="n">ret</span> <span class="o">=</span> <span class="s">&#39;working&#39;</span>
+
+        <span class="k">elif</span> <span class="ow">not</span> <span class="nb">bool</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_stream_reader_thread</span><span class="p">):</span>
+            <span class="n">ret</span> <span class="o">=</span> <span class="s">&#39;stopped&#39;</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ret</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stat</span>
+
+        <span class="k">return</span> <span class="n">ret</span>
+
+
+    <span class="k">def</span> <span class="nf">wait</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">what</span><span class="o">=</span><span class="s">&#39;stopped&#39;</span><span class="p">):</span></div>
+<div class="viewcode-block" id="XMPPInputStreamReader.wait"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPInputStreamReader.wait">[docs]</a>
+        <span class="n">allowed_what</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;stopped&#39;</span><span class="p">,</span> <span class="s">&#39;working&#39;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">what</span> <span class="ow">in</span> <span class="n">allowed_what</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;`what&#39; must be in {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">allowed_what</span><span class="p">))</span>
+
+        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span> <span class="o">==</span> <span class="n">what</span><span class="p">:</span>
+                <span class="k">break</span>
+
+        <span class="k">return</span>
+
+    <span class="k">def</span> <span class="nf">_on_stream_reader_thread_exit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+<div class="viewcode-block" id="XMPPInputStreamReader._on_stream_reader_thread_exit"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPInputStreamReader._on_stream_reader_thread_exit">[docs]</a>        <span class="bp">self</span><span class="o">.</span><span class="n">_stream_reader_thread</span> <span class="o">=</span> <span class="bp">None</span>
+
+
+    <span class="k">def</span> <span class="nf">_feed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bytes_text</span><span class="p">):</span></div>
+<div class="viewcode-block" id="XMPPInputStreamReader._feed"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPInputStreamReader._feed">[docs]</a>
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span>
+            <span class="s">&quot;{} :: received feed of {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span> <span class="nb">repr</span><span class="p">(</span><span class="n">bytes_text</span><span class="p">)</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">bytes_text</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s">&quot;bytes_text must be bytes type&quot;</span><span class="p">)</span>
+
+        <span class="n">ret</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_xml_parser</span><span class="o">.</span><span class="n">feed</span><span class="p">(</span><span class="n">bytes_text</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span>
+                <span class="s">&quot;{} :: _feed {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">bytes_text</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s">&#39;utf-8&#39;</span><span class="p">)</span>
+                    <span class="p">)</span>
+                <span class="p">)</span>
+            <span class="n">ret</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ret</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">bytes_text</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">ret</span>
+
+
+
+
+<span class="k">class</span> <span class="nc">XMPPOutputStreamWriter</span><span class="p">:</span></div></div>
+<div class="viewcode-block" id="XMPPOutputStreamWriter"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPOutputStreamWriter">[docs]</a>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span>
+<div class="viewcode-block" id="XMPPOutputStreamWriter.__init__"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPOutputStreamWriter.__init__">[docs]</a>        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">write_to</span><span class="p">,</span>
+        <span class="n">xml_parser</span>
+        <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        read_from - xml stream input</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_write_to</span> <span class="o">=</span> <span class="n">write_to</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_xml_parser</span> <span class="o">=</span> <span class="n">xml_parser</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_clear</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_clear</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span></div>
+<div class="viewcode-block" id="XMPPOutputStreamWriter._clear"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPOutputStreamWriter._clear">[docs]</a>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">init</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span> <span class="o">==</span> <span class="s">&#39;stopped&#39;</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s">&quot;Working. Cleaning not allowed&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stop_flag</span> <span class="o">=</span> <span class="bp">False</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_starting</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stopping</span> <span class="o">=</span> <span class="bp">False</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stream_writer_thread</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_output_queue</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stat</span> <span class="o">=</span> <span class="s">&#39;stopped&#39;</span>
+        <span class="k">return</span>
+
+    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+<div class="viewcode-block" id="XMPPOutputStreamWriter.start"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPOutputStreamWriter.start">[docs]</a>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_starting</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stopping</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span> <span class="o">==</span> <span class="s">&#39;stopped&#39;</span><span class="p">:</span>
+
+            <span class="n">thread_name_in</span> <span class="o">=</span> <span class="s">&#39;Thread sending data to socket streamer&#39;</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stat</span> <span class="o">=</span> <span class="s">&#39;hard starting&#39;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_starting</span> <span class="o">=</span> <span class="bp">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stop_flag</span> <span class="o">=</span> <span class="bp">False</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stream_writer_thread</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_stream_writer_thread</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span>
+                        <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_output_worker</span><span class="p">,</span>
+                        <span class="n">name</span><span class="o">=</span><span class="n">thread_name_in</span><span class="p">,</span>
+                        <span class="n">args</span><span class="o">=</span><span class="nb">tuple</span><span class="p">(),</span>
+                        <span class="n">kwargs</span><span class="o">=</span><span class="nb">dict</span><span class="p">()</span>
+                        <span class="p">)</span>
+                <span class="k">except</span><span class="p">:</span>
+                    <span class="n">logging</span><span class="o">.</span><span class="n">exception</span><span class="p">(</span><span class="s">&quot;Error on starting {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">thread_name_in</span><span class="p">))</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_stream_writer_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="s">&#39;working&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stat</span> <span class="o">=</span> <span class="s">&#39;hard started&#39;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_starting</span> <span class="o">=</span> <span class="bp">False</span>
+
+        <span class="k">return</span>
+
+
+    <span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+<div class="viewcode-block" id="XMPPOutputStreamWriter.stop"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPOutputStreamWriter.stop">[docs]</a>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_starting</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stopping</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stopping</span> <span class="o">=</span> <span class="bp">True</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stat</span> <span class="o">=</span> <span class="s">&#39;hard stopping&#39;</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stop_flag</span> <span class="o">=</span> <span class="bp">True</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="s">&#39;stopped&#39;</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_clear</span><span class="p">()</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stopping</span> <span class="o">=</span> <span class="bp">False</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stat</span> <span class="o">=</span> <span class="s">&#39;hard stopped&#39;</span>
+
+        <span class="k">return</span>
+
+    <span class="k">def</span> <span class="nf">stat</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+<div class="viewcode-block" id="XMPPOutputStreamWriter.stat"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPOutputStreamWriter.stat">[docs]</a>
+        <span class="n">ret</span> <span class="o">=</span> <span class="s">&#39;unknown&#39;</span>
+
+        <span class="k">if</span> <span class="nb">bool</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_stream_writer_thread</span><span class="p">):</span>
+            <span class="n">ret</span> <span class="o">=</span> <span class="s">&#39;working&#39;</span>
+
+        <span class="k">elif</span> <span class="ow">not</span> <span class="nb">bool</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_stream_writer_thread</span><span class="p">):</span>
+            <span class="n">ret</span> <span class="o">=</span> <span class="s">&#39;stopped&#39;</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ret</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stat</span>
+
+        <span class="k">return</span> <span class="n">ret</span>
+
+
+    <span class="k">def</span> <span class="nf">wait</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">what</span><span class="o">=</span><span class="s">&#39;stopped&#39;</span><span class="p">):</span></div>
+<div class="viewcode-block" id="XMPPOutputStreamWriter.wait"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPOutputStreamWriter.wait">[docs]</a>
+        <span class="n">allowed_what</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;stopped&#39;</span><span class="p">,</span> <span class="s">&#39;working&#39;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">what</span> <span class="ow">in</span> <span class="n">allowed_what</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;`what&#39; must be in {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">allowed_what</span><span class="p">))</span>
+
+        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span> <span class="o">==</span> <span class="n">what</span><span class="p">:</span>
+                <span class="k">break</span>
+
+        <span class="k">return</span>
+
+    <span class="k">def</span> <span class="nf">send</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">wait</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span></div>
+<div class="viewcode-block" id="XMPPOutputStreamWriter.send"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPOutputStreamWriter.send">[docs]</a>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stop_flag</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s">&quot;Stopping. Sending not allowed&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_output_queue</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+
+        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stop_flag</span><span class="p">:</span>
+                <span class="k">break</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">obj</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_output_queue</span><span class="p">:</span>
+                <span class="k">break</span>
+
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+
+        <span class="k">return</span>
+
+    <span class="k">def</span> <span class="nf">_output_worker</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+<div class="viewcode-block" id="XMPPOutputStreamWriter._output_worker"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPOutputStreamWriter._output_worker">[docs]</a>
+        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_output_queue</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+
+                <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_output_queue</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_send_object</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_output_queue</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                    <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_output_queue</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stop_flag</span><span class="p">:</span>
+                    <span class="k">break</span>
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stream_writer_thread</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="k">return</span>
+
+    <span class="k">def</span> <span class="nf">_send_object</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span></div>
+<div class="viewcode-block" id="XMPPOutputStreamWriter._send_object"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPOutputStreamWriter._send_object">[docs]</a>
+        <span class="n">snd_obj</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">):</span>
+            <span class="n">snd_obj</span> <span class="o">=</span> <span class="n">obj</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">snd_obj</span> <span class="o">=</span> <span class="nb">bytes</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s">&#39;utf-8&#39;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">lxml</span><span class="o">.</span><span class="n">etree</span><span class="o">.</span><span class="n">Element</span><span class="p">):</span>
+            <span class="n">snd_obj</span> <span class="o">=</span> <span class="nb">bytes</span><span class="p">(</span>
+                <span class="n">lxml</span><span class="o">.</span><span class="n">etree</span><span class="o">.</span><span class="n">tostring</span><span class="p">(</span>
+                    <span class="n">obj</span><span class="p">,</span>
+                    <span class="n">encoding</span><span class="o">=</span><span class="s">&#39;utf-8&#39;</span>
+                    <span class="p">),</span>
+                <span class="n">encoding</span><span class="o">=</span><span class="s">&#39;utf-8&#39;</span>
+                <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s">&quot;Wrong obj type. Can be bytes, str or lxml.etree.Element&quot;</span><span class="p">)</span>
+
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_write_to</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">snd_obj</span><span class="p">)</span>
+
+        <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span>
+            <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_xml_parser</span><span class="o">.</span><span class="n">feed</span><span class="p">,</span>
+            <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">snd_obj</span><span class="p">,),</span>
+            <span class="n">name</span><span class="o">=</span><span class="s">&quot;Output XMPP Stream Parser&quot;</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+        <span class="k">return</span>
+
+
+
+<span class="k">class</span> <span class="nc">Hub</span><span class="p">():</span></div></div>
+<div class="viewcode-block" id="Hub"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.Hub">[docs]</a>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="Hub.__init__"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.Hub.__init__">[docs]</a>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_clear</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_clear</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span></div>
+<div class="viewcode-block" id="Hub._clear"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.Hub._clear">[docs]</a>
+        <span class="bp">self</span><span class="o">.</span><span class="n">waiters</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+<div class="viewcode-block" id="Hub.clear"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.Hub.clear">[docs]</a>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_clear</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_dispatch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span></div>
+<div class="viewcode-block" id="Hub._dispatch"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.Hub._dispatch">[docs]</a>
+        <span class="n">w</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">waiters</span><span class="p">)</span>
+        <span class="n">w_l</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">w</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        <span class="n">w_l</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">w_l</span><span class="p">:</span>
+
+            <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span>
+                <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_waiter_thread</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="s">&quot;`{}&#39; dispatcher to `{}&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">__name__</span><span class="p">,</span>
+                    <span class="n">i</span>
+                    <span class="p">),</span>
+                <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">w</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">,),</span>
+                <span class="n">kwargs</span><span class="o">=</span><span class="nb">dict</span><span class="p">()</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_waiter_thread</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">call</span><span class="p">,</span> <span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">):</span></div>
+<div class="viewcode-block" id="Hub._waiter_thread"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.Hub._waiter_thread">[docs]</a>
+        <span class="n">call</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="k">return</span>
+
+    <span class="k">def</span> <span class="nf">set_waiter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">reactor</span><span class="p">):</span></div>
+<div class="viewcode-block" id="Hub.set_waiter"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.Hub.set_waiter">[docs]</a>
+        <span class="bp">self</span><span class="o">.</span><span class="n">waiters</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">reactor</span>
+
+        <span class="k">return</span>
+
+    <span class="k">def</span> <span class="nf">get_waiter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span></div>
+<div class="viewcode-block" id="Hub.get_waiter"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.Hub.get_waiter">[docs]</a>
+        <span class="n">ret</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">waiters</span><span class="p">:</span>
+            <span class="n">ret</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">waiters</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">ret</span>
+
+    <span class="k">def</span> <span class="nf">del_waiter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span></div>
+<div class="viewcode-block" id="Hub.del_waiter"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.Hub.del_waiter">[docs]</a>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">waiters</span><span class="p">:</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">waiters</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+
+        <span class="k">return</span>
+
+<span class="k">class</span> <span class="nc">ConnectionEventsHub</span><span class="p">(</span><span class="n">Hub</span><span class="p">):</span></div></div>
+<div class="viewcode-block" id="ConnectionEventsHub"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.ConnectionEventsHub">[docs]</a>
+    <span class="k">def</span> <span class="nf">dispatch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">,</span> <span class="n">sock</span><span class="p">):</span>
+<div class="viewcode-block" id="ConnectionEventsHub.dispatch"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.ConnectionEventsHub.dispatch">[docs]</a>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dispatch</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">sock</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">StreamEventsHub</span><span class="p">(</span><span class="n">Hub</span><span class="p">):</span></div></div>
+<div class="viewcode-block" id="StreamEventsHub"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.StreamEventsHub">[docs]</a>
+    <span class="k">def</span> <span class="nf">dispatch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">,</span> <span class="n">attrs</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+<div class="viewcode-block" id="StreamEventsHub.dispatch"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.StreamEventsHub.dispatch">[docs]</a>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dispatch</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">attrs</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">StreamObjectsHub</span><span class="p">(</span><span class="n">Hub</span><span class="p">):</span></div></div>
+<div class="viewcode-block" id="StreamObjectsHub"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.StreamObjectsHub">[docs]</a>
+
+    <span class="k">def</span> <span class="nf">dispatch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+<div class="viewcode-block" id="StreamObjectsHub.dispatch"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.StreamObjectsHub.dispatch">[docs]</a>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dispatch</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+
+
+
+<span class="k">class</span> <span class="nc">XMPPStreamMachine</span><span class="p">:</span></div></div>
+<div class="viewcode-block" id="XMPPStreamMachine"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPStreamMachine">[docs]</a>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="XMPPStreamMachine.__init__"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPStreamMachine.__init__">[docs]</a>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_clear</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_clear</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span></div>
+<div class="viewcode-block" id="XMPPStreamMachine._clear"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPStreamMachine._clear">[docs]</a>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">init</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span> <span class="o">==</span> <span class="s">&#39;stopped&#39;</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s">&quot;Working - Clearing Restricted&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stopping</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_starting</span> <span class="o">=</span> <span class="bp">False</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_xml_target</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_xml_parser</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stream_worker</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sock_streamer</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stream_events_dispatcher</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stream_objects_dispatcher</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">set_objects</span><span class="p">(</span></div>
+<div class="viewcode-block" id="XMPPStreamMachine.set_objects"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPStreamMachine.set_objects">[docs]</a>        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">sock_streamer</span><span class="p">,</span>
+        <span class="n">stream_events_dispatcher</span><span class="p">,</span>
+        <span class="n">stream_objects_dispatcher</span>
+        <span class="p">):</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sock_streamer</span> <span class="o">=</span> <span class="n">sock_streamer</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stream_events_dispatcher</span> <span class="o">=</span> <span class="n">stream_events_dispatcher</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stream_objects_dispatcher</span> <span class="o">=</span> <span class="n">stream_objects_dispatcher</span>
+
+    <span class="k">def</span> <span class="nf">start_stream_worker</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+<div class="viewcode-block" id="XMPPStreamMachine.start_stream_worker"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPStreamMachine.start_stream_worker">[docs]</a>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s">&quot;You need to override this&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+<div class="viewcode-block" id="XMPPStreamMachine.start"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPStreamMachine.start">[docs]</a>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_starting</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stopping</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span> <span class="o">==</span> <span class="s">&#39;stopped&#39;</span><span class="p">:</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_starting</span> <span class="o">=</span> <span class="bp">True</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_xml_target</span> <span class="o">=</span> <span class="n">XMPPStreamParserTarget</span><span class="p">(</span>
+                <span class="n">on_stream_event</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_stream_events_dispatcher</span><span class="p">,</span>
+                <span class="n">on_element_readed</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_stream_objects_dispatcher</span>
+                <span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_xml_parser</span> <span class="o">=</span> <span class="n">lxml</span><span class="o">.</span><span class="n">etree</span><span class="o">.</span><span class="n">XMLParser</span><span class="p">(</span>
+                <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_xml_target</span>
+                <span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">start_stream_worker</span><span class="p">()</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stream_worker</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_starting</span> <span class="o">=</span> <span class="bp">False</span>
+
+    <span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+<div class="viewcode-block" id="XMPPStreamMachine.stop"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPStreamMachine.stop">[docs]</a>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stopping</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_starting</span><span class="p">:</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stopping</span> <span class="o">=</span> <span class="bp">True</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stream_worker</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="s">&#39;stopped&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_clear</span><span class="p">()</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stopping</span> <span class="o">=</span> <span class="bp">False</span>
+
+    <span class="k">def</span> <span class="nf">wait</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">what</span><span class="o">=</span><span class="s">&#39;stopped&#39;</span><span class="p">):</span></div>
+<div class="viewcode-block" id="XMPPStreamMachine.wait"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPStreamMachine.wait">[docs]</a>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stream_worker</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stream_worker</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="n">what</span><span class="o">=</span><span class="n">what</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">stat</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+<div class="viewcode-block" id="XMPPStreamMachine.stat"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPStreamMachine.stat">[docs]</a>
+        <span class="n">ret</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stream_worker</span><span class="p">:</span>
+            <span class="n">ret</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stream_worker</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">ret</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">ret</span> <span class="o">=</span> <span class="s">&#39;stopped&#39;</span>
+
+        <span class="k">return</span> <span class="n">ret</span>
+
+    <span class="k">def</span> <span class="nf">restart</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+<div class="viewcode-block" id="XMPPStreamMachine.restart"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPStreamMachine.restart">[docs]</a>        <span class="bp">self</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">restart_with_new_objects</span><span class="p">(</span></div>
+<div class="viewcode-block" id="XMPPStreamMachine.restart_with_new_objects"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPStreamMachine.restart_with_new_objects">[docs]</a>        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">sock_streamer</span><span class="p">,</span>
+        <span class="n">stream_events_dispatcher</span><span class="p">,</span>
+        <span class="n">stream_objects_dispatcher</span>
+        <span class="p">):</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_objects</span><span class="p">(</span>
+            <span class="n">sock_streamer</span><span class="p">,</span>
+            <span class="n">stream_events_dispatcher</span><span class="p">,</span>
+            <span class="n">stream_objects_dispatcher</span>
+            <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+
+
+
+<span class="k">class</span> <span class="nc">XMPPInputStreamReaderMachine</span><span class="p">(</span><span class="n">XMPPStreamMachine</span><span class="p">):</span></div></div>
+<div class="viewcode-block" id="XMPPInputStreamReaderMachine"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPInputStreamReaderMachine">[docs]</a>
+    <span class="k">def</span> <span class="nf">start_stream_worker</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="XMPPInputStreamReaderMachine.start_stream_worker"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPInputStreamReaderMachine.start_stream_worker">[docs]</a>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stream_worker</span> <span class="o">=</span> <span class="n">XMPPInputStreamReader</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_sock_streamer</span><span class="o">.</span><span class="n">strout</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_xml_parser</span>
+            <span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">XMPPOutputStreamWriterMachine</span><span class="p">(</span><span class="n">XMPPStreamMachine</span><span class="p">):</span></div></div>
+<div class="viewcode-block" id="XMPPOutputStreamWriterMachine"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPOutputStreamWriterMachine">[docs]</a>
+    <span class="k">def</span> <span class="nf">start_stream_worker</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="XMPPOutputStreamWriterMachine.start_stream_worker"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPOutputStreamWriterMachine.start_stream_worker">[docs]</a>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stream_worker</span> <span class="o">=</span> <span class="n">XMPPOutputStreamWriter</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_sock_streamer</span><span class="o">.</span><span class="n">strin</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_xml_parser</span>
+            <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">send</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">wait</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span></div>
+<div class="viewcode-block" id="XMPPOutputStreamWriterMachine.send"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.XMPPOutputStreamWriterMachine.send">[docs]</a>        <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="s">&quot;Send Object To Output Queue Thread&quot;</span><span class="p">,</span>
+            <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_stream_worker</span><span class="o">.</span><span class="n">send</span><span class="p">,</span>
+            <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">obj</span><span class="p">,),</span>
+            <span class="n">kwargs</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">wait</span><span class="o">=</span><span class="n">wait</span><span class="p">)</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+
+<span class="k">class</span> <span class="nc">Driver</span><span class="p">:</span></div></div>
+<div class="viewcode-block" id="Driver"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.Driver">[docs]</a>    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Interface for writing future drivers</span>
+
+<span class="sd">    The only one method which will be used by external entities will be `drive&#39;</span>
+<span class="sd">    which must wait until all operations done and must return result.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">drive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+<div class="viewcode-block" id="Driver.drive"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.Driver.drive">[docs]</a>
+        <span class="k">return</span> <span class="s">&#39;success&#39;</span>
+
+<span class="k">class</span> <span class="nc">STARTTLSClientDriver</span><span class="p">(</span><span class="n">Driver</span><span class="p">):</span></div></div>
+<div class="viewcode-block" id="STARTTLSClientDriver"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.STARTTLSClientDriver">[docs]</a>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Driver for starting STARTTLS on client side conection part</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<div class="viewcode-block" id="STARTTLSClientDriver.__init__"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.STARTTLSClientDriver.__init__">[docs]</a>        <span class="bp">self</span><span class="o">.</span><span class="n">_clear</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">set_objects</span><span class="p">(</span></div>
+<div class="viewcode-block" id="STARTTLSClientDriver.set_objects"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.STARTTLSClientDriver.set_objects">[docs]</a>        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">sock_streamer</span><span class="p">,</span>
+        <span class="n">input_machine</span><span class="p">,</span>
+        <span class="n">output_machine</span><span class="p">,</span>
+        <span class="n">connection_events_hub</span><span class="p">,</span>
+        <span class="n">input_stream_events_hub</span><span class="p">,</span>
+        <span class="n">input_stream_objects_hub</span><span class="p">,</span>
+        <span class="n">output_stream_events_hub</span><span class="p">,</span>
+        <span class="n">connection_info</span><span class="p">,</span>
+        <span class="n">jid</span>
+        <span class="p">):</span>
+        
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Set objects to work with</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sock_streamer</span> <span class="o">=</span> <span class="n">sock_streamer</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_input_machine</span> <span class="o">=</span> <span class="n">input_machine</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_output_machine</span> <span class="o">=</span> <span class="n">output_machine</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_connection_events_hub</span> <span class="o">=</span> <span class="n">connection_events_hub</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_input_stream_events_hub</span> <span class="o">=</span> <span class="n">input_stream_events_hub</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_input_stream_objects_hub</span> <span class="o">=</span> <span class="n">input_stream_objects_hub</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_output_stream_events_hub</span> <span class="o">=</span> <span class="n">output_stream_events_hub</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_connection_info</span> <span class="o">=</span> <span class="n">connection_info</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_jid</span> <span class="o">=</span> <span class="n">jid</span>
+
+    <span class="k">def</span> <span class="nf">_clear</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span></div>
+<div class="viewcode-block" id="STARTTLSClientDriver._clear"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.STARTTLSClientDriver._clear">[docs]</a>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sock_streamer</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_output_machine</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_connection_info</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_jid</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_on_finish</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_input_stream_events_hub</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_input_stream_objects_hub</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_output_stream_events_hub</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_driving</span> <span class="o">=</span> <span class="bp">False</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="s">&#39;just created&#39;</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_result</span> <span class="o">=</span> <span class="bp">None</span>
+
+    <span class="k">def</span> <span class="nf">_start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+<div class="viewcode-block" id="STARTTLSClientDriver._start"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.STARTTLSClientDriver._start">[docs]</a>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driving</span><span class="p">:</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_driving</span> <span class="o">=</span> <span class="bp">True</span>
+
+            <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;TLS Driver work started&quot;</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_connection_events_hub</span><span class="o">.</span><span class="n">set_waiter</span><span class="p">(</span>
+                <span class="s">&#39;tls_driver&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_connection_events_waiter</span>
+                <span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_input_stream_events_hub</span><span class="o">.</span><span class="n">set_waiter</span><span class="p">(</span>
+                <span class="s">&#39;tls_driver&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_input_stream_events_waiter</span>
+                <span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_input_stream_objects_hub</span><span class="o">.</span><span class="n">set_waiter</span><span class="p">(</span>
+                <span class="s">&#39;tls_driver&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stream_objects_waiter</span>
+                <span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">_stop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+<div class="viewcode-block" id="STARTTLSClientDriver._stop"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.STARTTLSClientDriver._stop">[docs]</a>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driving</span><span class="p">:</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_driving</span> <span class="o">=</span> <span class="bp">False</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_connection_events_hub</span><span class="o">.</span><span class="n">del_waiter</span><span class="p">(</span><span class="s">&#39;tls_driver&#39;</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_input_stream_events_hub</span><span class="o">.</span><span class="n">del_waiter</span><span class="p">(</span><span class="s">&#39;tls_driver&#39;</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_input_stream_objects_hub</span><span class="o">.</span><span class="n">del_waiter</span><span class="p">(</span><span class="s">&#39;tls_driver&#39;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+<div class="viewcode-block" id="STARTTLSClientDriver.stop"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.STARTTLSClientDriver.stop">[docs]</a>        
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Stop driver work</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stop</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">drive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span></div>
+<div class="viewcode-block" id="STARTTLSClientDriver.drive"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.STARTTLSClientDriver.drive">[docs]</a>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Drives to STARTTLS, basing on ``obj``.</span>
+<span class="sd">        </span>
+<span class="sd">        If ``obj.tag`` is ``{http://etherx.jabber.org/streams}features`` and</span>
+<span class="sd">        it is contains ``{urn:ietf:params:xml:ns:xmpp-tls}starttls`` element,</span>
+<span class="sd">        then:</span>
+<span class="sd">        </span>
+<span class="sd">        #. switch ``self.status`` to ``&#39;requesting tls&#39;``</span>
+<span class="sd">        </span>
+<span class="sd">        #. run :ref:`self._start`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">tag</span> <span class="o">==</span> <span class="s">&#39;{http://etherx.jabber.org/streams}features&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="s">&#39;looking for tls&#39;</span>
+
+            <span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39;{urn:ietf:params:xml:ns:xmpp-tls}starttls&#39;</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">None</span><span class="p">:</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">=</span> <span class="s">&#39;requesting tls&#39;</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">_start</span><span class="p">()</span>
+
+                <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Sending STARTTLS request&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_output_machine</span><span class="o">.</span><span class="n">send</span><span class="p">(</span>
+                    <span class="n">starttls</span><span class="p">()</span>
+                    <span class="p">)</span>
+
+                <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+
+                    <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driving</span><span class="p">:</span>
+                        <span class="k">break</span>
+
+                    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+
+            <span class="k">else</span><span class="p">:</span>
+
+                <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;TLS not proposed&quot;</span><span class="p">)</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">_result</span> <span class="o">=</span> <span class="s">&#39;no tls&#39;</span>
+
+        <span class="n">ret</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_result</span>
+
+        <span class="k">return</span> <span class="n">ret</span>
+
+    <span class="k">def</span> <span class="nf">_connection_events_waiter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">,</span> <span class="n">sock</span><span class="p">):</span></div>
+<div class="viewcode-block" id="STARTTLSClientDriver._connection_events_waiter"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.STARTTLSClientDriver._connection_events_waiter">[docs]</a>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driving</span><span class="p">:</span>
+
+            <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;_connection_events_waiter :: `{}&#39; `{}&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">sock</span><span class="p">))</span>
+
+            <span class="k">if</span> <span class="n">event</span> <span class="o">==</span> <span class="s">&#39;ssl wrapped&#39;</span><span class="p">:</span>
+
+                <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Socket streamer threads restarted&quot;</span><span class="p">)</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Restarting Machines&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_input_machine</span><span class="o">.</span><span class="n">restart_with_new_objects</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_sock_streamer</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_input_stream_events_hub</span><span class="o">.</span><span class="n">dispatch</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_input_stream_objects_hub</span><span class="o">.</span><span class="n">dispatch</span>
+                    <span class="p">)</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">_output_machine</span><span class="o">.</span><span class="n">restart_with_new_objects</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_sock_streamer</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_output_stream_events_hub</span><span class="o">.</span><span class="n">dispatch</span><span class="p">,</span>
+                    <span class="bp">None</span>
+                    <span class="p">)</span>
+
+                <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Waiting machines restart&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_input_machine</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="s">&#39;working&#39;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_output_machine</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="s">&#39;working&#39;</span><span class="p">)</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Machines restarted&quot;</span><span class="p">)</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">_output_machine</span><span class="o">.</span><span class="n">send</span><span class="p">(</span>
+                    <span class="n">start_stream</span><span class="p">(</span>
+                        <span class="n">fro</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_jid</span><span class="o">.</span><span class="n">bare</span><span class="p">(),</span>
+                        <span class="n">to</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_connection_info</span><span class="o">.</span><span class="n">host</span>
+                        <span class="p">)</span>
+                    <span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">_input_stream_events_waiter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">,</span> <span class="n">attrs</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span></div>
+<div class="viewcode-block" id="STARTTLSClientDriver._input_stream_events_waiter"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.STARTTLSClientDriver._input_stream_events_waiter">[docs]</a>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driving</span><span class="p">:</span>
+
+            <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;_input_stream_events_waiter :: `{}&#39;, `{}&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">attrs</span><span class="p">))</span>
+
+            <span class="k">if</span> <span class="n">event</span> <span class="o">==</span> <span class="s">&#39;start&#39;</span><span class="p">:</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">_result</span> <span class="o">=</span> <span class="s">&#39;success&#39;</span>
+
+            <span class="k">elif</span> <span class="n">event</span> <span class="o">==</span> <span class="s">&#39;stop&#39;</span><span class="p">:</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">_result</span> <span class="o">=</span> <span class="s">&#39;stream stopped&#39;</span>
+
+            <span class="k">elif</span> <span class="n">event</span> <span class="o">==</span> <span class="s">&#39;error&#39;</span><span class="p">:</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">_result</span> <span class="o">=</span> <span class="s">&#39;stream error&#39;</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stop</span><span class="p">()</span>
+
+
+    <span class="k">def</span> <span class="nf">_stream_objects_waiter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span></div>
+<div class="viewcode-block" id="STARTTLSClientDriver._stream_objects_waiter"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.STARTTLSClientDriver._stream_objects_waiter">[docs]</a>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driving</span><span class="p">:</span>
+
+            <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;_stream_objects_waiter :: `{}&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">obj</span><span class="p">))</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s">&#39;requesting tls&#39;</span><span class="p">:</span>
+
+                <span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">tag</span> <span class="ow">in</span> <span class="p">[</span>
+                        <span class="s">&#39;{urn:ietf:params:xml:ns:xmpp-tls}proceed&#39;</span><span class="p">,</span>
+                        <span class="s">&#39;{urn:ietf:params:xml:ns:xmpp-tls}failure&#39;</span>
+                        <span class="p">]:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">tls_request_result</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">tag</span>
+
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">tls_request_result</span> <span class="o">==</span> <span class="s">&#39;{urn:ietf:params:xml:ns:xmpp-tls}proceed&#39;</span><span class="p">:</span>
+
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_sock_streamer</span><span class="o">.</span><span class="n">start_ssl</span><span class="p">()</span>
+
+                    <span class="k">else</span><span class="p">:</span>
+
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_result</span> <span class="o">=</span> <span class="s">&#39;failure&#39;</span>
+
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_stop</span><span class="p">()</span>
+
+                <span class="k">else</span><span class="p">:</span>
+
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_result</span> <span class="o">=</span> <span class="s">&#39;response error&#39;</span>
+
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_stop</span><span class="p">()</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_result</span> <span class="o">=</span> <span class="s">&#39;programming error&#39;</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">_stop</span><span class="p">()</span>
+
+        <span class="k">return</span>
+
+<span class="k">class</span> <span class="nc">Monitor</span><span class="p">:</span></div></div>
+<div class="viewcode-block" id="Monitor"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.Monitor">[docs]</a>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Class for monitoring this module classes various events</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">connection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">,</span> <span class="n">sock</span><span class="p">):</span>
+<div class="viewcode-block" id="Monitor.connection"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.Monitor.connection">[docs]</a>
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;connection: {} {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">sock</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">stream_in</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">,</span> <span class="n">attrs</span><span class="p">):</span></div>
+<div class="viewcode-block" id="Monitor.stream_in"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.Monitor.stream_in">[docs]</a>
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;stream_in: {} {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">attrs</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">stream_out</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">,</span> <span class="n">attrs</span><span class="p">):</span></div>
+<div class="viewcode-block" id="Monitor.stream_out"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.Monitor.stream_out">[docs]</a>
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;stream_out: {} {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">attrs</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">object</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span></div>
+<div class="viewcode-block" id="Monitor.object"><a class="viewcode-back" href="../../../../core.html#org.wayround.xmpp.core.Monitor.object">[docs]</a>
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;object: {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">obj</span><span class="p">))</span>
+</pre></div></div></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../index.html">org_wayround_xmpp 0.1 documentation</a> &raquo;</li>
+          <li><a href="../../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, AnimusPEXUS.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,533 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>org.wayround.xmpp.client &mdash; org_wayround_xmpp 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <link rel="top" title="org_wayround_xmpp 0.1 documentation" href="../../../../index.html" />
+    <link rel="up" title="Module code" href="../../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../index.html">org_wayround_xmpp 0.1 documentation</a> &raquo;</li>
+          <li><a href="../../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for org.wayround.xmpp.client</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Simple Client used while developing xmpp module of org.wayround.utils</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">select</span>
+<span class="kn">import</span> <span class="nn">threading</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+<span class="kn">import</span> <span class="nn">lxml.etree</span>
+
+<span class="kn">import</span> <span class="nn">org.wayround.utils.stream</span>
+<span class="kn">import</span> <span class="nn">org.wayround.utils.xml</span>
+
+<span class="kn">import</span> <span class="nn">org.wayround.xmpp.core</span>
+
+
+<span class="k">class</span> <span class="nc">SampleC2SClient</span><span class="p">:</span>
+<div class="viewcode-block" id="SampleC2SClient"><a class="viewcode-back" href="../../../../client.html#org.wayround.xmpp.client.SampleC2SClient">[docs]</a>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">socket</span><span class="p">,</span> <span class="n">connection_info</span><span class="p">,</span> <span class="n">jid</span><span class="p">):</span>
+<div class="viewcode-block" id="SampleC2SClient.__init__"><a class="viewcode-back" href="../../../../client.html#org.wayround.xmpp.client.SampleC2SClient.__init__">[docs]</a>
+        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span> <span class="o">=</span> <span class="n">socket</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_connection_info</span> <span class="o">=</span> <span class="n">connection_info</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_jid</span> <span class="o">=</span> <span class="n">jid</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_clear</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_clear</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">init</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span></div>
+<div class="viewcode-block" id="SampleC2SClient._clear"><a class="viewcode-back" href="../../../../client.html#org.wayround.xmpp.client.SampleC2SClient._clear">[docs]</a>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">init</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span> <span class="o">==</span> <span class="s">&#39;stopped&#39;</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s">&quot;Working. Cleaning restricted&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">connection</span> <span class="o">=</span> <span class="bp">False</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_driven</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_starting</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stop_flag</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stopping</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stream_in</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stream_out</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stream_stop_sent</span> <span class="o">=</span> <span class="bp">False</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">sock_streamer</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_machine</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_machine</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">connection_events_hub</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_stream_events_hub</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_stream_objects_hub</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_stream_events_hub</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">tls_driver</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_tls_result</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_features_iteration</span> <span class="o">=</span> <span class="bp">None</span>
+
+
+    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+<div class="viewcode-block" id="SampleC2SClient.start"><a class="viewcode-back" href="../../../../client.html#org.wayround.xmpp.client.SampleC2SClient.start">[docs]</a>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_starting</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stopping</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span> <span class="o">==</span> <span class="s">&#39;stopped&#39;</span><span class="p">:</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_starting</span> <span class="o">=</span> <span class="bp">True</span>
+
+            <span class="c">######### DRIVERS</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">tls_driver</span> <span class="o">=</span> <span class="n">org</span><span class="o">.</span><span class="n">wayround</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">xmpp</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">STARTTLSClientDriver</span><span class="p">()</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_m</span> <span class="o">=</span> <span class="n">org</span><span class="o">.</span><span class="n">wayround</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">xmpp</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">Monitor</span><span class="p">()</span>
+
+            <span class="c">######### HUBS</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">connection_events_hub</span> <span class="o">=</span> <span class="n">org</span><span class="o">.</span><span class="n">wayround</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">xmpp</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">ConnectionEventsHub</span><span class="p">()</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">input_stream_events_hub</span> <span class="o">=</span> <span class="n">org</span><span class="o">.</span><span class="n">wayround</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">xmpp</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">StreamEventsHub</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">input_stream_objects_hub</span> <span class="o">=</span> <span class="n">org</span><span class="o">.</span><span class="n">wayround</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">xmpp</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">StreamObjectsHub</span><span class="p">()</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">output_stream_events_hub</span> <span class="o">=</span> <span class="n">org</span><span class="o">.</span><span class="n">wayround</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">xmpp</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">StreamEventsHub</span><span class="p">()</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">reset_hubs</span><span class="p">()</span>
+
+            <span class="c">######### SOCKET</span>
+
+
+            <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;sock is {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="p">))</span>
+
+
+            <span class="c">######### STREAMS</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">sock_streamer</span> <span class="o">=</span> <span class="n">org</span><span class="o">.</span><span class="n">wayround</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">stream</span><span class="o">.</span><span class="n">SocketStreamer</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="p">,</span>
+                <span class="n">socket_transfer_size</span><span class="o">=</span><span class="mi">4096</span><span class="p">,</span>
+                <span class="n">on_connection_event</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">connection_events_hub</span><span class="o">.</span><span class="n">dispatch</span>
+                <span class="p">)</span>
+
+            <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span>
+                <span class="n">name</span><span class="o">=</span><span class="s">&quot;Socket Streamer Starting Thread&quot;</span><span class="p">,</span>
+                <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sock_streamer</span><span class="o">.</span><span class="n">start</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+            <span class="c">######### MACHINES</span>
+
+            <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span>
+                <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_start_input_machine</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="s">&quot;Input Machine Starting Thread&quot;</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+            <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span>
+                <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_start_output_machine</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="s">&quot;Output Machine Starting Thread&quot;</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_starting</span> <span class="o">=</span> <span class="bp">False</span>
+
+        <span class="k">return</span>
+
+    <span class="k">def</span> <span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+<div class="viewcode-block" id="SampleC2SClient.stop"><a class="viewcode-back" href="../../../../client.html#org.wayround.xmpp.client.SampleC2SClient.stop">[docs]</a>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stopping</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_starting</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stopping</span> <span class="o">=</span> <span class="bp">True</span>
+
+            <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Starting shutdown sequence&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_shutdown</span><span class="p">(</span><span class="n">_forced</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">stop_violent</span><span class="p">(</span><span class="n">_forced</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+        <span class="k">return</span>
+
+    <span class="k">def</span> <span class="nf">stop_violent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_forced</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span></div>
+<div class="viewcode-block" id="SampleC2SClient.stop_violent"><a class="viewcode-back" href="../../../../client.html#org.wayround.xmpp.client.SampleC2SClient.stop_violent">[docs]</a>
+
+        <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stopping</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_starting</span><span class="p">)</span> <span class="ow">or</span> <span class="n">_forced</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stopping</span> <span class="o">=</span> <span class="bp">True</span>
+
+            <span class="n">stop_list</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_stop_input_machine</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_stop_output_machine</span>
+                <span class="p">]</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sock_streamer</span><span class="p">:</span>
+                <span class="n">stop_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sock_streamer</span><span class="o">.</span><span class="n">stop</span><span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">stop_list</span><span class="p">:</span>
+                <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span>
+                    <span class="n">target</span><span class="o">=</span><span class="n">i</span><span class="p">,</span>
+                    <span class="n">name</span><span class="o">=</span><span class="s">&quot;Stopping Thread ({})&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+                    <span class="p">)</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="s">&#39;stopped&#39;</span><span class="p">)</span>
+
+            <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Cleaning client instance&quot;</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_clear</span><span class="p">()</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stopping</span> <span class="o">=</span> <span class="bp">False</span>
+
+            <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&#39;sock is {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="p">))</span>
+
+        <span class="k">return</span>
+
+    <span class="k">def</span> <span class="nf">_shutdown</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout_sec</span><span class="o">=</span><span class="mf">5.0</span><span class="p">,</span> <span class="n">_forced</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span></div>
+<div class="viewcode-block" id="SampleC2SClient._shutdown"><a class="viewcode-back" href="../../../../client.html#org.wayround.xmpp.client.SampleC2SClient._shutdown">[docs]</a>
+        <span class="n">time_waited</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stopping</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_starting</span><span class="p">)</span> <span class="ow">or</span> <span class="n">_forced</span><span class="p">:</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stop_flag</span> <span class="o">=</span> <span class="bp">True</span>
+
+            <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Stopping client correctly&quot;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">connection</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stream_stop_sent</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Sending end of stream&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">output_machine</span><span class="o">.</span><span class="n">send</span><span class="p">(</span>
+                    <span class="n">org</span><span class="o">.</span><span class="n">wayround</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">xmpp</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">stop_stream</span><span class="p">()</span>
+                    <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_stream_stop_sent</span> <span class="o">=</span> <span class="bp">True</span>
+
+
+            <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span> <span class="o">==</span> <span class="s">&#39;stopped&#39;</span><span class="p">:</span>
+                    <span class="k">break</span>
+
+                <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Timeout in {:3.2f} sec&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">timeout_sec</span> <span class="o">-</span> <span class="n">time_waited</span><span class="p">))</span>
+                <span class="k">if</span> <span class="n">time_waited</span> <span class="o">&gt;=</span> <span class="n">timeout_sec</span><span class="p">:</span>
+                    <span class="k">break</span>
+
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">1.0</span><span class="p">)</span>
+                <span class="n">time_waited</span> <span class="o">+=</span> <span class="mf">1.0</span>
+
+
+    <span class="k">def</span> <span class="nf">wait</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">what</span><span class="o">=</span><span class="s">&#39;stopped&#39;</span><span class="p">):</span></div>
+<div class="viewcode-block" id="SampleC2SClient.wait"><a class="viewcode-back" href="../../../../client.html#org.wayround.xmpp.client.SampleC2SClient.wait">[docs]</a>
+        <span class="n">allowed_what</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;stopped&#39;</span><span class="p">,</span> <span class="s">&#39;working&#39;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">what</span> <span class="ow">in</span> <span class="n">allowed_what</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s">&quot;`what&#39; must be in {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">allowed_what</span><span class="p">))</span>
+
+        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span> <span class="o">==</span> <span class="n">what</span><span class="p">:</span>
+                <span class="k">break</span>
+
+        <span class="k">return</span>
+
+    <span class="k">def</span> <span class="nf">stat</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+<div class="viewcode-block" id="SampleC2SClient.stat"><a class="viewcode-back" href="../../../../client.html#org.wayround.xmpp.client.SampleC2SClient.stat">[docs]</a>
+        <span class="n">ret</span> <span class="o">=</span> <span class="s">&#39;various&#39;</span>
+
+        <span class="n">v1</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="n">v2</span> <span class="o">=</span> <span class="bp">None</span>
+        <span class="n">v3</span> <span class="o">=</span> <span class="bp">None</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sock_streamer</span><span class="p">:</span>
+            <span class="n">v1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sock_streamer</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_machine</span><span class="p">:</span>
+            <span class="n">v2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_machine</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_machine</span><span class="p">:</span>
+            <span class="n">v3</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_machine</span><span class="o">.</span><span class="n">stat</span><span class="p">()</span>
+
+
+<span class="c">#        logging.debug(&quot;&quot;&quot;</span>
+<span class="c">#self.sock_streamer.stat() == {}</span>
+<span class="c">#self.input_machine.stat() == {}</span>
+<span class="c">#self.output_machine.stat() == {}</span>
+<span class="c">#&quot;&quot;&quot;.format(v1, v2, v3)</span>
+<span class="c">#            )</span>
+
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;{}, {}, {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">v1</span><span class="p">,</span> <span class="n">v2</span><span class="p">,</span> <span class="n">v3</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">v1</span> <span class="o">==</span> <span class="n">v2</span> <span class="o">==</span> <span class="n">v3</span> <span class="o">==</span> <span class="s">&#39;working&#39;</span><span class="p">:</span>
+            <span class="n">ret</span> <span class="o">=</span> <span class="s">&#39;working&#39;</span>
+
+        <span class="k">elif</span> <span class="n">v1</span> <span class="o">==</span> <span class="n">v2</span> <span class="o">==</span> <span class="n">v3</span> <span class="o">==</span> <span class="s">&#39;stopped&#39;</span><span class="p">:</span>
+            <span class="n">ret</span> <span class="o">=</span> <span class="s">&#39;stopped&#39;</span>
+
+        <span class="k">elif</span> <span class="n">v1</span> <span class="o">==</span> <span class="n">v2</span> <span class="o">==</span> <span class="n">v3</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">ret</span> <span class="o">=</span> <span class="s">&#39;stopped&#39;</span>
+
+        <span class="k">return</span> <span class="n">ret</span>
+
+    <span class="k">def</span> <span class="nf">_start_input_machine</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+<div class="viewcode-block" id="SampleC2SClient._start_input_machine"><a class="viewcode-back" href="../../../../client.html#org.wayround.xmpp.client.SampleC2SClient._start_input_machine">[docs]</a>
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_machine</span> <span class="o">=</span> <span class="n">org</span><span class="o">.</span><span class="n">wayround</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">xmpp</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">XMPPInputStreamReaderMachine</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_machine</span><span class="o">.</span><span class="n">set_objects</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sock_streamer</span><span class="p">,</span>
+            <span class="n">stream_events_dispatcher</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">input_stream_events_hub</span><span class="o">.</span><span class="n">dispatch</span><span class="p">,</span>
+            <span class="n">stream_objects_dispatcher</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">input_stream_objects_hub</span><span class="o">.</span><span class="n">dispatch</span>
+            <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_machine</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_stop_input_machine</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+<div class="viewcode-block" id="SampleC2SClient._stop_input_machine"><a class="viewcode-back" href="../../../../client.html#org.wayround.xmpp.client.SampleC2SClient._stop_input_machine">[docs]</a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_machine</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">input_machine</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_restart_input_machine</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+<div class="viewcode-block" id="SampleC2SClient._restart_input_machine"><a class="viewcode-back" href="../../../../client.html#org.wayround.xmpp.client.SampleC2SClient._restart_input_machine">[docs]</a>        <span class="bp">self</span><span class="o">.</span><span class="n">_stop_input_machine</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start_input_machine</span><span class="p">()</span>
+
+
+
+    <span class="k">def</span> <span class="nf">_start_output_machine</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+<div class="viewcode-block" id="SampleC2SClient._start_output_machine"><a class="viewcode-back" href="../../../../client.html#org.wayround.xmpp.client.SampleC2SClient._start_output_machine">[docs]</a>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_machine</span> <span class="o">=</span> <span class="n">org</span><span class="o">.</span><span class="n">wayround</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">xmpp</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">XMPPOutputStreamWriterMachine</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_machine</span><span class="o">.</span><span class="n">set_objects</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sock_streamer</span><span class="p">,</span>
+            <span class="n">stream_events_dispatcher</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">output_stream_events_hub</span><span class="o">.</span><span class="n">dispatch</span><span class="p">,</span>
+            <span class="n">stream_objects_dispatcher</span><span class="o">=</span><span class="bp">None</span>
+            <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_machine</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_stop_output_machine</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+<div class="viewcode-block" id="SampleC2SClient._stop_output_machine"><a class="viewcode-back" href="../../../../client.html#org.wayround.xmpp.client.SampleC2SClient._stop_output_machine">[docs]</a>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_machine</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">output_machine</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_restart_output_machine</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+<div class="viewcode-block" id="SampleC2SClient._restart_output_machine"><a class="viewcode-back" href="../../../../client.html#org.wayround.xmpp.client.SampleC2SClient._restart_output_machine">[docs]</a>        <span class="bp">self</span><span class="o">.</span><span class="n">_stop_output_machine</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_start_output_machine</span><span class="p">()</span>
+
+
+    <span class="k">def</span> <span class="nf">reset_hubs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+<div class="viewcode-block" id="SampleC2SClient.reset_hubs"><a class="viewcode-back" href="../../../../client.html#org.wayround.xmpp.client.SampleC2SClient.reset_hubs">[docs]</a>
+        <span class="bp">self</span><span class="o">.</span><span class="n">connection_events_hub</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_stream_events_hub</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_stream_objects_hub</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_stream_events_hub</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">connection_events_hub</span><span class="o">.</span><span class="n">set_waiter</span><span class="p">(</span>
+            <span class="s">&#39;main&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_connection_event</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">connection_events_hub</span><span class="o">.</span><span class="n">set_waiter</span><span class="p">(</span>
+            <span class="s">&#39;m&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_m</span><span class="o">.</span><span class="n">connection</span>
+            <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_stream_events_hub</span><span class="o">.</span><span class="n">set_waiter</span><span class="p">(</span>
+            <span class="s">&#39;main&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_stream_in_event</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_stream_events_hub</span><span class="o">.</span><span class="n">set_waiter</span><span class="p">(</span>
+            <span class="s">&#39;m&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_m</span><span class="o">.</span><span class="n">stream_in</span>
+            <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_stream_objects_hub</span><span class="o">.</span><span class="n">set_waiter</span><span class="p">(</span>
+            <span class="s">&#39;main&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_stream_object</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_stream_objects_hub</span><span class="o">.</span><span class="n">set_waiter</span><span class="p">(</span>
+            <span class="s">&#39;m&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_m</span><span class="o">.</span><span class="n">object</span>
+            <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_stream_events_hub</span><span class="o">.</span><span class="n">set_waiter</span><span class="p">(</span>
+            <span class="s">&#39;main&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_on_stream_out_event</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_stream_events_hub</span><span class="o">.</span><span class="n">set_waiter</span><span class="p">(</span>
+            <span class="s">&#39;m&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_m</span><span class="o">.</span><span class="n">stream_out</span>
+            <span class="p">)</span>
+
+
+    <span class="k">def</span> <span class="nf">_on_connection_event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">,</span> <span class="n">sock</span><span class="p">):</span></div>
+<div class="viewcode-block" id="SampleC2SClient._on_connection_event"><a class="viewcode-back" href="../../../../client.html#org.wayround.xmpp.client.SampleC2SClient._on_connection_event">[docs]</a>
+        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span> <span class="o">=</span> <span class="n">sock</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driven</span><span class="p">:</span>
+
+            <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;_on_connection_event `{}&#39;, `{}&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">sock</span><span class="p">))</span>
+
+            <span class="k">if</span> <span class="n">event</span> <span class="o">==</span> <span class="s">&#39;start&#39;</span><span class="p">:</span>
+                <span class="k">print</span><span class="p">(</span><span class="s">&quot;Connection started&quot;</span><span class="p">)</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">connection</span> <span class="o">=</span> <span class="bp">True</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="s">&#39;working&#39;</span><span class="p">)</span>
+
+                <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Ended waiting for connection. Opening output stream&quot;</span><span class="p">)</span>
+
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">output_machine</span><span class="o">.</span><span class="n">send</span><span class="p">(</span>
+                    <span class="n">org</span><span class="o">.</span><span class="n">wayround</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">xmpp</span><span class="o">.</span><span class="n">core</span><span class="o">.</span><span class="n">start_stream</span><span class="p">(</span>
+                        <span class="n">fro</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_jid</span><span class="o">.</span><span class="n">bare</span><span class="p">(),</span>
+                        <span class="n">to</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_connection_info</span><span class="o">.</span><span class="n">host</span>
+                        <span class="p">)</span>
+                    <span class="p">)</span>
+
+                <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Stream opening tag was started&quot;</span><span class="p">)</span>
+
+            <span class="k">elif</span> <span class="n">event</span> <span class="o">==</span> <span class="s">&#39;stop&#39;</span><span class="p">:</span>
+                <span class="k">print</span><span class="p">(</span><span class="s">&quot;Connection stopped&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">connection</span> <span class="o">=</span> <span class="bp">False</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+
+            <span class="k">elif</span> <span class="n">event</span> <span class="o">==</span> <span class="s">&#39;error&#39;</span><span class="p">:</span>
+                <span class="k">print</span><span class="p">(</span><span class="s">&quot;Connection error&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">connection</span> <span class="o">=</span> <span class="bp">False</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+
+
+    <span class="k">def</span> <span class="nf">_on_stream_in_event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">,</span> <span class="n">attrs</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span></div>
+<div class="viewcode-block" id="SampleC2SClient._on_stream_in_event"><a class="viewcode-back" href="../../../../client.html#org.wayround.xmpp.client.SampleC2SClient._on_stream_in_event">[docs]</a>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driven</span><span class="p">:</span>
+
+            <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Stream in event `{}&#39; : `{}&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">attrs</span><span class="p">))</span>
+
+            <span class="k">if</span> <span class="n">event</span> <span class="o">==</span> <span class="s">&#39;start&#39;</span><span class="p">:</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">_stream_in</span> <span class="o">=</span> <span class="bp">True</span>
+
+            <span class="k">elif</span> <span class="n">event</span> <span class="o">==</span> <span class="s">&#39;stop&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_stream_in</span> <span class="o">=</span> <span class="bp">False</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+
+            <span class="k">elif</span> <span class="n">event</span> <span class="o">==</span> <span class="s">&#39;error&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_stream_in</span> <span class="o">=</span> <span class="bp">False</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_on_stream_out_event</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">event</span><span class="p">,</span> <span class="n">attrs</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span></div>
+<div class="viewcode-block" id="SampleC2SClient._on_stream_out_event"><a class="viewcode-back" href="../../../../client.html#org.wayround.xmpp.client.SampleC2SClient._on_stream_out_event">[docs]</a>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driven</span><span class="p">:</span>
+
+            <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;Stream out event `{}&#39; : `{}&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">attrs</span><span class="p">))</span>
+
+            <span class="k">if</span> <span class="n">event</span> <span class="o">==</span> <span class="s">&#39;start&#39;</span><span class="p">:</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">_stream_out</span> <span class="o">=</span> <span class="bp">True</span>
+
+            <span class="k">elif</span> <span class="n">event</span> <span class="o">==</span> <span class="s">&#39;stop&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_stream_out</span> <span class="o">=</span> <span class="bp">False</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+
+            <span class="k">elif</span> <span class="n">event</span> <span class="o">==</span> <span class="s">&#39;error&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_stream_out</span> <span class="o">=</span> <span class="bp">False</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_on_stream_object</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span></div>
+<div class="viewcode-block" id="SampleC2SClient._on_stream_object"><a class="viewcode-back" href="../../../../client.html#org.wayround.xmpp.client.SampleC2SClient._on_stream_object">[docs]</a>
+        <span class="n">logging</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s">&quot;_on_stream_object (first 255 bytes):`{}&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">repr</span><span class="p">(</span><span class="n">lxml</span><span class="o">.</span><span class="n">etree</span><span class="o">.</span><span class="n">tostring</span><span class="p">(</span><span class="n">obj</span><span class="p">)[:</span><span class="mi">255</span><span class="p">])))</span>
+
+        <span class="k">if</span> <span class="n">obj</span><span class="o">.</span><span class="n">tag</span> <span class="o">==</span> <span class="s">&#39;{http://etherx.jabber.org/streams}features&#39;</span><span class="p">:</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_last_features</span> <span class="o">=</span> <span class="n">obj</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_iterate_features</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_iterate_features</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></div>
+<div class="viewcode-block" id="SampleC2SClient._iterate_features"><a class="viewcode-back" href="../../../../client.html#org.wayround.xmpp.client.SampleC2SClient._iterate_features">[docs]</a>
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">_driven</span><span class="p">:</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stop_flag</span><span class="p">:</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_features_iteration</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">_features_iteration</span> <span class="o">=</span> <span class="s">&#39;tls&#39;</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">tls_driver</span><span class="o">.</span><span class="n">set_objects</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">sock_streamer</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">input_machine</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">output_machine</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">connection_events_hub</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">input_stream_events_hub</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">input_stream_objects_hub</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">output_stream_events_hub</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_connection_info</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_jid</span>
+                    <span class="p">)</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">_tls_result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tls_driver</span><span class="o">.</span><span class="n">drive</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_last_features</span><span class="p">)</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tls_result</span> <span class="o">!=</span> <span class="s">&#39;success&#39;</span><span class="p">:</span>
+                    <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s">&quot;TLS Failed&quot;</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">_driven</span> <span class="o">=</span> <span class="bp">False</span>
+
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_features_iteration</span> <span class="o">==</span> <span class="s">&#39;tls&#39;</span><span class="p">:</span>
+
+                <span class="bp">self</span><span class="o">.</span><span class="n">_features_iteration</span> <span class="o">=</span> <span class="s">&#39;auth&#39;</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Auth to be implemented&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+</pre></div></div></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../../index.html">org_wayround_xmpp 0.1 documentation</a> &raquo;</li>
+          <li><a href="../../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, AnimusPEXUS.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>
