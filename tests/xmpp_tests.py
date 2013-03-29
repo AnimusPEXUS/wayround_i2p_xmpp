@@ -10,7 +10,10 @@ client and core components is normal.
 import logging
 import lxml.etree
 import socket
+import threading
 
+
+import org.wayround.gsasl.gsasl
 
 import org.wayround.xmpp.core
 import org.wayround.xmpp.client
@@ -18,15 +21,37 @@ import org.wayround.utils.file
 
 class AuthLocalDriver:
 
-    def __init__(self):
-        pass
+    def __init__(self, real_client):
+
+        self.real_client = real_client
+
+        self._result_ready = threading.Event()
+        self._result_ready.clear()
+
+        self.result = 'clean'
+
+        self._cell_seq = 0
+
+        self._simple_gsasl = None
 
     def start(self):
 
-        self._simple_gsasl = org.wayround.gsasl.gsasl.GSASLSimple(
-            mechanism='DIGEST-MD5',
-            callback=self._gsasl_cb
-            )
+        if not self._simple_gsasl:
+            self._simple_gsasl = org.wayround.gsasl.gsasl.GSASLSimple(
+                mechanism='DIGEST-MD5',
+                callback=self._gsasl_cb
+                )
+
+    def wait(self):
+
+        self._result_ready.wait()
+
+        return self.result
+
+    def wait_abort(self):
+        self.result = 'error'
+        self._result_ready.set()
+        return
 
     def mech_select(self, mechanisms):
 
@@ -44,18 +69,39 @@ class AuthLocalDriver:
         pass
 
     def challenge(self, text):
-        pass
+
+        ret = ''
+
+        if self._cell_seq == 0:
+            res = self._simple_gsasl.step64(text)
+
+            if res[0] == org.wayround.gsasl.gsasl.GSASL_OK:
+                pass
+            elif res[0] == org.wayround.gsasl.gsasl.GSASL_NEEDS_MORE:
+                pass
+            else:
+                raise Exception(
+                    "step64 returned error: {}".format(
+                        org.wayround.gsasl.gsasl.strerror_name(res[0])
+                        )
+                    )
+
+            ret = str(res[1], 'utf-8')
+
+        return ret
 
     def success(self, text):
-        pass
+
+        self.result = 'success'
+        self._result_ready.set()
 
     def failure(self, name, text):
-        pass
+
+        self.result = 'failure'
+        self._result_ready.set()
+
 
     def text(self):
-        pass
-
-    def join(self):
         pass
 
     def _gsasl_cb(self, context, session, prop):
@@ -90,20 +136,57 @@ class AuthLocalDriver:
                 )
 
         elif prop == org.wayround.gsasl.gsasl.GSASL_AUTHID:
-            pass
-        elif prop == org.wayround.gsasl.gsasl.GSASL_QOP:
-            pass
-        elif prop == org.wayround.gsasl.gsasl.GSASL_QOP:
-            pass
-        elif prop == org.wayround.gsasl.gsasl.GSASL_QOP:
-            pass
-        elif prop == org.wayround.gsasl.gsasl.GSASL_QOP:
-            pass
-        elif prop == org.wayround.gsasl.gsasl.GSASL_QOP:
-            pass
+
+            value = None
+            if self.real_client.auth_info.authid:
+                value = bytes(self.real_client.auth_info.authid, 'utf-8')
+
+            session.property_set(prop, value)
+
+        elif prop == org.wayround.gsasl.gsasl.GSASL_SERVICE:
+
+            value = None
+            if self.real_client.auth_info.service:
+                value = bytes(self.real_client.auth_info.service, 'utf-8')
+
+            session.property_set(prop, value)
+
+        elif prop == org.wayround.gsasl.gsasl.GSASL_HOSTNAME:
+
+            value = None
+            if self.real_client.auth_info.hostname:
+                value = bytes(self.real_client.auth_info.hostname, 'utf-8')
+
+            session.property_set(prop, value)
+
+        elif prop == org.wayround.gsasl.gsasl.GSASL_REALM:
+
+            value = None
+            if self.real_client.auth_info.realm:
+                value = bytes(self.real_client.auth_info.realm, 'utf-8')
+
+            session.property_set(prop, value)
+
+        elif prop == org.wayround.gsasl.gsasl.GSASL_AUTHZID:
+
+            value = None
+            if self.real_client.auth_info.authzid:
+                value = bytes(self.real_client.auth_info.authzid, 'utf-8')
+
+            session.property_set(prop, value)
+
+        elif prop == org.wayround.gsasl.gsasl.GSASL_PASSWORD:
+
+            value = None
+            if self.real_client.auth_info.password:
+                value = bytes(self.real_client.auth_info.password, 'utf-8')
+
+            session.property_set(prop, value)
+
         else:
-            value = input('input value->')
-            session.property_set(prop, bytes(value, 'utf-8'))
+            logging.error("Requested SASL property not available")
+            ret = 1
+
 
         return ret
 
@@ -149,12 +232,26 @@ class RealClient:
              )
             )
 
+        self.local_auth_drv = AuthLocalDriver(self)
+        self.local_auth_drv.start()
+
         self.features_drivers = [
             org.wayround.xmpp.core.STARTTLSClientDriver(
-                self.connection_info,
-                self.jid
+                self.jid,
+                self.connection_info
+                ),
+
+            org.wayround.xmpp.core.SASLClientDriver(
+                cb_mech_select=self.local_auth_drv.mech_select,
+                cb_auth=self.local_auth_drv.auth,
+                cb_response=self.local_auth_drv.response,
+                cb_challenge=self.local_auth_drv.challenge,
+                cb_success=self.local_auth_drv.success,
+                cb_failure=self.local_auth_drv.failure,
+                cb_text=self.local_auth_drv.text,
+                jid=self.jid,
+                connection_info=self.connection_info
                 )
-        #    org.wayround.xmpp.core.SASLClientDriver()
             ]
 
         logging.debug("Starting socket watcher")
@@ -165,22 +262,31 @@ class RealClient:
             self.sock
             )
 
+        self.reset_hubs()
+
         self.client.start()
+
+        print("Threads alive1:")
+        for i in threading.enumerate():
+            print("    {}".format(repr(i)))
 
         try:
             self.client.wait('stopped')
+        except KeyboardInterrupt:
+            logging.info("Stroke. exiting")
         except:
             logging.exception("Error")
 
 
-
-        self.client.stop()
+        print("Threads alive2:")
+        for i in threading.enumerate():
+            print("    {}".format(repr(i)))
 
         if self.sock:
             try:
                 self.sock.shutdown(socket.SHUT_RDWR)
             except:
-                print("Socket shutdown error")
+                print("Socket shutdown error. maybe it's closed already")
 
             try:
                 self.sock.close()
@@ -194,9 +300,21 @@ class RealClient:
                 )
             )
 
+        print("Threads alive3:")
+        for i in threading.enumerate():
+            print("    {}".format(repr(i)))
+
         fdstw.stop()
 
         return 0
+
+    def stop(self):
+
+        for i in self.features_drivers:
+            i.stop()
+
+        self.client.stop()
+
 
     def reset_hubs(self):
 
@@ -234,12 +352,12 @@ class RealClient:
 
                 self.connection = True
 
-                self.wait('working')
+                self.client.wait('working')
 
                 logging.debug("Ended waiting for connection. Opening output stream")
 
 
-                self.io_machine.send(
+                self.client.io_machine.send(
                     org.wayround.xmpp.core.start_stream(
                         fro=self.jid.bare(),
                         to=self.connection_info.host
@@ -251,12 +369,12 @@ class RealClient:
             elif event == 'stop':
                 print("Connection stopped")
                 self.connection = False
-                self.client.stop()
+                self.stop()
 
             elif event == 'error':
                 print("Connection error")
                 self.connection = False
-                self.client.stop()
+                self.stop()
 
 
     def _on_stream_in_event(self, event, attrs=None):
@@ -271,11 +389,11 @@ class RealClient:
 
             elif event == 'stop':
                 self._stream_in = False
-                self.client.stop()
+                self.stop()
 
             elif event == 'error':
                 self._stream_in = False
-                self.client.stop()
+                self.stop()
 
     def _on_stream_out_event(self, event, attrs=None):
 
@@ -289,11 +407,11 @@ class RealClient:
 
             elif event == 'stop':
                 self._stream_out = False
-                self.client.stop()
+                self.stop()
 
             elif event == 'error':
                 self._stream_out = False
-                self.client.stop()
+                self.stop()
 
     def _on_stream_object(self, obj):
 
@@ -313,20 +431,26 @@ class RealClient:
 
         for i in self.features_drivers:
 
+            logging.debug("Preparing Driver `{}'".format(type(i).__name__))
+
             i.set_objects(
-                self.sock_streamer,
-                self.io_machine,
-                self.connection_events_hub,
-                self.input_stream_events_hub,
-                self.input_stream_objects_hub,
-                self.output_stream_events_hub,
+                self.client.sock_streamer,
+                self.client.io_machine,
+                self.client.connection_events_hub,
+                self.client.input_stream_events_hub,
+                self.client.input_stream_objects_hub,
+                self.client.output_stream_events_hub,
                 )
+
+            logging.debug("Starting Driver  `{}'".format(type(i).__name__))
 
             res = i.drive(self._last_features)
 
             if res != 'success':
-                logging.error("Driver `{}' failed to drive features".format(i.__name__))
+                logging.error("Driver `{}' failed with result: {}".format(type(i).__name__, res))
                 break
+
+
 
 logging.basicConfig(level='DEBUG', format="%(levelname)s :: %(threadName)s :: %(message)s")
 

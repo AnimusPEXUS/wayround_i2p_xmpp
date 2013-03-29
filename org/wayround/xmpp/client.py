@@ -45,21 +45,32 @@ class XMPPC2SClient:
         self.input_stream_objects_hub = None
         self.output_stream_events_hub = None
 
+        if self.connection_events_hub:
+            self.connection_events_hub.clear()
+        else:
+            self.connection_events_hub = org.wayround.xmpp.core.ConnectionEventsHub()
+
+        if self.input_stream_events_hub:
+            self.input_stream_events_hub.clear()
+        else:
+            self.input_stream_events_hub = org.wayround.xmpp.core.StreamEventsHub()
+
+        if self.input_stream_objects_hub:
+            self.input_stream_objects_hub.clear()
+        else:
+            self.input_stream_objects_hub = org.wayround.xmpp.core.StreamObjectsHub()
+
+        if self.output_stream_events_hub:
+            self.output_stream_events_hub.clear()
+        else:
+            self.output_stream_events_hub = org.wayround.xmpp.core.StreamEventsHub()
+
 
     def start(self):
 
         if not self._starting and not self._stopping and self.stat() == 'stopped':
 
             self._starting = True
-
-            ######### HUBS
-
-            self.connection_events_hub = org.wayround.xmpp.core.ConnectionEventsHub()
-
-            self.input_stream_events_hub = org.wayround.xmpp.core.StreamEventsHub()
-            self.input_stream_objects_hub = org.wayround.xmpp.core.StreamObjectsHub()
-
-            self.output_stream_events_hub = org.wayround.xmpp.core.StreamEventsHub()
 
             ######### SOCKET
 

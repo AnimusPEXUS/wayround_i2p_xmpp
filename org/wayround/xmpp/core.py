@@ -8,9 +8,6 @@ import lxml.etree
 import mako.template
 
 import org.wayround.utils.stream
-import org.wayround.utils.xml
-
-import org.wayround.gsasl.gsasl
 
 
 def start_stream(
@@ -954,13 +951,13 @@ class STARTTLSClientDriver(Driver):
     Driver for starting STARTTLS on client side conection part
     """
 
-    def __init__(self, connection_info, jid):
+    def __init__(self, jid, connection_info):
 
         """
         Initiates object using :meth:`_clear`
         """
-        self._connection_info = connection_info
         self._jid = jid
+        self._connection_info = connection_info
 
         self._clear(init=True)
 
@@ -1018,7 +1015,7 @@ class STARTTLSClientDriver(Driver):
 
         self.status = 'just created'
 
-        self._result = None
+        self.result = None
 
         return
 
@@ -1065,7 +1062,7 @@ class STARTTLSClientDriver(Driver):
 
             self._driving = False
 
-            logging.debug("STARTTLS Driver stopped with result `{}'".format(self._result))
+            logging.debug("STARTTLS Driver stopped with result `{}'".format(self.result))
 
             self._exit_event.set()
 
@@ -1104,7 +1101,7 @@ class STARTTLSClientDriver(Driver):
 
         #. wait while ``self._driving`` == True
 
-        #. return ``self._result``
+        #. return ``self.result``
 
         :rtype: ``str``
 
@@ -1144,9 +1141,9 @@ class STARTTLSClientDriver(Driver):
 
                 logging.debug("TLS not proposed")
 
-                self._result = 'no tls'
+                self.result = 'no tls'
 
-        ret = self._result
+        ret = self.result
 
         return ret
 
@@ -1185,8 +1182,9 @@ class STARTTLSClientDriver(Driver):
                 self._io_machine.wait('working')
                 logging.debug("Machines restarted")
 
+                logging.debug("Starting new stream")
                 self._io_machine.send(
-                    start_stream(
+                    org.wayround.xmpp.core.start_stream(
                         fro=self._jid.bare(),
                         to=self._connection_info.host
                         )
@@ -1208,15 +1206,15 @@ class STARTTLSClientDriver(Driver):
 
             if event == 'start':
 
-                self._result = 'success'
+                self.result = 'success'
 
             elif event == 'stop':
 
-                self._result = 'stream stopped'
+                self.result = 'stream stopped'
 
             elif event == 'error':
 
-                self._result = 'stream error'
+                self.result = 'stream error'
 
             self._stop()
 
@@ -1243,18 +1241,18 @@ class STARTTLSClientDriver(Driver):
 
                     else:
 
-                        self._result = 'failure'
+                        self.result = 'failure'
 
                         self._stop()
 
                 else:
 
-                    self._result = 'response error'
+                    self.result = 'response error'
 
                     self._stop()
 
             else:
-                self._result = 'programming error'
+                self.result = 'programming error'
 
                 self._stop()
 
@@ -1268,13 +1266,15 @@ class SASLClientDriver(Driver):
 
     def __init__(
         self,
-        cb_mech_select=None,
-        cb_auth=None,
-        cb_response=None,
-        cb_challenge=None,
-        cb_success=None,
-        cb_failure=None,
-        cb_text=None
+        cb_mech_select,
+        cb_auth,
+        cb_response,
+        cb_challenge,
+        cb_success,
+        cb_failure,
+        cb_text,
+        jid,
+        connection_info
         ):
 
         """
@@ -1288,7 +1288,7 @@ class SASLClientDriver(Driver):
             'cb_challenge',
             'cb_success',
             'cb_failure',
-            'cb_text'
+            'cb_text',
             ]:
             if not callable(eval(i)):
                 raise ValueError("{} must be provided and be callable".format(i))
@@ -1301,6 +1301,9 @@ class SASLClientDriver(Driver):
         self.cb_success = cb_success
         self.cb_failure = cb_failure
         self.cb_text = cb_text
+
+        self._jid = jid
+        self._connection_info = connection_info
 
         self._clear(init=True)
 
@@ -1361,7 +1364,7 @@ class SASLClientDriver(Driver):
 
         self.status = 'just created'
 
-        self._result = None
+        self.result = None
 
         return
 
@@ -1408,7 +1411,7 @@ class SASLClientDriver(Driver):
 
             self._driving = False
 
-            logging.debug("SASL Driver stopped with result `{}'".format(self._result))
+            logging.debug("SASL Driver stopped with result `{}'".format(self.result))
 
             self._exit_event.set()
 
@@ -1443,14 +1446,22 @@ class SASLClientDriver(Driver):
 
                 mechanisms = mechanisms_element.findall('{urn:ietf:params:xml:ns:xmpp-sasl}mechanism')
 
+                _mechanisms = []
+                for i in mechanisms:
+                    _mechanisms.append(i.text)
+
+                mechanisms = _mechanisms
+
+
                 logging.debug("Proposed mechanisms are:")
                 for i in mechanisms:
-                    logging.debug("    {}".format(i.text))
+                    logging.debug("    {}".format(i))
 
                 sel_mechanism = self.cb_mech_select(mechanisms)
 
                 if not sel_mechanism in mechanisms:
-                    self._result = 'no required mechanism'
+                    logging.error("Server not proposed mechanism `{}'".format(sel_mechanism))
+                    self.result = 'no required mechanism'
 
                 else:
 
@@ -1464,15 +1475,16 @@ class SASLClientDriver(Driver):
                         '<auth xmlns="urn:ietf:params:xml:ns:xmpp-sasl" mechanism="{}"/>'.format(sel_mechanism)
                         )
 
+#                    self.cb_wait()
                     self._exit_event.wait()
 
             else:
 
                 logging.debug("SASL mechanisms not proposed")
 
-                self._result = 'no mechanisms'
+                self.result = 'no mechanisms'
 
-        ret = self._result
+        ret = self.result
 
         return ret
 
@@ -1495,28 +1507,6 @@ class SASLClientDriver(Driver):
 
             logging.debug("_connection_events_waiter :: `{}' `{}'".format(event, sock))
 
-            if event == 'ssl wrapped':
-
-                logging.debug("Socket streamer threads restarted")
-                logging.debug("Restarting Machines")
-                self._io_machine.restart_with_new_objects(
-                    self._sock_streamer,
-                    self._input_stream_events_hub.dispatch,
-                    self._input_stream_objects_hub.dispatch,
-                    self._output_stream_events_hub.dispatch,
-                    None
-                    )
-
-                logging.debug("Waiting machines restart")
-                self._io_machine.wait('working')
-                logging.debug("Machines restarted")
-
-                self._io_machine.send(
-                    start_stream(
-                        fro=self._jid.bare(),
-                        to=self._connection_info.host
-                        )
-                    )
 
         return
 
@@ -1534,15 +1524,15 @@ class SASLClientDriver(Driver):
 
             if event == 'start':
 
-                self._result = 'success'
+                self.result = 'success'
 
             elif event == 'stop':
 
-                self._result = 'stream stopped'
+                self.result = 'stream stopped'
 
             elif event == 'error':
 
-                self._result = 'stream error'
+                self.result = 'stream error'
 
             self._stop()
 
@@ -1562,29 +1552,65 @@ class SASLClientDriver(Driver):
                         '{urn:ietf:params:xml:ns:xmpp-sasl}success',
                         '{urn:ietf:params:xml:ns:xmpp-sasl}failure'
                         ]:
-                    self.tls_request_result = obj.tag
 
-                    if self.tls_request_result == '{urn:ietf:params:xml:ns:xmpp-tls}proceed':
+                    if obj.tag == '{urn:ietf:params:xml:ns:xmpp-sasl}challenge':
 
-                        self._sock_streamer.start_ssl()
+                        response = self.cb_challenge(obj.text)
 
-                    else:
+                        self._io_machine.send(
+                            '<response xmlns="urn:ietf:params:xml:ns:xmpp-sasl">{}</response>'.format(response)
+                            )
 
-                        self._result = 'failure'
+                    if obj.tag == '{urn:ietf:params:xml:ns:xmpp-sasl}success':
 
-                        self._stop()
+                        threading.Thread(
+                            target=self.cb_success,
+                            args=(obj.text,),
+                            name="SASL auth success signal"
+                            )
+
+                        self.result = 'success'
+
+                        logging.debug("Authentication successful")
+
+                        logging.debug("Restarting Machines")
+                        self._io_machine.restart_with_new_objects(
+                            self._sock_streamer,
+                            self._input_stream_events_hub.dispatch,
+                            self._input_stream_objects_hub.dispatch,
+                            self._output_stream_events_hub.dispatch,
+                            None
+                            )
+
+                        logging.debug("Waiting machines restart")
+                        self._io_machine.wait('working')
+                        logging.debug("Machines restarted")
+
+                        logging.debug("Starting new stream")
+                        self._io_machine.send(
+                            org.wayround.xmpp.core.start_stream(
+                                fro=self._jid.bare(),
+                                to=self._connection_info.host
+                                )
+                            )
+
+                        self.stop()
+
+                    if obj.tag == '{urn:ietf:params:xml:ns:xmpp-sasl}failure':
+
+                        threading.Thread(
+                            target=self.cb_failure,
+                            args=(obj.text,),
+                            name="SASL auth failure signal"
+                            )
+
+                        self.result = 'failure'
+
+                        self.stop()
 
                 else:
-
-                    self._result = 'response error'
-
-                    self._stop()
-
-            else:
-                self._result = 'programming error'
-
-                self._stop()
-
+                    self.result = 'wrong sasl element received'
+                    self.stop()
         return
 
 class Monitor:
