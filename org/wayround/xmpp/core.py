@@ -10,6 +10,8 @@ import mako.template
 import org.wayround.utils.stream
 import org.wayround.utils.xml
 
+import org.wayround.gsasl.gsasl
+
 
 def start_stream(
     fro,
@@ -82,6 +84,24 @@ class JID:
             resource=self.resource
             )
 
+class Authentication:
+
+    def __init__(
+        self,
+        service='xmpp',
+        hostname='localhost',
+        authid='',
+        authzid='',
+        realm='',
+        password=''
+        ):
+
+        self.service = service
+        self.hostname = hostname
+        self.authid = authid
+        self.authzid = authzid
+        self.realm = realm
+        self.password = password
 
 class C2SConnectionInfo:
 
@@ -89,18 +109,11 @@ class C2SConnectionInfo:
         self,
         host='localhost',
         port=5222,
-        password='secret',
-        jid=None,
         priority='default'
         ):
 
-        if host == None and isinstance(jid, JID):
-            host = jid.domain
-
         self.host = host
         self.port = port
-        self.password = password
-        self.user_jid = jid
         self.priority = priority
 
 
@@ -806,6 +819,117 @@ class XMPPOutputStreamWriterMachine(XMPPStreamMachine):
             kwargs=dict(wait=wait)
             ).start()
 
+class XMPPIOStreamRWMachine:
+
+    def __init__(self):
+
+        self.in_machine = XMPPInputStreamReaderMachine()
+        self.out_machine = XMPPOutputStreamWriterMachine()
+
+        return
+
+    def set_objects(
+        self,
+        sock_streamer,
+        i_stream_events_dispatcher,
+        i_stream_objects_dispatcher,
+        o_stream_events_dispatcher,
+        o_stream_objects_dispatcher
+        ):
+
+        self.in_machine.set_objects(
+            sock_streamer,
+            i_stream_events_dispatcher,
+            i_stream_objects_dispatcher
+            )
+
+        self.out_machine.set_objects(
+            sock_streamer,
+            o_stream_events_dispatcher,
+            o_stream_objects_dispatcher
+            )
+
+        return
+
+    def start(self):
+
+        self.in_machine.start()
+        self.out_machine.start()
+
+        return
+
+    def stop(self):
+
+        self.in_machine.stop()
+        self.out_machine.stop()
+
+        return
+
+    def restart(self):
+
+        self.stop()
+        self.start()
+
+        return
+
+    def restart_with_new_objects(
+        self,
+        sock_streamer,
+        i_stream_events_dispatcher,
+        i_stream_objects_dispatcher,
+        o_stream_events_dispatcher,
+        o_stream_objects_dispatcher
+        ):
+
+        self.in_machine.restart_with_new_objects(
+            sock_streamer,
+            i_stream_events_dispatcher,
+            i_stream_objects_dispatcher
+            )
+
+        self.out_machine.restart_with_new_objects(
+            sock_streamer,
+            o_stream_events_dispatcher,
+            o_stream_objects_dispatcher
+            )
+
+        return
+
+
+    def wait(self, what='stopped'):
+
+        self.in_machine.wait(what=what)
+        self.out_machine.wait(what=what)
+
+    def stat(self):
+
+        ret = 'various'
+
+        v1 = self.in_machine.stat()
+        v2 = self.out_machine.stat()
+
+        logging.debug("""
+self.in_machine.stat()  == {}
+self.out_machine.stat() == {}
+""".format(v1, v2)
+            )
+
+        if v1 == v2 == 'working':
+            ret = 'working'
+
+        elif v1 == v2 == 'stopped':
+            ret = 'stopped'
+
+        elif v1 == v2 == None:
+            ret = 'stopped'
+
+        return ret
+
+    def send(self, obj, wait=False):
+        self.out_machine.send(obj, wait=False)
+
+
+
 
 class Driver:
     """
@@ -830,25 +954,24 @@ class STARTTLSClientDriver(Driver):
     Driver for starting STARTTLS on client side conection part
     """
 
-    def __init__(self):
+    def __init__(self, connection_info, jid):
 
         """
         Initiates object using :meth:`_clear`
         """
+        self._connection_info = connection_info
+        self._jid = jid
 
         self._clear(init=True)
 
     def set_objects(
         self,
         sock_streamer,
-        input_machine,
-        output_machine,
+        io_machine,
         connection_events_hub,
         input_stream_events_hub,
         input_stream_objects_hub,
-        output_stream_events_hub,
-        connection_info,
-        jid
+        output_stream_events_hub
         ):
 
         """
@@ -857,11 +980,8 @@ class STARTTLSClientDriver(Driver):
         :param sock_streamer: instance of class
             :class:`org.wayround.utils.stream.SocketStreamer`
 
-        :param input_machine: instance of class
-            :class:`XMPPInputStreamReaderMachine`
-
-        :param output_machine: instance of class
-            :class:`XMPPOutputStreamWriterMachine`
+        :param io_machine: instance of class
+            :class:`XMPPIOStreamRWMachine`
 
         :param connection_events_hub: hub to route connection events
             :class:`ConnectionEventsHub`
@@ -871,20 +991,14 @@ class STARTTLSClientDriver(Driver):
 
         :param output_stream_events_hub: hub to route output stream events
             :class:`StreamEventsHub`
-
-        :param connection_info: :class:`C2SConnectionInfo` instance
-        :param jid: :class:`JID` instance
         """
 
         self._sock_streamer = sock_streamer
-        self._input_machine = input_machine
-        self._output_machine = output_machine
+        self._io_machine = io_machine
         self._connection_events_hub = connection_events_hub
         self._input_stream_events_hub = input_stream_events_hub
         self._input_stream_objects_hub = input_stream_objects_hub
         self._output_stream_events_hub = output_stream_events_hub
-        self._connection_info = connection_info
-        self._jid = jid
 
     def _clear(self, init=False):
         """
@@ -892,19 +1006,21 @@ class STARTTLSClientDriver(Driver):
         """
 
         self._sock_streamer = None
-        self._output_machine = None
-        self._connection_info = None
-        self._jid = None
+        self._io_machine = None
         self._on_finish = None
         self._input_stream_events_hub = None
         self._input_stream_objects_hub = None
         self._output_stream_events_hub = None
 
         self._driving = False
+        self._exit_event = threading.Event()
+        self._exit_event.clear()
 
         self.status = 'just created'
 
         self._result = None
+
+        return
 
     def _start(self):
 
@@ -922,7 +1038,7 @@ class STARTTLSClientDriver(Driver):
 
             self._driving = True
 
-            logging.debug("TLS Driver work started")
+            logging.debug("STARTTLS Driver driving now! B-)")
 
             self._connection_events_hub.set_waiter(
                 'tls_driver', self._connection_events_waiter
@@ -936,6 +1052,8 @@ class STARTTLSClientDriver(Driver):
                 'tls_driver', self._stream_objects_waiter
                 )
 
+        return
+
 
     def _stop(self):
 
@@ -947,11 +1065,17 @@ class STARTTLSClientDriver(Driver):
 
             self._driving = False
 
+            logging.debug("STARTTLS Driver stopped with result `{}'".format(self._result))
+
+            self._exit_event.set()
+
             self._connection_events_hub.del_waiter('tls_driver')
 
             self._input_stream_events_hub.del_waiter('tls_driver')
 
             self._input_stream_objects_hub.del_waiter('tls_driver')
+
+        return
 
     def stop(self):
 
@@ -960,10 +1084,13 @@ class STARTTLSClientDriver(Driver):
         """
         self._stop()
 
+        return
+
     def drive(self, obj):
 
         """
-        Drives to STARTTLS, basing on ``obj``.
+        Drives to STARTTLS, basing on ``obj``, which must be an XML element
+        instance with features.
 
         If ``obj.tag`` is ``{http://etherx.jabber.org/streams}features`` and
         it is contains ``{urn:ietf:params:xml:ns:xmpp-tls}starttls`` element,
@@ -1007,16 +1134,11 @@ class STARTTLSClientDriver(Driver):
                 self._start()
 
                 logging.debug("Sending STARTTLS request")
-                self._output_machine.send(
+                self._io_machine.send(
                     starttls()
                     )
 
-                while True:
-
-                    if not self._driving:
-                        break
-
-                    time.sleep(0.1)
+                self._exit_event.wait()
 
             else:
 
@@ -1051,29 +1173,26 @@ class STARTTLSClientDriver(Driver):
 
                 logging.debug("Socket streamer threads restarted")
                 logging.debug("Restarting Machines")
-                self._input_machine.restart_with_new_objects(
+                self._io_machine.restart_with_new_objects(
                     self._sock_streamer,
                     self._input_stream_events_hub.dispatch,
-                    self._input_stream_objects_hub.dispatch
-                    )
-
-                self._output_machine.restart_with_new_objects(
-                    self._sock_streamer,
+                    self._input_stream_objects_hub.dispatch,
                     self._output_stream_events_hub.dispatch,
                     None
                     )
 
                 logging.debug("Waiting machines restart")
-                self._input_machine.wait('working')
-                self._output_machine.wait('working')
+                self._io_machine.wait('working')
                 logging.debug("Machines restarted")
 
-                self._output_machine.send(
+                self._io_machine.send(
                     start_stream(
                         fro=self._jid.bare(),
                         to=self._connection_info.host
                         )
                     )
+
+        return
 
 
     def _input_stream_events_waiter(self, event, attrs=None):
@@ -1101,6 +1220,8 @@ class STARTTLSClientDriver(Driver):
 
             self._stop()
 
+
+        return
 
     def _stream_objects_waiter(self, obj):
 
@@ -1139,6 +1260,333 @@ class STARTTLSClientDriver(Driver):
 
         return
 
+class SASLClientDriver(Driver):
+
+    """
+    Driver for authenticating client on server
+    """
+
+    def __init__(
+        self,
+        cb_mech_select=None,
+        cb_auth=None,
+        cb_response=None,
+        cb_challenge=None,
+        cb_success=None,
+        cb_failure=None,
+        cb_text=None
+        ):
+
+        """
+        Initiates object using :meth:`_clear`
+        """
+
+        for i in [
+            'cb_mech_select',
+            'cb_auth',
+            'cb_response',
+            'cb_challenge',
+            'cb_success',
+            'cb_failure',
+            'cb_text'
+            ]:
+            if not callable(eval(i)):
+                raise ValueError("{} must be provided and be callable".format(i))
+
+
+        self.cb_mech_select = cb_mech_select
+        self.cb_auth = cb_auth
+        self.cb_response = cb_response
+        self.cb_challenge = cb_challenge
+        self.cb_success = cb_success
+        self.cb_failure = cb_failure
+        self.cb_text = cb_text
+
+        self._clear(init=True)
+
+    def set_objects(
+        self,
+        sock_streamer,
+        io_machine,
+        connection_events_hub,
+        input_stream_events_hub,
+        input_stream_objects_hub,
+        output_stream_events_hub
+        ):
+
+        """
+        Set objects to work with
+
+        :param sock_streamer: instance of class
+            :class:`org.wayround.utils.stream.SocketStreamer`
+
+        :param io_machine: instance of class
+            :class:`XMPPIOStreamRWMachine`
+
+        :param connection_events_hub: hub to route connection events
+            :class:`ConnectionEventsHub`
+
+        :param input_stream_events_hub: hub to route input stream events
+            :class:`StreamEventsHub`
+
+        :param output_stream_events_hub: hub to route output stream events
+            :class:`StreamEventsHub`
+
+        """
+
+        self._sock_streamer = sock_streamer
+        self._io_machine = io_machine
+        self._connection_events_hub = connection_events_hub
+        self._input_stream_events_hub = input_stream_events_hub
+        self._input_stream_objects_hub = input_stream_objects_hub
+        self._output_stream_events_hub = output_stream_events_hub
+
+    def _clear(self, init=False):
+        """
+        Clears instance, setting default values for all attributes
+        """
+
+        self._sock_streamer = None
+        self._io_machine = None
+        self._on_finish = None
+        self._input_stream_events_hub = None
+        self._input_stream_objects_hub = None
+        self._output_stream_events_hub = None
+
+        self._driving = False
+        self._exit_event = threading.Event()
+        self._exit_event.clear()
+
+        self._simple_gsasl = None
+
+        self.status = 'just created'
+
+        self._result = None
+
+        return
+
+    def _start(self):
+
+        """
+        Started by :meth:`self.drive`
+
+        If not already ``self._driving``, then drive!: register own waiters for
+
+        * ``self._connection_events_hub`` - :meth:`_connection_events_waiter`
+        * ``self._input_stream_events_hub`` - :meth:`_input_stream_events_waiter`
+        * ``self._input_stream_objects_hub`` - :meth:`_stream_objects_waiter`
+        """
+
+        if not self._driving:
+
+            self._driving = True
+
+            logging.debug("SASL Driver driving now! B-)")
+
+            self._connection_events_hub.set_waiter(
+                'sasl_driver', self._connection_events_waiter
+                )
+
+            self._input_stream_events_hub.set_waiter(
+                'sasl_driver', self._input_stream_events_waiter
+                )
+
+            self._input_stream_objects_hub.set_waiter(
+                'sasl_driver', self._stream_objects_waiter
+                )
+
+        return
+
+
+    def _stop(self):
+
+        """
+        If ``self._driving``, then stop it. And don't listen hubs any more!
+        """
+
+        if self._driving:
+
+            self._driving = False
+
+            logging.debug("SASL Driver stopped with result `{}'".format(self._result))
+
+            self._exit_event.set()
+
+            self._connection_events_hub.del_waiter('sasl_driver')
+
+            self._input_stream_events_hub.del_waiter('sasl_driver')
+
+            self._input_stream_objects_hub.del_waiter('sasl_driver')
+
+        return
+
+    def stop(self):
+
+        """
+        Stop driver work. Just calls :meth:`_stop`
+        """
+        self._stop()
+
+        return
+
+    def drive(self, obj):
+
+
+        if obj.tag == '{http://etherx.jabber.org/streams}features':
+            self.status = 'looking for sasl mechanisms'
+
+            mechanisms_element = obj.find('{urn:ietf:params:xml:ns:xmpp-sasl}mechanisms')
+
+            if mechanisms_element != None:
+
+                self.status = 'looking for DIGEST-MD5 mechanism'
+
+                mechanisms = mechanisms_element.findall('{urn:ietf:params:xml:ns:xmpp-sasl}mechanism')
+
+                logging.debug("Proposed mechanisms are:")
+                for i in mechanisms:
+                    logging.debug("    {}".format(i.text))
+
+                sel_mechanism = self.cb_mech_select(mechanisms)
+
+                if not sel_mechanism in mechanisms:
+                    self._result = 'no required mechanism'
+
+                else:
+
+                    self._start()
+
+                    logging.debug("Sending SASL mechanism start request")
+
+                    self.status = 'waiting for server sasl response'
+
+                    self._io_machine.send(
+                        '<auth xmlns="urn:ietf:params:xml:ns:xmpp-sasl" mechanism="{}"/>'.format(sel_mechanism)
+                        )
+
+                    self._exit_event.wait()
+
+            else:
+
+                logging.debug("SASL mechanisms not proposed")
+
+                self._result = 'no mechanisms'
+
+        ret = self._result
+
+        return ret
+
+    def _connection_events_waiter(self, event, sock):
+
+        """
+        If driving, then look for event == ``'ssl wrapped'`` and then:
+
+        #. restart input machine with driven socket streamer, input event and
+           objects hubs;
+
+        #. restart output machine with driven streamer and output event hub
+
+        #. wait till machines working
+
+        #. restart stream with start_stream command
+        """
+
+        if self._driving:
+
+            logging.debug("_connection_events_waiter :: `{}' `{}'".format(event, sock))
+
+            if event == 'ssl wrapped':
+
+                logging.debug("Socket streamer threads restarted")
+                logging.debug("Restarting Machines")
+                self._io_machine.restart_with_new_objects(
+                    self._sock_streamer,
+                    self._input_stream_events_hub.dispatch,
+                    self._input_stream_objects_hub.dispatch,
+                    self._output_stream_events_hub.dispatch,
+                    None
+                    )
+
+                logging.debug("Waiting machines restart")
+                self._io_machine.wait('working')
+                logging.debug("Machines restarted")
+
+                self._io_machine.send(
+                    start_stream(
+                        fro=self._jid.bare(),
+                        to=self._connection_info.host
+                        )
+                    )
+
+        return
+
+
+    def _input_stream_events_waiter(self, event, attrs=None):
+
+        if self._driving:
+
+            logging.debug(
+                "_input_stream_events_waiter :: `{}', `{}'".format(
+                    event,
+                    attrs
+                    )
+                )
+
+            if event == 'start':
+
+                self._result = 'success'
+
+            elif event == 'stop':
+
+                self._result = 'stream stopped'
+
+            elif event == 'error':
+
+                self._result = 'stream error'
+
+            self._stop()
+
+
+        return
+
+    def _stream_objects_waiter(self, obj):
+
+        if self._driving:
+
+            logging.debug("_stream_objects_waiter :: `{}'".format(obj))
+
+            if self.status == 'waiting for server sasl response':
+
+                if obj.tag in [
+                        '{urn:ietf:params:xml:ns:xmpp-sasl}challenge',
+                        '{urn:ietf:params:xml:ns:xmpp-sasl}success',
+                        '{urn:ietf:params:xml:ns:xmpp-sasl}failure'
+                        ]:
+                    self.tls_request_result = obj.tag
+
+                    if self.tls_request_result == '{urn:ietf:params:xml:ns:xmpp-tls}proceed':
+
+                        self._sock_streamer.start_ssl()
+
+                    else:
+
+                        self._result = 'failure'
+
+                        self._stop()
+
+                else:
+
+                    self._result = 'response error'
+
+                    self._stop()
+
+            else:
+                self._result = 'programming error'
+
+                self._stop()
+
+        return
+
 class Monitor:
 
     """
@@ -1149,14 +1597,22 @@ class Monitor:
 
         logging.debug("connection: {} {}".format(event, sock))
 
+        return
+
     def stream_in(self, event, attrs):
 
         logging.debug("stream_in: {} {}".format(event, attrs))
+
+        return
 
     def stream_out(self, event, attrs):
 
         logging.debug("stream_out: {} {}".format(event, attrs))
 
+        return
+
     def object(self, obj):
 
         logging.debug("object: {}".format(obj))
+
+        return
