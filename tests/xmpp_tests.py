@@ -30,8 +30,6 @@ class AuthLocalDriver:
 
         self.result = 'clean'
 
-        self._cell_seq = 0
-
         self._simple_gsasl = None
 
     def start(self):
@@ -72,21 +70,20 @@ class AuthLocalDriver:
 
         ret = ''
 
-        if self._cell_seq == 0:
-            res = self._simple_gsasl.step64(text)
+        res = self._simple_gsasl.step64(text)
 
-            if res[0] == org.wayround.gsasl.gsasl.GSASL_OK:
-                pass
-            elif res[0] == org.wayround.gsasl.gsasl.GSASL_NEEDS_MORE:
-                pass
-            else:
-                raise Exception(
-                    "step64 returned error: {}".format(
-                        org.wayround.gsasl.gsasl.strerror_name(res[0])
-                        )
+        if res[0] == org.wayround.gsasl.gsasl.GSASL_OK:
+            pass
+        elif res[0] == org.wayround.gsasl.gsasl.GSASL_NEEDS_MORE:
+            pass
+        else:
+            raise Exception(
+                "step64 returned error: {}".format(
+                    org.wayround.gsasl.gsasl.strerror_name(res[0])
                     )
+                )
 
-            ret = str(res[1], 'utf-8')
+        ret = str(res[1], 'utf-8')
 
         return ret
 
@@ -193,14 +190,19 @@ class AuthLocalDriver:
 class RealClient:
 
     def __init__(self):
-        pass
 
-    def run(self):
+        self._clean(init=True)
+
+    def _clean(self, init=False):
 
         self._driven = False
         self.connection = False
         self._stream_in = False
         self._stream_out = False
+        self._features_recieved = threading.Event()
+        self._stop_flag = False
+
+    def run(self):
 
         fdstw = org.wayround.utils.file.FDStatusWatcher(
             on_status_changed=org.wayround.utils.file.print_status_change
@@ -232,27 +234,6 @@ class RealClient:
              )
             )
 
-        self.local_auth_drv = AuthLocalDriver(self)
-        self.local_auth_drv.start()
-
-        self.features_drivers = [
-            org.wayround.xmpp.core.STARTTLSClientDriver(
-                self.jid,
-                self.connection_info
-                ),
-
-            org.wayround.xmpp.core.SASLClientDriver(
-                cb_mech_select=self.local_auth_drv.mech_select,
-                cb_auth=self.local_auth_drv.auth,
-                cb_response=self.local_auth_drv.response,
-                cb_challenge=self.local_auth_drv.challenge,
-                cb_success=self.local_auth_drv.success,
-                cb_failure=self.local_auth_drv.failure,
-                cb_text=self.local_auth_drv.text,
-                jid=self.jid,
-                connection_info=self.connection_info
-                )
-            ]
 
         logging.debug("Starting socket watcher")
         fdstw.set_fd(self.sock.fileno())
@@ -266,21 +247,77 @@ class RealClient:
 
         self.client.start()
 
-        print("Threads alive1:")
-        for i in threading.enumerate():
-            print("    {}".format(repr(i)))
+        self.client.wait('working')
 
-        try:
-            self.client.wait('stopped')
-        except KeyboardInterrupt:
-            logging.info("Stroke. exiting")
-        except:
-            logging.exception("Error")
+        self._driven = True
 
+        while True:
 
-        print("Threads alive2:")
-        for i in threading.enumerate():
-            print("    {}".format(repr(i)))
+            if self._features_recieved.wait(200):
+                break
+
+            if self._stop_flag:
+                break
+
+        self._features_recieved.clear()
+
+        if not self._stop_flag:
+
+            res = org.wayround.xmpp.client.client_starttls(
+                self.client,
+                self.jid,
+                self.connection_info,
+                self._last_features
+                )
+
+            if res != 'success':
+                pass
+            else:
+
+                while True:
+
+                    if self._features_recieved.wait(200):
+                        break
+
+                    if self._stop_flag:
+                        break
+
+                self._features_recieved.clear()
+
+                if not self._stop_flag:
+
+                    local_auth = AuthLocalDriver(self)
+                    local_auth.start()
+
+                    res = org.wayround.xmpp.client.client_sasl_auth(
+                        self.client,
+                        local_auth.mech_select,
+                        local_auth.auth,
+                        local_auth.response,
+                        local_auth.challenge,
+                        local_auth.success,
+                        local_auth.failure,
+                        local_auth.text,
+                        self.jid,
+                        self.connection_info,
+                        self._last_features
+                        )
+
+                    if res != 'success':
+                        pass
+                    else:
+
+                        self._driven = False
+
+                        try:
+                            self.client.wait('stopped')
+                        except KeyboardInterrupt:
+                            logging.info("Stroke. exiting")
+                        except:
+                            logging.exception("Error")
+
+        self._driven = False
+
 
         if self.sock:
             try:
@@ -309,6 +346,8 @@ class RealClient:
         return 0
 
     def stop(self):
+
+        self._stop_flag = True
 
         for i in self.features_drivers:
             i.stop()
@@ -421,35 +460,7 @@ class RealClient:
 
             self._last_features = obj
 
-            if not self._driven:
-
-                self._driven = True
-
-                self._start_drivers()
-
-    def _start_drivers(self):
-
-        for i in self.features_drivers:
-
-            logging.debug("Preparing Driver `{}'".format(type(i).__name__))
-
-            i.set_objects(
-                self.client.sock_streamer,
-                self.client.io_machine,
-                self.client.connection_events_hub,
-                self.client.input_stream_events_hub,
-                self.client.input_stream_objects_hub,
-                self.client.output_stream_events_hub,
-                )
-
-            logging.debug("Starting Driver  `{}'".format(type(i).__name__))
-
-            res = i.drive(self._last_features)
-
-            if res != 'success':
-                logging.error("Driver `{}' failed with result: {}".format(type(i).__name__, res))
-                break
-
+            self._features_recieved.set()
 
 
 logging.basicConfig(level='DEBUG', format="%(levelname)s :: %(threadName)s :: %(message)s")
