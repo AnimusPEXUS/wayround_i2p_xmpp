@@ -68,8 +68,6 @@ class AuthLocalDriver:
 
     def challenge(self, text):
 
-        ret = ''
-
         res = self._simple_gsasl.step64(text)
 
         if res[0] == org.wayround.gsasl.gsasl.GSASL_OK:
@@ -210,7 +208,8 @@ class RealClient:
 
         self.jid = org.wayround.xmpp.core.JID(
             user='test',
-            domain='wayround.org'
+            domain='wayround.org',
+            resource='home'
             )
 
         self.connection_info = org.wayround.xmpp.core.C2SConnectionInfo(
@@ -248,6 +247,12 @@ class RealClient:
         self.client.start()
 
         self.client.wait('working')
+
+        self.stanza_processor = org.wayround.xmpp.core.StanzaProcessor()
+        self.stanza_processor.connect_input_object_stream_hub(
+            self.client.input_stream_objects_hub
+            )
+        self.stanza_processor.connect_io_machine(self.client.io_machine)
 
         self._driven = True
 
@@ -307,14 +312,80 @@ class RealClient:
                         pass
                     else:
 
-                        self._driven = False
+                        while True:
 
-                        try:
-                            self.client.wait('stopped')
-                        except KeyboardInterrupt:
-                            logging.info("Stroke. exiting")
-                        except:
-                            logging.exception("Error")
+                            if self._features_recieved.wait(200):
+                                break
+
+                            if self._stop_flag:
+                                break
+
+                        self._features_recieved.clear()
+
+                        if not self._stop_flag:
+
+                            res = org.wayround.xmpp.client.client_resource_bind(
+                                self.client,
+                                self.jid,
+                                self.connection_info,
+                                self._last_features,
+                                self.stanza_processor
+                                )
+
+
+                            if res == 'success':
+
+                                while True:
+
+                                    if self._features_recieved.wait(200):
+                                        break
+
+                                    if self._stop_flag:
+                                        break
+
+                                self._features_recieved.clear()
+
+                                if not self._stop_flag:
+
+                                    res = org.wayround.xmpp.client.client_session_start(
+                                        self.client,
+                                        self.jid,
+                                        self.connection_info,
+                                        self._last_features,
+                                        self.stanza_processor
+                                        )
+
+
+                                    if res == 'success':
+
+                                        self._driven = False
+
+                                        self.stanza_processor.send(
+                                            org.wayround.xmpp.core.Stanza(
+                                                kind='presence',
+                                                jid_from=self.jid.full(),
+                                                body='<show>online</show><status>Test status</status>'
+                                                )
+                                            )
+
+                                        self.stanza_processor.send(
+                                            org.wayround.xmpp.core.Stanza(
+                                                kind='message',
+                                                typ='normal',
+                                                jid_from=self.jid.full(),
+                                                jid_to='animus@wayround.org',
+                                                body='<body>test message</body>'
+                                                )
+                                            )
+
+                                        try:
+                                            self.client.wait('stopped')
+                                        except KeyboardInterrupt:
+                                            logging.info("Stroke. exiting")
+                                        except:
+                                            logging.exception("Error")
+
+        self.stop()
 
         self._driven = False
 
@@ -348,9 +419,6 @@ class RealClient:
     def stop(self):
 
         self._stop_flag = True
-
-        for i in self.features_drivers:
-            i.stop()
 
         self.client.stop()
 
@@ -398,8 +466,8 @@ class RealClient:
 
                 self.client.io_machine.send(
                     org.wayround.xmpp.core.start_stream(
-                        fro=self.jid.bare(),
-                        to=self.connection_info.host
+                        jid_from=self.jid.bare(),
+                        jid_to=self.connection_info.host
                         )
                     )
 

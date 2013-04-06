@@ -3,18 +3,90 @@ import copy
 import logging
 import threading
 import time
+import re
 
+import xml.sax.saxutils
 import lxml.etree
-import mako.template
 
 import org.wayround.utils.stream
+import org.wayround.utils.xml
+
+def stanza_tpl(
+    kind=None,
+    ide=None,
+    typ=None,
+    jid_from=None,
+    jid_to=None,
+    xmllang=None,
+    body=None
+    ):
+
+    ide_t = ''
+    if ide:
+        ide_t = ' id="{}"'.format(xml.sax.saxutils.escape(ide))
+
+    typ_t = ''
+    if typ:
+        typ_t = ' type="{}"'.format(xml.sax.saxutils.escape(typ))
+
+    jid_from_t = ''
+    if jid_from:
+        jid_from_t = ' from="{}"'.format(xml.sax.saxutils.escape(jid_from))
+
+    jid_to_t = ''
+    if jid_to:
+        jid_to_t = ' to="{}"'.format(xml.sax.saxutils.escape(jid_to))
+
+    xmllang_t = ''
+    if xmllang:
+        xmllang_t = ' xml:lang="{}"'.format(xml.sax.saxutils.escape(xmllang))
+
+    body_t = ''
+
+    if body != None:
+
+        if not isinstance(body, (bytes, str, lxml.etree._Element,)):
+            raise TypeError("body must be None, bytes, str or lxml.etree._Element")
+
+        if isinstance(body, lxml.etree._Element):
+
+            for i in body:
+
+                if isinstance(i, lxml.etree._Element):
+                    body_t += str(lxml.etree.tostring(i), 'utf-8')
+
+                if isinstance(i, bytes):
+                    body_t += str(i, 'utf-8')
+
+                if isinstance(i, str):
+                    body_t += i
+
+        if isinstance(body, bytes):
+
+            body_t = str(body, 'utf-8')
+
+        if isinstance(body, str):
+
+            body_t = body
+
+    ret = '<{kind}{ide_t}{typ_t}{jid_from_t}{jid_to_t}{xmllang_t}>{body_t}</{kind}>'.format(
+        kind=xml.sax.saxutils.escape(kind),
+        ide_t=ide_t,
+        typ_t=typ_t,
+        jid_from_t=jid_from_t,
+        jid_to_t=jid_to_t,
+        xmllang_t=xmllang_t,
+        body_t=body_t
+        )
+
+    return ret
 
 
 def start_stream(
-    fro,
-    to,
+    jid_from,
+    jid_to,
     version='1.0',
-    xml_lang='en',
+    xmllang='en',
     xmlns='jabber:client',
     xmlns_stream='http://etherx.jabber.org/streams'
     ):
@@ -23,19 +95,20 @@ def start_stream(
     Sends XMPP stream initiating entity
     """
 
-    return mako.template.Template(
-        """\
+    ret = """\
 <?xml version="1.0"?>\
-<stream:stream from="${ fro | x }" to="${ to | x }" version="${ version | x }" \
-xml:lang="${ xml_lang | x }" xmlns="${ xmlns | x }" \
-xmlns:stream="${ xmlns_stream | x }">""").render(
-            fro=fro,
-            to=to,
-            version=version,
-            xml_lang=xml_lang,
-            xmlns=xmlns,
-            xmlns_stream=xmlns_stream
-            )
+ <stream:stream from="{jid_from}" to="{jid_to}" version="{version}"\
+ xml:lang="{xmllang}" xmlns="{xmlns}"\
+ xmlns:stream="{xmlns_stream}">""".format(
+        jid_from=xml.sax.saxutils.escape(jid_from),
+        jid_to=xml.sax.saxutils.escape(jid_to),
+        version=xml.sax.saxutils.escape(version),
+        xmllang=xml.sax.saxutils.escape(xmllang),
+        xmlns=xml.sax.saxutils.escape(xmlns),
+        xmlns_stream=xml.sax.saxutils.escape(xmlns_stream)
+        )
+
+    return ret
 
 def stop_stream():
     return '</stream:stream>'
@@ -43,12 +116,36 @@ def stop_stream():
 def starttls():
     return '<starttls xmlns="urn:ietf:params:xml:ns:xmpp-tls"/>'
 
-def check_stream_handler_correctness(handler):
+def bind(typ='resource', value=None):
 
-    ret = 0
+    if not typ in ['resource', 'fulljid']:
+        raise ValueError("Wrong bind type")
 
+    bind_value = ''
+    if value:
+
+        tag_name = ''
+
+        if typ == 'resource':
+            tag_name = 'resource'
+
+        elif typ == 'fulljid':
+            tag_name = 'jid'
+
+        bind_value = '<{tag_name}>{value}</{tag_name}>'.format(
+            value=xml.sax.saxutils.escape(value),
+            tag_name=tag_name
+            )
+
+    ret = '<bind xmlns="urn:ietf:params:xml:ns:xmpp-bind">{}</bind>'.format(
+        bind_value
+        )
 
     return ret
+
+def session():
+    return '<session xmlns="urn:ietf:params:xml:ns:xmpp-session"/>'
+
 
 
 def _info_dict_to_add(handler):
@@ -60,13 +157,80 @@ def _info_dict_to_add(handler):
         ns=handler.ns
         )
 
+class InvalidUserName(Exception): pass
+
+def jid_from_string(in_str):
+
+    ret = None
+
+    res = re.match(
+        r'^(?P<localpart>.+?)@(?P<domainpart>.+?)(/(?P<resourcepart>.+?))?$',
+        in_str
+        )
+
+    if res:
+
+        if len(res.group('localpart')) > 32:
+            raise InvalidUserName("Usernames may only be up to 32 characters long")
+
+        ret = JID(
+            res.group('localpart'),
+            res.group('domainpart'),
+            res.group('resourcepart')
+            )
+
+    return ret
+
+
+
 class JID:
 
-    def __init__(self, user='name', domain='domain', resource='default'):
+    def __init__(self, user='name', domain='domain', resource=None):
+
+        self._values = {}
 
         self.user = user
         self.domain = domain
         self.resource = resource
+
+    @property
+    def user(self):
+        return self._get('user')
+
+    @user.setter
+    def user(self, value):
+        self._set('user', value)
+
+    @property
+    def domain(self):
+        return self._get('domain')
+
+    @domain.setter
+    def domain(self, value):
+        self._set('domain', value)
+
+    @property
+    def resource(self):
+        return self._get('resource')
+
+    @resource.setter
+    def resource(self, value):
+        self._values['resource'] = str(value)
+
+    def _set(self, name, value):
+        if value:
+            self._values[name] = str(value).lower()
+        else:
+            self._values[name] = None
+
+    def _get(self, name):
+
+        ret = None
+
+        if name in self._values:
+            ret = self._values[name]
+
+        return ret
 
     def bare(self):
         return '{user}@{domain}'.format(
@@ -78,8 +242,11 @@ class JID:
         return '{user}@{domain}/{resource}'.format(
             user=self.user,
             domain=self.domain,
-            resource=self.resource
+            resource=self.resource or 'default'
             )
+
+    def __str__(self):
+        return self.full()
 
 class Authentication:
 
@@ -584,6 +751,8 @@ class XMPPOutputStreamWriter:
 
         self._write_to.write(snd_obj)
 
+        logging.debug("Feeding data to self._xml_parser.feed:\n{}".format(snd_obj))
+
         threading.Thread(
             target=self._xml_parser.feed,
             args=(snd_obj,),
@@ -638,11 +807,14 @@ class Hub():
 
         return
 
+    def has_waited(self, name):
+        return name in self.waiters
+
     def get_waiter(self, name):
 
         ret = None
 
-        if name in self.waiters:
+        if self.has_waited(name):
             ret = self.waiters[name]
 
         return ret
@@ -948,6 +1120,340 @@ class Driver:
 
         return 'success'
 
+class WrongStanzaKind(Exception): pass
+
+class WrongErrorStanzaStructure(Exception): pass
+
+def determine_stanza_error(stanza):
+
+    ret = None
+
+    if stanza.typ == 'error':
+
+        e1 = stanza.find('error')
+
+        if e1 == None:
+            raise WrongErrorStanzaStructure("error Element not found")
+
+        if len(e1) == 0:
+            raise WrongErrorStanzaStructure("error Element has no error tag")
+
+        error_type = e1.get('type')
+
+        e2 = e1[0]
+
+        error = e2.tag
+
+        ret = (error_type, error,)
+
+    return ret
+
+
+
+def stanza_from_element(element):
+
+    ret = None
+
+    tag_parsed = lxml.etree.QName(element)
+
+    if not tag_parsed:
+        ret = 1
+
+    else:
+
+        ns = tag_parsed.namespace
+        tag = tag_parsed.localname
+
+        if not ns in ['jabber:client', 'jabber:server']:
+            ret = 2
+        else:
+
+            if not tag in ['message', 'iq', 'presence']:
+                ret = 3
+            else:
+
+                kind = tag
+
+                ide = element.get('id')
+                jid_from = element.get('from')
+                jid_to = element.get('to')
+                typ = element.get('type')
+                xmllang = element.get('xml:lang')
+
+                body = element
+
+                ret = Stanza(
+                    kind,
+                    ide,
+                    jid_from,
+                    jid_to,
+                    typ,
+                    xmllang,
+                    body
+                    )
+
+    return ret
+
+class Stanza:
+
+    def __init__(
+        self,
+        kind='message',
+        ide=None,
+        jid_from=None,
+        jid_to=None,
+        typ=None,
+        xmllang=None,
+        body=None
+        ):
+
+        self.kind = kind
+
+        self.ide = ide
+
+        self.jid_from = jid_from
+        self.jid_to = jid_to
+        self.typ = typ
+        self.xmllang = xmllang
+        self.body = body
+
+    @property
+    def kind(self):
+        return self._kind
+
+    @kind.setter
+    def kind(self, kind):
+
+        if not kind in ['message', 'iq', 'presence']:
+            raise WrongStanzaKind("Some one tried to make stanza of kind `{}'".format(kind))
+
+        self._kind = kind
+
+        return
+
+    def to_str(self):
+        return stanza_tpl(
+            self.kind,
+            self.ide,
+            self.typ,
+            self.jid_from,
+            self.jid_to,
+            self.xmllang,
+            self.body
+            )
+
+class StanzaHub(Hub):
+
+    def dispatch(self, obj):
+
+        self._dispatch(obj)
+
+class StanzaProcessor:
+
+    def __init__(
+        self,
+        ns='jabber:client'
+        ):
+
+        self.all_stanza_hub = StanzaHub()
+        self.wrong_stanza_hub = StanzaHub()
+        self.correct_stanza_hub = StanzaHub()
+
+        self._input_objects_hub = None
+        self._io_machine = None
+
+        self.response_cbs = {}
+
+        self._stanza_id_generation_counter = 0
+
+        self._wait_callbacks = {}
+
+
+    def change_modes(self, ns=None):
+
+        pass
+
+    def connect_input_object_stream_hub(self, hub_object, name='stanza_processor'):
+        self._input_objects_hub = hub_object
+        self._input_objects_hub.set_waiter(name, self._on_input_object)
+
+    def disconnect_input_object_stream_hub(self, name='stanza_processor'):
+        if self._input_objects_hub.get_waiter(name):
+            self._input_objects_hub.del_waiter(name)
+
+    def connect_io_machine(self, io_machine):
+        self._io_machine = io_machine
+
+    def disconnect_io_machine(self, io_machine):
+        self._io_machine = None
+
+    def send(
+        self, stanza_obj, ide_mode='generate', ide=None, cb=None, wait=False
+        ):
+        """
+        Sends pointed stanza object to connected peer
+
+        wait can be a bool or int
+
+        if wait < 0, wait = None
+
+        if wait == True, wait = 10000
+
+        if wait == False, wait = 0
+
+        if wait > 0, ide_mode = 'generate_implicit' and cb generated internally
+
+        wait is timeout. it is passed to Event.wait(), so wait == None is wait
+        forever
+
+        ide_mode can be one of 'from_stanza', 'generate', 'generate_implicit',
+        'implicit'.
+
+        if ide_mode == 'from_stanza', then id taken from stanza.
+
+        if ide_mode == 'generate', then id generated for stanza if stanza has no
+        it's own id.
+
+        if ide_mode == 'generate_implicit', then id generated for stanza in any
+        way
+
+        if ide_mode == 'implicit', then id is taken from ide parameter in any
+        way
+
+        result:
+
+        if wait == 0, then id of sent stanza is returned (accordingly to
+        ide_mode described above)
+
+        if wait > 0, then None is returned in case of timeout, or Stanza object
+        is returned in case of success
+        """
+
+
+        ret = None
+
+        new_stanza_ide = None
+
+        self._stanza_id_generation_counter += 1
+
+        if wait != None and not isinstance(wait, (bool, int,)):
+            raise TypeError("`wait' must be None, bool or int")
+
+        if wait == True:
+            wait = 10000
+            ide_mode = 'generate_implicit'
+
+        elif wait == False:
+            wait = 0
+
+        elif wait < 0:
+            wait = None
+
+        if not ide_mode in ['from_stanza', 'generate', 'generate_implicit', 'implicit']:
+            raise ValueError("wrong value for ide_mode parameter")
+
+
+        if ide_mode == 'from_stanza':
+            new_stanza_ide = stanza_obj.ide
+
+        elif ide_mode in ['generate', 'generate_implicit']:
+            if ((not stanza_obj.ide and ide_mode == 'generate')
+                or ide_mode == 'generate_implicit'):
+
+                new_stanza_ide = hex(self._stanza_id_generation_counter)
+
+        elif ide_mode == 'implicit':
+
+            new_stanza_ide = ide
+
+        stanza_obj.ide = new_stanza_ide
+
+        if wait != 0:
+            cb = self._wait_callback
+
+        if cb:
+            if not new_stanza_ide:
+                raise ValueError("callback provided but stanza has no id")
+
+            self.response_cbs[stanza_obj.ide] = cb
+
+        if wait == 0:
+            ret = new_stanza_ide
+
+        if wait != 0:
+            self._wait_callbacks[stanza_obj.ide] = {
+                'event': threading.Event(),
+                'response': None
+                }
+
+        self._io_machine.send(stanza_obj.to_str())
+
+        if wait != 0:
+            wait_res = self._wait_callbacks[stanza_obj.ide]['event'].wait(wait)
+
+            if wait_res == False:
+                ret = False
+            else:
+                ret = self._wait_callbacks[stanza_obj.ide]['response']
+
+            del self._wait_callbacks[stanza_obj.ide]
+            self.delete_callback(stanza_obj.ide)
+
+        return ret
+
+    def delete_callback(self, ide):
+
+        if ide in self.response_cbs:
+            del self.response_cbs[ide]
+
+        return
+
+    def _wait_callback(self, obj):
+
+        ret = obj
+
+        self._wait_callbacks[obj.ide]['response'] = ret
+
+        return
+
+    def _on_input_object(self, obj):
+
+        threading.Thread(
+            target=self._process_input_object,
+            args=(obj,),
+            name="Input Stanza Object Processing Thread"
+            ).start()
+
+        return
+
+    def _process_input_object(self, obj):
+
+        logging.debug(
+            "_process_input_object :: received element `{}' :: `{}'".format(
+                obj,
+                obj.tag
+                )
+            )
+
+        if obj.tag in [
+            '{jabber:client}message',
+            '{jabber:client}iq',
+            '{jabber:client}presence'
+            ]:
+
+            stanza = stanza_from_element(obj)
+
+            if isinstance(stanza, Stanza):
+                if stanza.ide in self.response_cbs:
+                    self.response_cbs[stanza.ide](stanza)
+                else:
+                    logging.warning(
+                        "Not found callback for stanza id `{}'".format(stanza.ide)
+                        )
+            else:
+                logging.error("proposed object not a stanza({}):\n{}".format(stanza, obj))
+
+        return
 
 class Monitor:
 

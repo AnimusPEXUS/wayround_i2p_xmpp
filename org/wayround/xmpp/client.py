@@ -29,10 +29,7 @@ class XMPPC2SClient:
             if not self.stat() == 'stopped':
                 raise RuntimeError("Working. Cleaning restricted")
 
-        self.connection = False
-
         self._starting = False
-        self._stop_flag = False
         self._stopping = False
         self._stream_stop_sent = False
 
@@ -148,11 +145,9 @@ class XMPPC2SClient:
 
         if (not self._stopping and not self._starting) or _forced:
 
-            self._stop_flag = True
-
             logging.debug("Stopping client correctly")
 
-            if self.connection and not self._stream_stop_sent:
+            if not self._stream_stop_sent:
                 logging.debug("Sending end of stream")
                 self.io_machine.send(
                     org.wayround.xmpp.core.stop_stream()
@@ -295,6 +290,58 @@ def client_sasl_auth(
         input_stream_events_hub=client.input_stream_events_hub,
         input_stream_objects_hub=client.input_stream_objects_hub,
         output_stream_events_hub=client.output_stream_events_hub
+        )
+
+    ret = i.drive(features_element)
+
+    return ret
+
+def client_resource_bind(
+    client,
+    jid,
+    connection_info,
+    features_element,
+    stanza_processor
+    ):
+
+    i = ResourceBindClientDriver(
+        jid
+        )
+
+    i.set_objects(
+        sock_streamer=client.sock_streamer,
+        io_machine=client.io_machine,
+        connection_events_hub=client.connection_events_hub,
+        input_stream_events_hub=client.input_stream_events_hub,
+        input_stream_objects_hub=client.input_stream_objects_hub,
+        output_stream_events_hub=client.output_stream_events_hub,
+        stanza_processor=stanza_processor
+        )
+
+    ret = i.drive(features_element)
+
+    return ret
+
+def client_session_start(
+    client,
+    jid,
+    connection_info,
+    features_element,
+    stanza_processor
+    ):
+
+    i = SessionClientDriver(
+        jid
+        )
+
+    i.set_objects(
+        sock_streamer=client.sock_streamer,
+        io_machine=client.io_machine,
+        connection_events_hub=client.connection_events_hub,
+        input_stream_events_hub=client.input_stream_events_hub,
+        input_stream_objects_hub=client.input_stream_objects_hub,
+        output_stream_events_hub=client.output_stream_events_hub,
+        stanza_processor=stanza_processor
         )
 
     ret = i.drive(features_element)
@@ -541,8 +588,8 @@ class STARTTLSClientDriver(org.wayround.xmpp.core.Driver):
                 logging.debug("Starting new stream")
                 self._io_machine.send(
                     org.wayround.xmpp.core.start_stream(
-                        fro=self._jid.bare(),
-                        to=self._connection_info.host
+                        jid_from=self._jid.bare(),
+                        jid_to=self._connection_info.host
                         )
                     )
 
@@ -916,8 +963,8 @@ class SASLClientDriver(org.wayround.xmpp.core.Driver):
                         logging.debug("Starting new stream")
                         self._io_machine.send(
                             org.wayround.xmpp.core.start_stream(
-                                fro=self._jid.bare(),
-                                to=self._connection_info.host
+                                jid_from=self._jid.bare(),
+                                jid_to=self._connection_info.host
                                 )
                             )
 
@@ -934,5 +981,528 @@ class SASLClientDriver(org.wayround.xmpp.core.Driver):
                         self.result = 'failure'
 
                         self.stop()
+
+        return
+
+class ResourceBindClientDriver(org.wayround.xmpp.core.Driver):
+
+    """
+    Driver for authenticating client on server
+    """
+
+    def __init__(self, jid):
+
+        """
+        Initiates object using :meth:`_clear`
+        """
+
+        self._jid = jid
+
+        self._clear(init=True)
+
+    def set_objects(
+        self,
+        sock_streamer,
+        io_machine,
+        connection_events_hub,
+        input_stream_events_hub,
+        input_stream_objects_hub,
+        output_stream_events_hub,
+        stanza_processor
+        ):
+
+        """
+        Set objects to work with
+
+        :param sock_streamer: instance of class
+            :class:`org.wayround.utils.stream.SocketStreamer`
+
+        :param io_machine: instance of class
+            :class:`XMPPIOStreamRWMachine`
+
+        :param connection_events_hub: hub to route connection events
+            :class:`ConnectionEventsHub`
+
+        :param input_stream_events_hub: hub to route input stream events
+            :class:`StreamEventsHub`
+
+        :param output_stream_events_hub: hub to route output stream events
+            :class:`StreamEventsHub`
+
+        """
+
+        self._sock_streamer = sock_streamer
+        self._io_machine = io_machine
+        self._connection_events_hub = connection_events_hub
+        self._input_stream_events_hub = input_stream_events_hub
+        self._input_stream_objects_hub = input_stream_objects_hub
+        self._output_stream_events_hub = output_stream_events_hub
+        self._stanza_processor = stanza_processor
+
+    def _clear(self, init=False):
+        """
+        Clears instance, setting default values for all attributes
+        """
+
+        self._sock_streamer = None
+        self._io_machine = None
+        self._input_stream_events_hub = None
+        self._input_stream_objects_hub = None
+        self._output_stream_events_hub = None
+
+        self._driving = False
+        self._exit_event = threading.Event()
+        self._exit_event.clear()
+
+        self.status = 'just created'
+
+        self.result = None
+
+        return
+
+    def _start(self):
+
+        """
+        Started by :meth:`self.drive`
+
+        If not already ``self._driving``, then drive!: register own waiters for
+
+        * ``self._connection_events_hub`` - :meth:`_connection_events_waiter`
+        * ``self._input_stream_events_hub`` - :meth:`_input_stream_events_waiter`
+        * ``self._input_stream_objects_hub`` - :meth:`_stream_objects_waiter`
+        """
+
+        if not self._driving:
+
+            self._driving = True
+
+            logging.debug("Resource binding Driver driving now! B-)")
+
+            self._connection_events_hub.set_waiter(
+                'resource_binder', self._connection_events_waiter
+                )
+
+            self._input_stream_events_hub.set_waiter(
+                'resource_binder', self._input_stream_events_waiter
+                )
+
+
+        return
+
+
+    def _stop(self):
+
+        """
+        If ``self._driving``, then stop it. And don't listen hubs any more!
+        """
+
+        if self._driving:
+
+            self._connection_events_hub.del_waiter('resource_binder')
+
+            self._input_stream_events_hub.del_waiter('resource_binder')
+
+            logging.debug(
+                "Resource binding Driver stopped with result `{}'".format(
+                    self.result
+                    )
+                )
+
+            self._driving = False
+
+            self._exit_event.set()
+
+        return
+
+    def stop(self):
+
+        """
+        Stop driver work. Just calls :meth:`_stop`
+        """
+        self._stop()
+
+        return
+
+    def drive(self, obj):
+
+        if obj.tag == '{http://etherx.jabber.org/streams}features':
+            self.status = 'looking for bind feature'
+
+            bind_proposition = obj.find('{urn:ietf:params:xml:ns:xmpp-bind}bind')
+
+            if bind_proposition != None:
+
+                self.status = 'waiting for bind result'
+
+                self._start()
+
+
+                binding_stanza = org.wayround.xmpp.core.Stanza(
+                    kind='iq',
+                    typ='set',
+                    body=org.wayround.xmpp.core.bind(
+                        typ='resource',
+                        value=self._jid.resource
+                        )
+                    )
+
+                stanza_id = self._stanza_processor.send(
+                    binding_stanza,
+                    cb=self._bind_stanza_callback
+                    )
+
+
+                if not self._exit_event.wait(10000):
+
+                    self.result = 'bind response timeout'
+
+                self._stanza_processor.delete_callback(stanza_id)
+
+            else:
+
+                logging.debug("Server does not proposing resource binding")
+
+                self.result = 'bind not available'
+
+        ret = self.result
+
+        return ret
+
+    def _bind_stanza_callback(self, response):
+
+        if self._driving:
+
+            if self.status == 'waiting for bind result':
+
+                self._stanza_processor.delete_callback(response.ide)
+
+                logging.debug("Received stanza:\n{}".format(response.to_str()))
+
+                if response.typ == 'error':
+
+                    error = org.wayround.xmpp.core.determine_stanza_error(response)
+
+                    if not error:
+                        logging.debug("Error determining error")
+                        self.result = 'malformed error result'
+                    else:
+                        logging.debug("Error determined: {}".format(error))
+                        self.result = error[1]
+
+                elif response.typ == 'result':
+
+                    bind_elment = response.body.find('{urn:ietf:params:xml:ns:xmpp-bind}bind')
+
+                    if bind_elment == None:
+                        self.result = 'malformed bind response'
+
+                    else:
+                        jid_element = bind_elment.find('{urn:ietf:params:xml:ns:xmpp-bind}jid')
+
+                        if jid_element == None:
+                            self.result = 'malformed bind response'
+                        else:
+                            result_jid = jid_element.text
+                            result_jid = result_jid.strip()
+
+                            logging.debug("Stripped jid {}".format(result_jid))
+
+                            jid = org.wayround.xmpp.core.jid_from_string(result_jid)
+
+                            self._jid.resource = jid.resource
+
+                            self.result = 'success'
+
+                else:
+                    self.result = 'malformed error result'
+
+        self.stop()
+
+        return
+
+    def _connection_events_waiter(self, event, sock):
+
+        if self._driving:
+
+            logging.debug("_connection_events_waiter :: `{}' `{}'".format(event, sock))
+
+        return
+
+
+    def _input_stream_events_waiter(self, event, attrs=None):
+
+        if self._driving:
+
+            logging.debug(
+                "_input_stream_events_waiter :: `{}', `{}'".format(
+                    event,
+                    attrs
+                    )
+                )
+
+            if event == 'start':
+
+                self.result = 'success'
+
+            elif event == 'stop':
+
+                self.result = 'stream stopped'
+
+            elif event == 'error':
+
+                self.result = 'stream error'
+
+            self._stop()
+
+
+        return
+
+class SessionClientDriver(org.wayround.xmpp.core.Driver):
+
+    """
+    Driver for authenticating client on server
+    """
+
+    def __init__(self, jid):
+
+        """
+        Initiates object using :meth:`_clear`
+        """
+
+        self._jid = jid
+
+        self._clear(init=True)
+
+    def set_objects(
+        self,
+        sock_streamer,
+        io_machine,
+        connection_events_hub,
+        input_stream_events_hub,
+        input_stream_objects_hub,
+        output_stream_events_hub,
+        stanza_processor
+        ):
+
+        """
+        Set objects to work with
+
+        :param sock_streamer: instance of class
+            :class:`org.wayround.utils.stream.SocketStreamer`
+
+        :param io_machine: instance of class
+            :class:`XMPPIOStreamRWMachine`
+
+        :param connection_events_hub: hub to route connection events
+            :class:`ConnectionEventsHub`
+
+        :param input_stream_events_hub: hub to route input stream events
+            :class:`StreamEventsHub`
+
+        :param output_stream_events_hub: hub to route output stream events
+            :class:`StreamEventsHub`
+
+        """
+
+        self._sock_streamer = sock_streamer
+        self._io_machine = io_machine
+        self._connection_events_hub = connection_events_hub
+        self._input_stream_events_hub = input_stream_events_hub
+        self._input_stream_objects_hub = input_stream_objects_hub
+        self._output_stream_events_hub = output_stream_events_hub
+        self._stanza_processor = stanza_processor
+
+    def _clear(self, init=False):
+        """
+        Clears instance, setting default values for all attributes
+        """
+
+        self._sock_streamer = None
+        self._io_machine = None
+        self._input_stream_events_hub = None
+        self._input_stream_objects_hub = None
+        self._output_stream_events_hub = None
+
+        self._driving = False
+        self._exit_event = threading.Event()
+        self._exit_event.clear()
+
+        self.status = 'just created'
+
+        self.result = None
+
+        return
+
+    def _start(self):
+
+        """
+        Started by :meth:`self.drive`
+
+        If not already ``self._driving``, then drive!: register own waiters for
+
+        * ``self._connection_events_hub`` - :meth:`_connection_events_waiter`
+        * ``self._input_stream_events_hub`` - :meth:`_input_stream_events_waiter`
+        * ``self._input_stream_objects_hub`` - :meth:`_stream_objects_waiter`
+        """
+
+        if not self._driving:
+
+            self._driving = True
+
+            logging.debug("Resource binding Driver driving now! B-)")
+
+            self._connection_events_hub.set_waiter(
+                'resource_binder', self._connection_events_waiter
+                )
+
+            self._input_stream_events_hub.set_waiter(
+                'resource_binder', self._input_stream_events_waiter
+                )
+
+
+        return
+
+    def _stop(self):
+
+        """
+        If ``self._driving``, then stop it. And don't listen hubs any more!
+        """
+
+        if self._driving:
+
+            self._connection_events_hub.del_waiter('resource_binder')
+
+            self._input_stream_events_hub.del_waiter('resource_binder')
+
+            logging.debug(
+                "Resource binding Driver stopped with result `{}'".format(
+                    self.result
+                    )
+                )
+
+            self._driving = False
+
+            self._exit_event.set()
+
+        return
+
+    def stop(self):
+
+        """
+        Stop driver work. Just calls :meth:`_stop`
+        """
+        self._stop()
+
+        return
+
+    def drive(self, obj):
+
+        if obj.tag == '{http://etherx.jabber.org/streams}features':
+            self.status = 'looking for session feature'
+
+            session_proposition = obj.find('{urn:ietf:params:xml:ns:xmpp-session}session')
+
+            if session_proposition != None:
+
+                self.status = 'waiting for session result'
+
+                self._start()
+
+
+                session_starting_stanza = org.wayround.xmpp.core.Stanza(
+                    kind='iq',
+                    typ='set',
+                    jid_to=self._jid.domain,
+                    body=org.wayround.xmpp.core.session()
+                    )
+
+                stanza_id = self._stanza_processor.send(
+                    session_starting_stanza,
+                    cb=self._session_stanza_callback
+                    )
+
+
+                if not self._exit_event.wait(10000):
+
+                    self.result = 'session response timeout'
+
+                self._stanza_processor.delete_callback(stanza_id)
+
+            else:
+
+                logging.debug("Server does not proposing session start")
+
+                self.result = 'session not available'
+
+        ret = self.result
+
+        return ret
+
+    def _session_stanza_callback(self, response):
+
+        if self._driving:
+
+            if self.status == 'waiting for session result':
+
+                self._stanza_processor.delete_callback(response.ide)
+
+                logging.debug("Received stanza:\n{}".format(response.to_str()))
+
+                if response.typ == 'error':
+
+                    error = org.wayround.xmpp.core.determine_stanza_error(response)
+
+                    if not error:
+                        logging.debug("Error determining error")
+                        self.result = 'malformed error result'
+                    else:
+                        logging.debug("Error determined: {}".format(error))
+                        self.result = error[1]
+
+                elif response.typ == 'result':
+
+                    self.result = 'success'
+
+                else:
+                    self.result = 'malformed error result'
+
+        self.stop()
+
+        return
+
+    def _connection_events_waiter(self, event, sock):
+
+        if self._driving:
+
+            logging.debug("_connection_events_waiter :: `{}' `{}'".format(event, sock))
+
+        return
+
+
+    def _input_stream_events_waiter(self, event, attrs=None):
+
+        if self._driving:
+
+            logging.debug(
+                "_input_stream_events_waiter :: `{}', `{}'".format(
+                    event,
+                    attrs
+                    )
+                )
+
+            if event == 'start':
+
+                self.result = 'success'
+
+            elif event == 'stop':
+
+                self.result = 'stream stopped'
+
+            elif event == 'error':
+
+                self.result = 'stream error'
+
+            self._stop()
+
 
         return
