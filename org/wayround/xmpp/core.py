@@ -1255,9 +1255,7 @@ class StanzaProcessor:
         ns='jabber:client'
         ):
 
-        self.all_stanza_hub = StanzaHub()
-        self.wrong_stanza_hub = StanzaHub()
-        self.correct_stanza_hub = StanzaHub()
+        self.stanza_hub = StanzaHub()
 
         self._input_objects_hub = None
         self._io_machine = None
@@ -1448,9 +1446,13 @@ class StanzaProcessor:
                 if stanza.ide in self.response_cbs:
                     self.response_cbs[stanza.ide](stanza)
                 else:
-                    logging.warning(
-                        "Not found callback for stanza id `{}'".format(stanza.ide)
-                        )
+
+                    threading.Thread(
+                        target=self.stanza_hub.dispatch,
+                        name="Dispatching Stanza",
+                        args=(obj,)
+                        ).start()
+
             else:
                 logging.error("proposed object not a stanza({}):\n{}".format(stanza, obj))
 
