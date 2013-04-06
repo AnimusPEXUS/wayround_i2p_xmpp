@@ -1413,6 +1413,7 @@ class StanzaProcessor:
         ret = obj
 
         self._wait_callbacks[obj.ide]['response'] = ret
+        self._wait_callbacks[obj.ide]['event'].set
 
         return
 
