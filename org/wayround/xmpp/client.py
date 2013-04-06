@@ -1151,10 +1151,14 @@ class ResourceBindClientDriver(org.wayround.xmpp.core.Driver):
                     cb=self._bind_stanza_callback
                     )
 
+                logging.debug("stanza sending returned: {}".format(stanza_id))
 
                 if not self._exit_event.wait(10000):
 
                     self.result = 'bind response timeout'
+                else:
+
+                    logging.debug("waiting exited with True")
 
                 self._stanza_processor.delete_callback(stanza_id)
 

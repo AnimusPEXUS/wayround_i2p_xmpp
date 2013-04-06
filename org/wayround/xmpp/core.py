@@ -193,6 +193,10 @@ class JID:
         self.domain = domain
         self.resource = resource
 
+
+    def __str__(self):
+        return self.full()
+
     @property
     def user(self):
         return self._get('user')
@@ -245,8 +249,18 @@ class JID:
             resource=self.resource or 'default'
             )
 
-    def __str__(self):
-        return self.full()
+    def make_connection_info(self):
+        return C2SConnectionInfo(host=self.domain)
+
+    def make_authentication(self):
+        return Authentication(
+            service='xmpp',
+            hostname=self.domain,
+            authid=self.user,
+            authzid=None,
+            realm=self.domain,
+            password=None
+            )
 
 class Authentication:
 
@@ -1450,7 +1464,7 @@ class StanzaProcessor:
                     threading.Thread(
                         target=self.stanza_hub.dispatch,
                         name="Dispatching Stanza",
-                        args=(obj,)
+                        args=(stanza,)
                         ).start()
 
             else:

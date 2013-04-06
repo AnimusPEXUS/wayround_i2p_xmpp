@@ -335,16 +335,6 @@ class RealClient:
 
                             if res == 'success':
 
-                                while True:
-
-                                    if self._features_recieved.wait(200):
-                                        break
-
-                                    if self._stop_flag:
-                                        break
-
-                                self._features_recieved.clear()
-
                                 if not self._stop_flag:
 
                                     res = org.wayround.xmpp.client.client_session_start(
@@ -374,7 +364,7 @@ class RealClient:
                                                 typ='normal',
                                                 jid_from=self.jid.full(),
                                                 jid_to='animus@wayround.org',
-                                                body='<body>test message</body>'
+                                                body='<body>test message</body><subject>WOW!</subject>'
                                                 )
                                             )
 
