@@ -1325,7 +1325,7 @@ class StanzaProcessor:
         if wait == 0, then id of sent stanza is returned (accordingly to
         ide_mode described above)
 
-        if wait > 0, then None is returned in case of timeout, or Stanza object
+        if wait > 0, then False is returned in case of timeout, or Stanza object
         is returned in case of success
         """
 
