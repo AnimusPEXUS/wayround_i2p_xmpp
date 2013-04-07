@@ -45,12 +45,15 @@ def stanza_tpl(
 
     if body != None:
 
-        if not isinstance(body, (bytes, str, lxml.etree._Element,)):
-            raise TypeError("body must be None, bytes, str or lxml.etree._Element")
+        if not isinstance(body, (bytes, str, lxml.etree._Element, list,)):
+            raise TypeError("body must be None, bytes, str or lxml.etree._Element, list")
 
-        if isinstance(body, lxml.etree._Element):
+        if isinstance(body, (lxml.etree._Element, list,)):
 
             for i in body:
+
+                if isinstance(i, StanzaElement):
+                    body_t += i.to_str()
 
                 if isinstance(i, lxml.etree._Element):
                     body_t += str(lxml.etree.tostring(i), 'utf-8')
@@ -60,6 +63,7 @@ def stanza_tpl(
 
                 if isinstance(i, str):
                     body_t += i
+
 
         if isinstance(body, bytes):
 
@@ -181,7 +185,7 @@ def jid_from_string(in_str):
 
     return ret
 
-
+jid_from_str = jid_from_string
 
 class JID:
 
@@ -1208,6 +1212,8 @@ def stanza_from_element(element):
 
     return ret
 
+class StanzaElement: pass
+
 class Stanza:
 
     def __init__(
@@ -1230,6 +1236,9 @@ class Stanza:
         self.typ = typ
         self.xmllang = xmllang
         self.body = body
+
+    def __str__(self):
+        return self.to_str()
 
     @property
     def kind(self):
