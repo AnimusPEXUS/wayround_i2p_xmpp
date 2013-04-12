@@ -99,7 +99,7 @@ class XMPPC2SClient:
 
     def stop(self):
 
-        if not self._stopping and not self._starting:
+        if not self._stopping and not self._starting and self.stat() == 'working':
             self._stopping = True
 
             logging.debug("Starting shutdown sequence")

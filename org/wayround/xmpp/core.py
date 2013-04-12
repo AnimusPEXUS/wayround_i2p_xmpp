@@ -8,6 +8,7 @@ import re
 import xml.sax.saxutils
 import lxml.etree
 
+import org.wayround.utils.error
 import org.wayround.utils.stream
 import org.wayround.utils.xml
 
@@ -175,13 +176,20 @@ def jid_from_string(in_str):
     if res:
 
         if len(res.group('localpart')) > 32:
-            raise InvalidUserName("Usernames may only be up to 32 characters long")
 
-        ret = JID(
-            res.group('localpart'),
-            res.group('domainpart'),
-            res.group('resourcepart')
-            )
+            ret = None
+
+        else:
+
+            try:
+                ret = JID(
+                    res.group('localpart'),
+                    res.group('domainpart'),
+                    res.group('resourcepart')
+                    )
+
+            except:
+                ret = None
 
     return ret
 
@@ -192,6 +200,13 @@ class JID:
     def __init__(self, user='name', domain='domain', resource=None):
 
         self._values = {}
+
+        if not isinstance(user, str):
+            raise TypeError("`user' must be str")
+
+        if not isinstance(domain, str):
+            raise TypeError("`domain' must be str")
+
 
         self.user = user
         self.domain = domain
@@ -299,6 +314,7 @@ class C2SConnectionInfo:
         self.priority = priority
 
 
+class XMPPStreamParserTargetClosed(Exception): pass
 
 class XMPPStreamParserTarget:
 
@@ -321,10 +337,15 @@ class XMPPStreamParserTarget:
         self._depth_tracker = []
         self._stream_element = None
 
+        self.target_closed = False
+
 
     def start(self, name, attributes):
 
         logging.debug("{} :: start tag: `{}'; attrs: {}".format(type(self).__name__, name, attributes))
+
+        if self.target_closed:
+            raise XMPPStreamParserTargetClosed()
 
         if name == '{http://etherx.jabber.org/streams}stream':
             self._depth_tracker = []
@@ -357,9 +378,11 @@ class XMPPStreamParserTarget:
 
                 self._tree_builder = lxml.etree.TreeBuilder()
 
-            if len(self._depth_tracker) == 1:
+            _l = len(self._depth_tracker)
+
+            if _l == 1:
                 self._tree_builder.start(name, attributes, nsmap=self._stream_element.nsmap)
-            else:
+            elif _l > 1:
                 self._tree_builder.start(name, attributes)
 
         self._depth_tracker.append(name)
@@ -369,6 +392,9 @@ class XMPPStreamParserTarget:
     def end(self, name):
 
         logging.debug("{} :: end `{}'".format(type(self).__name__, name))
+
+        if self.target_closed:
+            raise XMPPStreamParserTargetClosed()
 
         if len(self._depth_tracker) > 1:
             self._tree_builder.end(name)
@@ -385,12 +411,17 @@ class XMPPStreamParserTarget:
                 threading.Thread(
                     target=self._on_element_readed,
                     args=(element,),
-                    name='Element Readed Thread'
+                    name='Element Building Complete Thread'
                     ).start()
 
         if len(self._depth_tracker) == 0:
 
             if name == '{http://etherx.jabber.org/streams}stream':
+                logging.debug(
+                    "{} :: end :: stream close tag received - closing parser target".format(
+                        type(self).__name__
+                        )
+                    )
                 self.close()
 
         return
@@ -398,6 +429,9 @@ class XMPPStreamParserTarget:
     def data(self, data):
 
         logging.debug("{} :: data `{}'".format(type(self).__name__, data))
+
+        if self.target_closed:
+            raise XMPPStreamParserTargetClosed()
 
         if self._tree_builder:
             self._tree_builder.data(data)
@@ -408,6 +442,9 @@ class XMPPStreamParserTarget:
 
         logging.debug("{} :: comment `{}'".format(type(self).__name__, text))
 
+        if self.target_closed:
+            raise XMPPStreamParserTargetClosed()
+
         if self._tree_builder:
             self._tree_builder.comment(text)
 
@@ -417,7 +454,13 @@ class XMPPStreamParserTarget:
 
         logging.debug("{} :: close".format(type(self).__name__))
 
+        if self.target_closed:
+            raise XMPPStreamParserTargetClosed()
+
         if self._on_stream_event:
+
+            self.target_closed = True
+
             threading.Thread(
                 target=self._on_stream_event,
                 args=('stop',),
@@ -468,12 +511,11 @@ class XMPPInputStreamReader:
 
     def start(self):
 
-
         thread_name_in = 'Thread feeding data to XML parser'
 
         if not self._starting and not self._stopping and self.stat() == 'stopped':
 
-            self._stat = 'hard starting'
+            self._stat = 'starting'
             self._starting = True
 
             if not self._stream_reader_thread:
@@ -511,7 +553,7 @@ class XMPPInputStreamReader:
                     self._stream_reader_thread.start()
 
             self.wait('working')
-            self._stat = 'hard started'
+            self._stat = 'started'
             self._starting = False
 
         return
@@ -519,8 +561,8 @@ class XMPPInputStreamReader:
 
     def stop(self):
 
-        if not self._stopping and not self._starting:
-            self._stat = 'hard stopping'
+        if not self._stopping and not self._starting and self.stat() == 'working':
+            self._stat = 'stopping'
             self._stopping = True
 
             self._termination_event.set()
@@ -530,7 +572,7 @@ class XMPPInputStreamReader:
             self._clear()
 
             self._stopping = False
-            self._stat = 'hard stopped'
+            self._stat = 'stopped'
 
         return
 
@@ -637,13 +679,14 @@ class XMPPOutputStreamWriter:
 
         if not self._starting and not self._stopping and self.stat() == 'stopped':
 
-            thread_name_in = 'Thread sending data to socket streamer'
+            thread_name_in = 'Thread feeding data to XML parser'
 
-            self._stat = 'hard starting'
+            self._stat = 'starting'
             self._starting = True
             self._stop_flag = False
 
             if not self._stream_writer_thread:
+
                 try:
                     self._stream_writer_thread = threading.Thread(
                         target=self._output_worker,
@@ -652,12 +695,14 @@ class XMPPOutputStreamWriter:
                         kwargs=dict()
                         )
                 except:
-                    logging.exception("Error on starting {}".format(thread_name_in))
+                    logging.exception(
+                        "Error on creating thread {}".format(thread_name_in)
+                        )
                 else:
                     self._stream_writer_thread.start()
 
             self.wait('working')
-            self._stat = 'hard started'
+            self._stat = 'started'
             self._starting = False
 
         return
@@ -667,7 +712,7 @@ class XMPPOutputStreamWriter:
 
         if not self._starting and not self._stopping:
             self._stopping = True
-            self._stat = 'hard stopping'
+            self._stat = 'stopping'
 
             self._stop_flag = True
 
@@ -676,7 +721,7 @@ class XMPPOutputStreamWriter:
             self._clear()
 
             self._stopping = False
-            self._stat = 'hard stopped'
+            self._stat = 'stopped'
 
         return
 
@@ -732,15 +777,17 @@ class XMPPOutputStreamWriter:
     def _output_worker(self):
 
         while True:
-            if len(self._output_queue) > 0:
+            if len(self._output_queue) != 0:
 
-                while len(self._output_queue) > 0:
+                while len(self._output_queue) != 0:
                     self._send_object(self._output_queue[0])
                     del self._output_queue[0]
 
             else:
+
                 if self._stop_flag:
                     break
+
                 time.sleep(0.1)
 
         self._stream_writer_thread = None
@@ -771,11 +818,19 @@ class XMPPOutputStreamWriter:
 
         logging.debug("Feeding data to self._xml_parser.feed:\n{}".format(snd_obj))
 
-        threading.Thread(
-            target=self._xml_parser.feed,
-            args=(snd_obj,),
-            name="Output XMPP Stream Parser"
-            ).start()
+        try:
+            self._xml_parser.feed(snd_obj)
+        except:
+            logging.exception("Exception while starting thread of self._xml_parser.feed")
+
+#        try:
+#            threading.Thread(
+#                target=self._xml_parser.feed,
+#                args=(snd_obj,),
+#                name="Output XMPP Stream Parser"
+#                ).start()
+#        except:
+#            logging.exception("Error while starting thread of self._xml_parser.feed")
 
         return
 
@@ -928,7 +983,7 @@ class XMPPStreamMachine:
 
     def stop(self):
 
-        if not self._stopping and not self._starting:
+        if not self._stopping and not self._starting and self.stat() == 'working':
 
             self._stopping = True
 
