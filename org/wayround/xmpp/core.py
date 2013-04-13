@@ -22,6 +22,35 @@ def stanza_tpl(
     body=None
     ):
 
+    """
+    Template for generating stanzas
+
+    body can be one of (bytes, str, lxml.etree._Element, list,)
+
+    if body is bytes, it's transformed to str
+
+    if body is str, it's used as is
+
+    if body is lxml.etree._Element or list, it's items must be in set of
+
+        (bytes, str, lxml.etree._Element, StanzaElement,)
+
+        if list item is bytes or str, it is treated as described for body
+        (above)
+
+        if list item is lxml.etree._Element, it is rendered with
+        lxml.etree.tostring()
+
+        if list item is StanzaElement instance, it's .to_str() method is used to
+        make string of it
+
+
+
+        in case when body is list, all it's stringified items summarized to
+        single string
+
+    """
+
     ide_t = ''
     if ide:
         ide_t = ' id="{}"'.format(xml.sax.saxutils.escape(ide))
@@ -97,7 +126,7 @@ def start_stream(
     ):
 
     """
-    Sends XMPP stream initiating entity
+    Standard XMPP stream begin template
     """
 
     ret = """\
@@ -116,12 +145,22 @@ def start_stream(
     return ret
 
 def stop_stream():
+    """
+    Standard XMPP stream end template
+    """
     return '</stream:stream>'
 
 def starttls():
+    """
+    Standard XMPP TLS layer start text
+    """
     return '<starttls xmlns="urn:ietf:params:xml:ns:xmpp-tls"/>'
 
 def bind(typ='resource', value=None):
+
+    """
+    Template for binding client to resource on server
+    """
 
     if not typ in ['resource', 'fulljid']:
         raise ValueError("Wrong bind type")
@@ -149,22 +188,16 @@ def bind(typ='resource', value=None):
     return ret
 
 def session():
+    """
+    Standard XMPP session begin text
+    """
     return '<session xmlns="urn:ietf:params:xml:ns:xmpp-session"/>'
 
 
-
-def _info_dict_to_add(handler):
-
-    return dict(
-        handler=handler,
-        name=handler.name,
-        tag=handler.tag,
-        ns=handler.ns
-        )
-
-class InvalidUserName(Exception): pass
-
 def jid_from_string(in_str):
+    """
+    Try to convert string to JID instance. Returns None in case of error.
+    """
 
     ret = None
 
@@ -196,6 +229,13 @@ def jid_from_string(in_str):
 jid_from_str = jid_from_string
 
 class JID:
+
+    """
+    Class for working with JID
+
+    Domain and user parts are automatically converted to low register
+
+    """
 
     def __init__(self, user='name', domain='domain', resource=None):
 
@@ -269,9 +309,19 @@ class JID:
             )
 
     def make_connection_info(self):
+        """
+        Tries to guess C2SConnectionInfo for current JID
+
+        Some properties needs to be changed manually.
+        """
         return C2SConnectionInfo(host=self.domain)
 
     def make_authentication(self):
+        """
+        Tries to guess Authentication for current JID
+
+        Some properties needs to be changed manually.
+        """
         return Authentication(
             service='xmpp',
             hostname=self.domain,
@@ -314,9 +364,18 @@ class C2SConnectionInfo:
         self.priority = priority
 
 
-class XMPPStreamParserTargetClosed(Exception): pass
+class XMPPStreamParserTargetClosed(Exception):
+    """
+    This exception is rased in case of some one's trying to send some more data
+    to parsed when it is closed already.
+    """
 
 class XMPPStreamParserTarget:
+
+    """
+    Target for lxml to build XML objects, which then sent to element hubs or
+    stream event listeners
+    """
 
     def __init__(
         self,
@@ -324,13 +383,23 @@ class XMPPStreamParserTarget:
         on_element_readed=None
         ):
 
+        """
+        :param on_stream_event: callback to call when stream starts, stop or
+            fails
+        :param on_element_readed: callback to call when next stream element read
+            complete
+        """
+
         self._on_stream_event = on_stream_event
         self._on_element_readed = on_element_readed
 
         self.clear(init=True)
 
+        return
+
 
     def clear(self, init=False):
+
         self._tree_builder = None
         self._tree_builder_start_depth = None
 
@@ -339,10 +408,22 @@ class XMPPStreamParserTarget:
 
         self.target_closed = False
 
+        return
+
 
     def start(self, name, attributes):
 
-        logging.debug("{} :: start tag: `{}'; attrs: {}".format(type(self).__name__, name, attributes))
+        """
+        Target receiving tag starts
+        """
+
+        logging.debug(
+            "{} :: start tag: `{}'; attrs: {}".format(
+                type(self).__name__,
+                name,
+                attributes
+                )
+            )
 
         if self.target_closed:
             raise XMPPStreamParserTargetClosed()
@@ -381,15 +462,26 @@ class XMPPStreamParserTarget:
             _l = len(self._depth_tracker)
 
             if _l == 1:
-                self._tree_builder.start(name, attributes, nsmap=self._stream_element.nsmap)
+                self._tree_builder.start(
+                    name,
+                    attributes,
+                    nsmap=self._stream_element.nsmap
+                    )
             elif _l > 1:
-                self._tree_builder.start(name, attributes)
+                self._tree_builder.start(
+                    name,
+                    attributes
+                    )
 
         self._depth_tracker.append(name)
 
         return
 
     def end(self, name):
+
+        """
+        Target receiving tag ends
+        """
 
         logging.debug("{} :: end `{}'".format(type(self).__name__, name))
 
@@ -428,6 +520,10 @@ class XMPPStreamParserTarget:
 
     def data(self, data):
 
+        """
+        Target receiving data
+        """
+
         logging.debug("{} :: data `{}'".format(type(self).__name__, data))
 
         if self.target_closed:
@@ -440,6 +536,10 @@ class XMPPStreamParserTarget:
 
     def comment(self, text):
 
+        """
+        Target receiving comment
+        """
+
         logging.debug("{} :: comment `{}'".format(type(self).__name__, text))
 
         if self.target_closed:
@@ -451,6 +551,10 @@ class XMPPStreamParserTarget:
         return
 
     def close(self):
+
+        """
+        This target is reacting on stream end and calls callback function
+        """
 
         logging.debug("{} :: close".format(type(self).__name__))
 
@@ -491,6 +595,8 @@ class XMPPInputStreamReader:
         self._clear(init=True)
 
         self._stat = 'stopped'
+
+        return
 
 
     def _clear(self, init=False):
@@ -600,9 +706,13 @@ class XMPPInputStreamReader:
             raise ValueError("`what' must be in {}".format(allowed_what))
 
         while True:
-            time.sleep(0.1)
+
+            logging.debug("{} :: waiting for {}".format(type(self).__name__, what))
+
             if self.stat() == what:
                 break
+
+            time.sleep(0.1)
 
         return
 
@@ -749,9 +859,13 @@ class XMPPOutputStreamWriter:
             raise ValueError("`what' must be in {}".format(allowed_what))
 
         while True:
-            time.sleep(0.1)
+
+            logging.debug("{} :: waiting for {}".format(type(self).__name__, what))
+
             if self.stat() == what:
                 break
+
+            time.sleep(0.1)
 
         return
 
@@ -819,18 +933,10 @@ class XMPPOutputStreamWriter:
         logging.debug("Feeding data to self._xml_parser.feed:\n{}".format(snd_obj))
 
         try:
+            # Do not make this threaded or it will jam parser
             self._xml_parser.feed(snd_obj)
         except:
             logging.exception("Exception while starting thread of self._xml_parser.feed")
-
-#        try:
-#            threading.Thread(
-#                target=self._xml_parser.feed,
-#                args=(snd_obj,),
-#                name="Output XMPP Stream Parser"
-#                ).start()
-#        except:
-#            logging.exception("Error while starting thread of self._xml_parser.feed")
 
         return
 
@@ -1095,12 +1201,16 @@ class XMPPIOStreamRWMachine:
 
     def start(self):
 
+        logging.debug("{} :: received start call".format(type(self).__name__))
+
         self.in_machine.start()
         self.out_machine.start()
 
         return
 
     def stop(self):
+
+        logging.debug("{} :: received stop call".format(type(self).__name__))
 
         self.in_machine.stop()
         self.out_machine.stop()
@@ -1143,6 +1253,8 @@ class XMPPIOStreamRWMachine:
         self.in_machine.wait(what=what)
         self.out_machine.wait(what=what)
 
+        return
+
     def stat(self):
 
         ret = 'various'
@@ -1151,6 +1263,7 @@ class XMPPIOStreamRWMachine:
         v2 = self.out_machine.stat()
 
         logging.debug("""
+IO Machine:
 self.in_machine.stat()  == {}
 self.out_machine.stat() == {}
 """.format(v1, v2)
@@ -1168,12 +1281,15 @@ self.out_machine.stat() == {}
         return ret
 
     def send(self, obj, wait=False):
+
         threading.Thread(
             target=self.out_machine.send,
             args=(obj,),
             kwargs={'wait':False},
             name="XMPPIOStreamRWMachine send thread"
             ).start()
+
+        return
 
 
 

@@ -32,6 +32,7 @@ class XMPPC2SClient:
         self._starting = False
         self._stopping = False
         self._stream_stop_sent = False
+        self._input_stream_closed_event = threading.Event()
 
         self.sock_streamer = None
 
@@ -148,6 +149,10 @@ class XMPPC2SClient:
             logging.debug("Stopping client correctly")
 
             if not self._stream_stop_sent:
+                self.input_stream_events_hub.set_waiter(
+                    'client_stream_close_waiter',
+                    self._input_stream_close_waiter
+                    )
                 logging.debug("Sending end of stream")
                 self.io_machine.send(
                     org.wayround.xmpp.core.stop_stream()
@@ -159,12 +164,22 @@ class XMPPC2SClient:
                 if self.stat() == 'stopped':
                     break
 
+                if self._input_stream_closed_event.is_set():
+                    logging.debug("Input stream closed - ending shutdown timout")
+                    break
+
                 logging.debug("Timeout in {:3.2f} sec".format(timeout_sec - time_waited))
                 if time_waited >= timeout_sec:
                     break
 
                 time.sleep(1.0)
                 time_waited += 1.0
+
+            self.input_stream_events_hub.del_waiter(
+                    'client_stream_close_waiter'
+                    )
+
+        return
 
 
     def wait(self, what='stopped'):
@@ -195,6 +210,7 @@ class XMPPC2SClient:
             v2 = self.io_machine.stat()
 
         logging.debug("""
+Client stat:
 self.sock_streamer.stat() == {}
 self.io_machine.stat() == {}
 """.format(v1, v2)
@@ -230,6 +246,11 @@ self.io_machine.stat() == {}
     def _restart_io_machine(self):
         self._stop_io_machine()
         self._start_io_machine()
+
+    def _input_stream_close_waiter(self, event, attrs):
+
+        if event == 'stop':
+            self._input_stream_closed_event.set()
 
 
 def client_starttls(
