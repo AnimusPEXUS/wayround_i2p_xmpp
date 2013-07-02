@@ -32,8 +32,9 @@ def stanza_tpl(
     if body is str, it's used as is
 
     if body is lxml.etree._Element or list, it's items must be in set of
+    (bytes, str, lxml.etree._Element, StanzaElement,)
 
-        (bytes, str, lxml.etree._Element, StanzaElement,)
+    if body is list of items:
 
         if list item is bytes or str, it is treated as described for body
         (above)
