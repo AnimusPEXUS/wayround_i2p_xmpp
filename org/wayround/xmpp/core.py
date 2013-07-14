@@ -12,222 +12,44 @@ import org.wayround.utils.error
 import org.wayround.utils.stream
 import org.wayround.utils.xml
 
-def stanza_tpl(
-    kind=None,
-    ide=None,
-    typ=None,
-    jid_from=None,
-    jid_to=None,
-    xmllang=None,
-    body=None
-    ):
+
+STREAM_ERROR_NAMES = [
+    'bad-format',
+    'bad-namespace-prefix',
+    'conflict',
+    'connection-timeout',
+    'host-gone',
+    'host-unknown',
+    'improper-addressing',
+    'internal-server-error',
+    'invalid-from',
+    'invalid-namespace',
+    'invalid-xml',
+    'not-authorized',
+    'not-well-formed',
+    'policy-violation',
+    'remote-connection-failed',
+    'reset',
+    'resource-constraint',
+    'restricted-xml',
+    'see-other-host',
+    'system-shutdown',
+    'undefined-condition',
+    'unsupported-encoding',
+    'unsupported-feature',
+    'unsupported-stanza-type',
+    'unsupported-version'
+    ]
+
+class XMPPStreamSoftError:
 
     """
-    Template for generating stanzas
-
-    body can be one of (bytes, str, lxml.etree._Element, list,)
-
-    if body is bytes, it's transformed to str
-
-    if body is str, it's used as is
-
-    if body is lxml.etree._Element or list, it's items must be in set of
-    (bytes, str, lxml.etree._Element, StanzaElement,)
-
-    if body is list of items:
-
-        if list item is bytes or str, it is treated as described for body
-        (above)
-
-        if list item is lxml.etree._Element, it is rendered with
-        lxml.etree.tostring()
-
-        if list item is StanzaElement instance, it's .to_str() method is used to
-        make string of it
-
-
-
-        in case when body is list, all it's stringified items summarized to
-        single string
-
+    Soft stream errors are 'Stream Errors' described in rfc6120
     """
 
-    ide_t = ''
-    if ide:
-        ide_t = ' id="{}"'.format(xml.sax.saxutils.escape(ide))
-
-    typ_t = ''
-    if typ:
-        typ_t = ' type="{}"'.format(xml.sax.saxutils.escape(typ))
-
-    jid_from_t = ''
-    if jid_from:
-        jid_from_t = ' from="{}"'.format(xml.sax.saxutils.escape(jid_from))
-
-    jid_to_t = ''
-    if jid_to:
-        jid_to_t = ' to="{}"'.format(xml.sax.saxutils.escape(jid_to))
-
-    xmllang_t = ''
-    if xmllang:
-        xmllang_t = ' xml:lang="{}"'.format(xml.sax.saxutils.escape(xmllang))
-
-    body_t = ''
-
-    if body != None:
-
-        if not isinstance(body, (bytes, str, lxml.etree._Element, list,)):
-            raise TypeError("body must be None, bytes, str or lxml.etree._Element, list")
-
-        if isinstance(body, (lxml.etree._Element, list,)):
-
-            for i in body:
-
-                if isinstance(i, StanzaElement):
-                    body_t += i.to_str()
-
-                if isinstance(i, lxml.etree._Element):
-                    body_t += str(lxml.etree.tostring(i), 'utf-8')
-
-                if isinstance(i, bytes):
-                    body_t += str(i, 'utf-8')
-
-                if isinstance(i, str):
-                    body_t += i
-
-
-        if isinstance(body, bytes):
-
-            body_t = str(body, 'utf-8')
-
-        if isinstance(body, str):
-
-            body_t = body
-
-    ret = '<{kind}{ide_t}{typ_t}{jid_from_t}{jid_to_t}{xmllang_t}>{body_t}</{kind}>'.format(
-        kind=xml.sax.saxutils.escape(kind),
-        ide_t=ide_t,
-        typ_t=typ_t,
-        jid_from_t=jid_from_t,
-        jid_to_t=jid_to_t,
-        xmllang_t=xmllang_t,
-        body_t=body_t
-        )
-
-    return ret
-
-
-def start_stream(
-    jid_from,
-    jid_to,
-    version='1.0',
-    xmllang='en',
-    xmlns='jabber:client',
-    xmlns_stream='http://etherx.jabber.org/streams'
-    ):
-
-    """
-    Standard XMPP stream begin template
-    """
-
-    ret = """\
-<?xml version="1.0"?>\
- <stream:stream from="{jid_from}" to="{jid_to}" version="{version}"\
- xml:lang="{xmllang}" xmlns="{xmlns}"\
- xmlns:stream="{xmlns_stream}">""".format(
-        jid_from=xml.sax.saxutils.escape(jid_from),
-        jid_to=xml.sax.saxutils.escape(jid_to),
-        version=xml.sax.saxutils.escape(version),
-        xmllang=xml.sax.saxutils.escape(xmllang),
-        xmlns=xml.sax.saxutils.escape(xmlns),
-        xmlns_stream=xml.sax.saxutils.escape(xmlns_stream)
-        )
-
-    return ret
-
-def stop_stream():
-    """
-    Standard XMPP stream end template
-    """
-    return '</stream:stream>'
-
-def starttls():
-    """
-    Standard XMPP TLS layer start text
-    """
-    return '<starttls xmlns="urn:ietf:params:xml:ns:xmpp-tls"/>'
-
-def bind(typ='resource', value=None):
-
-    """
-    Template for binding client to resource on server
-    """
-
-    if not typ in ['resource', 'fulljid']:
-        raise ValueError("Wrong bind type")
-
-    bind_value = ''
-    if value:
-
-        tag_name = ''
-
-        if typ == 'resource':
-            tag_name = 'resource'
-
-        elif typ == 'fulljid':
-            tag_name = 'jid'
-
-        bind_value = '<{tag_name}>{value}</{tag_name}>'.format(
-            value=xml.sax.saxutils.escape(value),
-            tag_name=tag_name
-            )
-
-    ret = '<bind xmlns="urn:ietf:params:xml:ns:xmpp-bind">{}</bind>'.format(
-        bind_value
-        )
-
-    return ret
-
-def session():
-    """
-    Standard XMPP session begin text
-    """
-    return '<session xmlns="urn:ietf:params:xml:ns:xmpp-session"/>'
-
-
-def jid_from_string(in_str):
-    """
-    Try to convert string to JID instance. Returns None in case of error.
-    """
-
-    ret = None
-
-    res = re.match(
-        r'^(?P<localpart>.+?)@(?P<domainpart>.+?)(/(?P<resourcepart>.+?))?$',
-        in_str
-        )
-
-    if res:
-
-        if len(res.group('localpart')) > 32:
-
-            ret = None
-
-        else:
-
-            try:
-                ret = JID(
-                    res.group('localpart'),
-                    res.group('domainpart'),
-                    res.group('resourcepart')
-                    )
-
-            except:
-                ret = None
-
-    return ret
-
-jid_from_str = jid_from_string
+    def __init__(self, name, message):
+        self.name = name
+        self.message = message
 
 class JID:
 
@@ -385,8 +207,10 @@ class XMPPStreamParserTarget:
         ):
 
         """
-        :param on_stream_event: callback to call when stream starts, stop or
-            fails
+        :param on_stream_event: callback to call when stream starts, stops or
+            fails (hard xml stream error. at this time, xml errors are separate
+            from xmpp error. xmpp errors are recognised and generated by
+            XMPPIOStreamRWMachine class)
         :param on_element_readed: callback to call when next stream element read
             complete
         """
@@ -753,6 +577,10 @@ class XMPPInputStreamReader:
 
 class XMPPOutputStreamWriter:
 
+    """
+    Class for functions related to writing data to socket streamer
+    """
+
     def __init__(
         self,
         write_to,
@@ -870,7 +698,7 @@ class XMPPOutputStreamWriter:
 
         return
 
-    def send(self, obj, wait=False):
+    def send(self, obj):
 
         if self._stop_flag:
             raise RuntimeError("Stopping. Sending not allowed")
@@ -1144,6 +972,10 @@ class XMPPStreamMachine:
 
 class XMPPInputStreamReaderMachine(XMPPStreamMachine):
 
+    """
+    Machine for reading xml stream from socket streamer
+    """
+
     def start_stream_worker(self):
 
         self._stream_worker = XMPPInputStreamReader(
@@ -1153,6 +985,10 @@ class XMPPInputStreamReaderMachine(XMPPStreamMachine):
 
 class XMPPOutputStreamWriterMachine(XMPPStreamMachine):
 
+    """
+    Machine for writing xml objects to socket streamer
+    """
+
     def start_stream_worker(self):
 
         self._stream_worker = XMPPOutputStreamWriter(
@@ -1160,12 +996,12 @@ class XMPPOutputStreamWriterMachine(XMPPStreamMachine):
             self._xml_parser
             )
 
-    def send(self, obj, wait=False):
+    def send(self, obj):
+
         threading.Thread(
             name="XMPPOutputStreamWriterMachine send thread",
             target=self._stream_worker.send,
-            args=(obj,),
-            kwargs=dict(wait=wait)
+            args=(obj,)
             ).start()
 
 class XMPPIOStreamRWMachine:
@@ -1281,12 +1117,11 @@ self.out_machine.stat() == {}
 
         return ret
 
-    def send(self, obj, wait=False):
+    def send(self, obj, response_callback=None, timeout=10):
 
         threading.Thread(
             target=self.out_machine.send,
             args=(obj,),
-            kwargs={'wait':False},
             name="XMPPIOStreamRWMachine send thread"
             ).start()
 
@@ -1310,79 +1145,6 @@ class Driver:
 
         return 'success'
 
-class WrongStanzaKind(Exception): pass
-
-class WrongErrorStanzaStructure(Exception): pass
-
-def determine_stanza_error(stanza):
-
-    ret = None
-
-    if stanza.typ == 'error':
-
-        e1 = stanza.find('error')
-
-        if e1 == None:
-            raise WrongErrorStanzaStructure("error Element not found")
-
-        if len(e1) == 0:
-            raise WrongErrorStanzaStructure("error Element has no error tag")
-
-        error_type = e1.get('type')
-
-        e2 = e1[0]
-
-        error = e2.tag
-
-        ret = (error_type, error,)
-
-    return ret
-
-
-
-def stanza_from_element(element):
-
-    ret = None
-
-    tag_parsed = lxml.etree.QName(element)
-
-    if not tag_parsed:
-        ret = 1
-
-    else:
-
-        ns = tag_parsed.namespace
-        tag = tag_parsed.localname
-
-        if not ns in ['jabber:client', 'jabber:server']:
-            ret = 2
-        else:
-
-            if not tag in ['message', 'iq', 'presence']:
-                ret = 3
-            else:
-
-                kind = tag
-
-                ide = element.get('id')
-                jid_from = element.get('from')
-                jid_to = element.get('to')
-                typ = element.get('type')
-                xmllang = element.get('xml:lang')
-
-                body = element
-
-                ret = Stanza(
-                    kind,
-                    ide,
-                    jid_from,
-                    jid_to,
-                    typ,
-                    xmllang,
-                    body
-                    )
-
-    return ret
 
 class StanzaElement: pass
 
@@ -1426,6 +1188,12 @@ class Stanza:
 
         return
 
+    @property
+    def body_element(self):
+        # TODO: testing required
+        b = self.body.find('body')
+        return b
+
     def to_str(self):
         return stanza_tpl(
             self.kind,
@@ -1461,10 +1229,6 @@ class StanzaProcessor:
 
         self._wait_callbacks = {}
 
-
-    def change_modes(self, ns=None):
-
-        pass
 
     def connect_input_object_stream_hub(self, hub_object, name='stanza_processor'):
         self._input_objects_hub = hub_object
@@ -1640,6 +1404,7 @@ class StanzaProcessor:
             if isinstance(stanza, Stanza):
                 if stanza.ide in self.response_cbs:
                     self.response_cbs[stanza.ide](stanza)
+                    del self.response_cbs[stanza.ide]
                 else:
 
                     threading.Thread(
@@ -1682,3 +1447,348 @@ class Monitor:
         logging.debug("object: {}".format(obj))
 
         return
+
+class WrongStanzaKind(Exception): pass
+
+class WrongErrorStanzaStructure(Exception): pass
+
+
+def stanza_from_element(element):
+
+    ret = None
+
+    tag_parsed = lxml.etree.QName(element)
+
+    if not tag_parsed:
+        ret = 1
+
+    else:
+
+        ns = tag_parsed.namespace
+        tag = tag_parsed.localname
+
+        if not ns in ['jabber:client', 'jabber:server']:
+            ret = 2
+        else:
+
+            if not tag in ['message', 'iq', 'presence']:
+                ret = 3
+            else:
+
+                kind = tag
+
+                ide = element.get('id')
+                jid_from = element.get('from')
+                jid_to = element.get('to')
+                typ = element.get('type')
+                xmllang = element.get('xml:lang')
+
+                body = element
+
+                ret = Stanza(
+                    kind,
+                    ide,
+                    jid_from,
+                    jid_to,
+                    typ,
+                    xmllang,
+                    body
+                    )
+
+    return ret
+
+
+def stanza_tpl(
+    kind=None,
+    ide=None,
+    typ=None,
+    jid_from=None,
+    jid_to=None,
+    xmllang=None,
+    body=None
+    ):
+
+    """
+    Template for generating stanzas
+
+    body can be one of (bytes, str, lxml.etree._Element, list,)
+
+    if body is bytes, it's transformed to str
+
+    if body is str, it's used as is
+
+    if body is lxml.etree._Element or list, it's items must be in set of
+    (bytes, str, lxml.etree._Element, StanzaElement,)
+
+    if body is list of items:
+
+        if list item is bytes or str, it is treated as described for body
+        (above)
+
+        if list item is lxml.etree._Element, it is rendered with
+        lxml.etree.tostring()
+
+        if list item is StanzaElement instance, it's .to_str() method is used to
+        make string of it
+
+
+
+        in case when body is list, all it's stringified items summarized to
+        single string
+
+    """
+
+    ide_t = ''
+    if ide:
+        ide_t = ' id="{}"'.format(xml.sax.saxutils.escape(ide))
+
+    typ_t = ''
+    if typ:
+        typ_t = ' type="{}"'.format(xml.sax.saxutils.escape(typ))
+
+    jid_from_t = ''
+    if jid_from:
+        jid_from_t = ' from="{}"'.format(xml.sax.saxutils.escape(jid_from))
+
+    jid_to_t = ''
+    if jid_to:
+        jid_to_t = ' to="{}"'.format(xml.sax.saxutils.escape(jid_to))
+
+    xmllang_t = ''
+    if xmllang:
+        xmllang_t = ' xml:lang="{}"'.format(xml.sax.saxutils.escape(xmllang))
+
+    body_t = ''
+
+    if body != None:
+
+        if not isinstance(body, (bytes, str, lxml.etree._Element, list,)):
+            raise TypeError("body must be None, bytes, str or lxml.etree._Element, list")
+
+        if isinstance(body, (lxml.etree._Element, list,)):
+
+            for i in body:
+
+                if isinstance(i, StanzaElement):
+                    body_t += i.to_str()
+
+                if isinstance(i, lxml.etree._Element):
+                    body_t += str(lxml.etree.tostring(i), 'utf-8')
+
+                if isinstance(i, bytes):
+                    body_t += str(i, 'utf-8')
+
+                if isinstance(i, str):
+                    body_t += i
+
+
+        if isinstance(body, bytes):
+
+            body_t = str(body, 'utf-8')
+
+        if isinstance(body, str):
+
+            body_t = body
+
+    ret = '<{kind}{ide_t}{typ_t}{jid_from_t}{jid_to_t}{xmllang_t}>{body_t}</{kind}>'.format(
+        kind=xml.sax.saxutils.escape(kind),
+        ide_t=ide_t,
+        typ_t=typ_t,
+        jid_from_t=jid_from_t,
+        jid_to_t=jid_to_t,
+        xmllang_t=xmllang_t,
+        body_t=body_t
+        )
+
+    return ret
+
+
+def start_stream(
+    jid_from,
+    jid_to,
+    version='1.0',
+    xmllang='en',
+    xmlns='jabber:client',
+    xmlns_stream='http://etherx.jabber.org/streams'
+    ):
+
+    """
+    Standard XMPP stream begin template
+    """
+
+    ret = """\
+<?xml version="1.0"?>\
+ <stream:stream from="{jid_from}" to="{jid_to}" version="{version}"\
+ xml:lang="{xmllang}" xmlns="{xmlns}"\
+ xmlns:stream="{xmlns_stream}">""".format(
+        jid_from=xml.sax.saxutils.escape(jid_from),
+        jid_to=xml.sax.saxutils.escape(jid_to),
+        version=xml.sax.saxutils.escape(version),
+        xmllang=xml.sax.saxutils.escape(xmllang),
+        xmlns=xml.sax.saxutils.escape(xmlns),
+        xmlns_stream=xml.sax.saxutils.escape(xmlns_stream)
+        )
+
+    return ret
+
+def stop_stream():
+    """
+    Standard XMPP stream end template
+    """
+    return '</stream:stream>'
+
+def starttls():
+    """
+    Standard XMPP TLS layer start text
+    """
+    return '<starttls xmlns="urn:ietf:params:xml:ns:xmpp-tls"/>'
+
+def bind(typ='resource', value=None):
+
+    """
+    Template for binding client to resource on server
+    """
+
+    if not typ in ['resource', 'fulljid']:
+        raise ValueError("Wrong bind type")
+
+    bind_value = ''
+    if value:
+
+        tag_name = ''
+
+        if typ == 'resource':
+            tag_name = 'resource'
+
+        elif typ == 'fulljid':
+            tag_name = 'jid'
+
+        bind_value = '<{tag_name}>{value}</{tag_name}>'.format(
+            value=xml.sax.saxutils.escape(value),
+            tag_name=tag_name
+            )
+
+    ret = '<bind xmlns="urn:ietf:params:xml:ns:xmpp-bind">{}</bind>'.format(
+        bind_value
+        )
+
+    return ret
+
+def session():
+    """
+    Standard XMPP session begin text
+    """
+    return '<session xmlns="urn:ietf:params:xml:ns:xmpp-session"/>'
+
+
+def jid_from_string(in_str):
+    """
+    Try to convert string to JID instance. Returns None in case of error.
+    """
+
+    ret = None
+
+    res = re.match(
+        r'^(?P<localpart>.+?)@(?P<domainpart>.+?)(/(?P<resourcepart>.+?))?$',
+        in_str
+        )
+
+    if res:
+
+        if len(res.group('localpart')) > 32:
+
+            ret = None
+
+        else:
+
+            try:
+                ret = JID(
+                    res.group('localpart'),
+                    res.group('domainpart'),
+                    res.group('resourcepart')
+                    )
+
+            except:
+                ret = None
+
+    return ret
+
+def determine_stream_error(xml_element):
+
+
+    """
+    Returns None if not isinstance(xml_element, lxml.etree.Element)
+
+    Returns False if not {http://etherx.jabber.org/streams}error
+
+    Returns dict(name='text', text='text') with name and text as described in
+    paragraph 4.9. of rfc-6120 in case of successful error recognition
+
+    dict['name'] can have additionally one of two special values, both of which
+    means standard violation thus presume some kind of xmpp error:
+        'non-standard-error-name' - issuer tries supply nonstandard name
+        'error-name-absent'       - issuer did not supplied error name
+    """
+
+    ret = None
+
+    if not isinstance(xml_element, lxml.etree.Element):
+        ret = False
+
+    else:
+
+        if xml_element.name == '{http://etherx.jabber.org/streams}error':
+
+            error_name = None
+            error_text = None
+
+            for i in xml_element:
+
+                parsed_qn = lxml.etree.QName(i)
+                ns = parsed_qn.namespace
+                tag = parsed_qn.localname
+
+                if tag == 'text':
+                    if ns == 'http://etherx.jabber.org/streams':
+                        error_text = i.text
+                else:
+                    if ns == 'http://etherx.jabber.org/streams':
+                        error_name = tag
+
+                        if not error_name in STREAM_ERROR_NAMES:
+                            error_name = 'non-standard-error-name'
+
+            if not error_name:
+                error_name = 'error-name-absent'
+
+            ret = dict(
+                name=error_name,
+                text=error_text
+                )
+
+    return ret
+
+def determine_stanza_error(stanza):
+
+    ret = None
+
+    if stanza.typ == 'error':
+
+        e1 = stanza.find('error')
+
+        if e1 == None:
+            raise WrongErrorStanzaStructure("error Element not found")
+
+        if len(e1) == 0:
+            raise WrongErrorStanzaStructure("error Element has no error tag")
+
+        error_type = e1.get('type')
+
+        e2 = e1[0]
+
+        error = e2.tag
+
+        ret = (error_type, error,)
+
+    return ret
+

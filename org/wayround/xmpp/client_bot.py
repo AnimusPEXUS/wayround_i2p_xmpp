@@ -1,6 +1,6 @@
 
 """
-TaskTracker XMPP bot of WayRound.ORG
+XMPP bot
 """
 
 import logging
