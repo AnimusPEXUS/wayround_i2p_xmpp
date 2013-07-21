@@ -1133,9 +1133,14 @@ class Driver:
     """
     Interface for writing feature drivers
 
-    The only one method which will be used by external entities will be 'drive'
-    which must wait until all operations done and must return result.
+    One of methods which will be used by external entities will be 'drive' which
+    must wait until all operations done and must return result.
     """
+
+    def __init__(self):
+
+        self.title = 'Untitled'
+        self.description = 'This driver has no description'
 
     def drive(self, obj):
 
@@ -1144,6 +1149,8 @@ class Driver:
         """
 
         return 'success'
+
+
 
 
 class StanzaElement: pass
@@ -1792,3 +1799,6 @@ def determine_stanza_error(stanza):
 
     return ret
 
+def is_features_element(obj):
+    return (isinstance(obj, lxml.etree.Element)
+        and obj.tag == '{http://etherx.jabber.org/streams}features')
