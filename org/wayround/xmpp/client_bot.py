@@ -200,13 +200,19 @@ class Bot:
         self._driven = False
         self._stream_in = False
         self._stream_out = False
+
+        if not init:
+            self._features_recieved.set()
+
         self._features_recieved = threading.Event()
+
         self._stop_flag = False
 
         self._stopping = False
         self._starting = False
 
         self._commands = {}
+        self._last_features = None
 
     def set_commands(self, commands):
 
@@ -358,23 +364,23 @@ class Bot:
                                                 self._inbound_stanzas
                                                 )
 
-                                            self.stanza_processor.send(
-                                                org.wayround.xmpp.core.Stanza(
-                                                    kind='presence',
-                                                    jid_from=self.jid.full(),
-                                                    body='<show>online</show><status>online</status>'
-                                                    )
-                                                )
+#                                            self.stanza_processor.send(
+#                                                org.wayround.xmpp.core.Stanza(
+#                                                    kind='presence',
+#                                                    jid_from=self.jid.full(),
+#                                                    body='<show>online</show><status>online</status>'
+#                                                    )
+#                                                )
 
-                                            self.stanza_processor.send(
-                                                org.wayround.xmpp.core.Stanza(
-                                                    kind='message',
-                                                    typ='chat',
-                                                    jid_from=self.jid.full(),
-                                                    jid_to='animus@wayround.org',
-                                                    body='<body>TaskTracker bot is now online</body><subject>WOW!</subject>'
-                                                    )
-                                                )
+#                                            self.stanza_processor.send(
+#                                                org.wayround.xmpp.core.Stanza(
+#                                                    kind='message',
+#                                                    typ='chat',
+#                                                    jid_from=self.jid.full(),
+#                                                    jid_to='animus@wayround.org',
+#                                                    body='<body>TaskTracker bot is now online</body><subject>WOW!</subject>'
+#                                                    )
+#                                                )
 
 # TODO: move to self.stop()
 #                                            try:

@@ -13,7 +13,6 @@ import lxml.etree
 import org.wayround.utils.stream
 
 import org.wayround.xmpp.core
-import org.wayround.xmpp.client_stream_feature_drivers
 
 
 class XMPPC2SClient:
@@ -156,7 +155,7 @@ class XMPPC2SClient:
                     )
                 logging.debug("Sending end of stream")
                 self.io_machine.send(
-                    org.wayround.xmpp.core.stop_stream()
+                    org.wayround.xmpp.core.stop_stream_tpl()
                     )
                 self._stream_stop_sent = True
 
@@ -253,119 +252,823 @@ self.io_machine.stat() == {}
         if event == 'stop':
             self._input_stream_closed_event.set()
 
+class STARTTLSClientDriver(org.wayround.xmpp.core.Driver):
 
-def client_starttls(
-    client,
-    jid,
-    connection_info,
-    features_element
-    ):
+    """
+    Driver for starting STARTTLS on client side conection part
+    """
 
-    i = org.wayround.xmpp.client_stream_feature_drivers.STARTTLSClientDriver(
-        jid,
-        connection_info
+    def __init__(self, controller_callback):
+
+        """
+        Initiates object using :meth:`_clear`
+
+        controller_callback must be a callable with following parameters:
+
+            - this object reference
+            - status:
+                possible statuses:
+
+
+                    corresponding instances needed:
+                    'sock_streamer'
+                    'io_machine'
+                    'connection_events_hub'
+                    'input_stream_events_hub'
+                    'input_stream_objects_hub'
+                    'output_stream_events_hub'
+
+                    others:
+                    'bare_jid'
+                        bare jid string is required
+
+                    'connection_info_host'
+                        'host' from connection info is required
+
+                    'bare_jid_from'
+
+                    'bare_jid_to'
+
+            - dict with additional status specific data
+
+            must return True, False. return None in case of error
+        """
+        self.controller_callback = controller_callback
+        self._clear(init=True)
+
+
+    def _set_objects(self):
+
+        """
+        Set objects to work with
+
+        :param sock_streamer: instance of class
+            :class:`org.wayround.utils.stream.SocketStreamer`
+
+        :param io_machine: instance of class
+            :class:`XMPPIOStreamRWMachine`
+
+        :param connection_events_hub: hub to route connection events
+            :class:`ConnectionEventsHub`
+
+        :param input_stream_events_hub: hub to route input stream events
+            :class:`StreamEventsHub`
+
+        :param output_stream_events_hub: hub to route output stream events
+            :class:`StreamEventsHub`
+        """
+
+        self._sock_streamer = self.controller_callback(
+            self, 'sock_streamer', None
+            )
+
+        self._io_machine = self.controller_callback(
+            self, 'io_machine', None
+            )
+
+        self._connection_events_hub = self.controller_callback(
+            self, 'connection_events_hub', None
+            )
+
+        self._input_stream_events_hub = self.controller_callback(
+            self, 'input_stream_events_hub', None)
+
+        self._input_stream_objects_hub = self.controller_callback(
+            self, 'input_stream_objects_hub', None
+            )
+
+        self._output_stream_events_hub = self.controller_callback(
+            self, 'output_stream_events_hub', None
+            )
+
+        return
+
+    def _clear(self, init=False):
+        """
+        Clears instance, setting default values for all attributes
+        """
+        self._sock_streamer = None
+        self._io_machine = None
+        self._input_stream_events_hub = None
+        self._input_stream_objects_hub = None
+        self._output_stream_events_hub = None
+
+        self._driving = False
+        self._exit_event = threading.Event()
+        self._exit_event.clear()
+
+        self.status = 'just created'
+
+        self.result = None
+
+        return
+
+    def _start(self):
+
+        """
+        Started by :meth:`self.drive`
+
+        If not already ``self._driving``, then drive!: register own waiters for
+
+        * ``self._connection_events_hub`` - :meth:`_connection_events_waiter`
+        * ``self._input_stream_events_hub`` - :meth:`_input_stream_events_waiter`
+        * ``self._input_stream_objects_hub`` - :meth:`_stream_objects_waiter`
+        """
+
+        if not self._driving:
+
+            self._set_objects()
+
+            self._driving = True
+
+            logging.debug("STARTTLS Driver driving now! B-)")
+
+            self._connection_events_hub.set_waiter(
+                'tls_driver', self._connection_events_waiter
+                )
+
+            self._input_stream_events_hub.set_waiter(
+                'tls_driver', self._input_stream_events_waiter
+                )
+
+            self._input_stream_objects_hub.set_waiter(
+                'tls_driver', self._stream_objects_waiter
+                )
+
+        return
+
+
+    def _stop(self):
+
+        """
+        If ``self._driving``, then stop it. And don't listen hubs any more!
+        """
+
+        if self._driving:
+
+            self._connection_events_hub.del_waiter('tls_driver')
+
+            self._input_stream_events_hub.del_waiter('tls_driver')
+
+            self._input_stream_objects_hub.del_waiter('tls_driver')
+
+            logging.debug("STARTTLS Driver stopped with result `{}'".format(self.result))
+
+            self._driving = False
+
+            self._exit_event.set()
+
+        return
+
+    def stop(self):
+
+        """
+        Stop driver work. Just calls :meth:`_stop`
+        """
+        self._stop()
+
+        return
+
+    def can_drive(self, obj):
+        return (org.wayround.xmpp.core.is_features_element(obj)
+            and obj.find('{urn:ietf:params:xml:ns:xmpp-tls}starttls') != None)
+
+    def drive(self, obj):
+
+        """
+        Drives to STARTTLS, basing on ``obj``, which must be an XML element
+        instance with features.
+
+        If ``obj.tag`` is ``{http://etherx.jabber.org/streams}features`` and
+        it is contains ``{urn:ietf:params:xml:ns:xmpp-tls}starttls`` element,
+        then:
+
+        #. switch ``self.status`` to ``'requesting tls'``
+
+        #. run :meth:`_start`
+
+        #. start STARTTLS sequence sending starttls element
+
+        #. wait while ``self._driving`` == True
+
+        #. return ``self.result``
+
+        :rtype: ``str``
+
+        Return can be one of following values:
+
+        =================== ============================================
+        value               meaning
+        =================== ============================================
+        'no tls'            TLS not proposed by server
+        features_object     TLS layer engaged
+        'stream stopped'    stream was closed by server
+        'stream error'      some stream error encountered
+        'failure'           server returned
+                            ``{urn:ietf:params:xml:ns:xmpp-tls}failure``
+        'response error'    wrong server response
+        'programming error' if you received this - mail me a bug report
+        =================== ============================================
+        """
+
+
+        if self.can_drive(obj):
+
+            self._start()
+
+            self.status = 'requesting tls'
+
+            logging.debug("Sending STARTTLS request")
+            self._io_machine.send(
+                org.wayround.xmpp.core.starttls_tpl()
+                )
+
+            self._exit_event.wait()
+
+        else:
+
+            logging.debug("TLS not proposed")
+
+            self.result = 'no tls'
+
+        ret = self.result
+
+        return ret
+
+    def _connection_events_waiter(self, event, sock):
+
+        """
+        If driving, then look for event == ``'ssl wrapped'`` and then:
+
+        #. restart input machine with driven socket streamer, input event and
+           objects hubs;
+
+        #. restart output machine with driven streamer and output event hub
+
+        #. wait till machines working
+
+        #. restart stream with start_stream command
+        """
+
+        if self._driving:
+
+            logging.debug("_connection_events_waiter :: `{}' `{}'".format(event, sock))
+
+            if event == 'ssl wrapped':
+
+                logging.debug("Socket streamer threads restarted")
+                logging.debug("Restarting Machines")
+                self._io_machine.restart_with_new_objects(
+                    self._sock_streamer,
+                    self._input_stream_events_hub.dispatch,
+                    self._input_stream_objects_hub.dispatch,
+                    self._output_stream_events_hub.dispatch,
+                    None
+                    )
+
+                logging.debug("Waiting machines restart")
+                self._io_machine.wait('working')
+                logging.debug("Machines restarted")
+
+                logging.debug("Starting new stream")
+                self._io_machine.send(
+                    org.wayround.xmpp.core.start_stream_tpl(
+                        jid_from=self.controller_callback(self, 'bare_jid_from', None),
+                        jid_to=self.controller_callback(self, 'bare_jid_to', None)
+                        )
+                    )
+
+        return
+
+
+    def _input_stream_events_waiter(self, event, attrs=None):
+
+        if self._driving:
+
+            logging.debug(
+                "_input_stream_events_waiter :: `{}', `{}'".format(
+                    event,
+                    attrs
+                    )
+                )
+
+            if event == 'start':
+
+                self.result = 'success'
+
+            elif event == 'stop':
+
+                self.result = 'stream stopped'
+
+                self._stop()
+
+            elif event == 'error':
+
+                self.result = 'stream error'
+
+                self._stop()
+
+
+        return
+
+    def _stream_objects_waiter(self, obj):
+
+        if self._driving:
+
+            logging.debug("_stream_objects_waiter :: `{}'".format(obj))
+
+            if org.wayround.xmpp.core.is_features_element(obj):
+                self.result = obj
+                self._stop()
+            else:
+
+                if self.status == 'requesting tls':
+
+                    if obj.tag.startswith('{urn:ietf:params:xml:ns:xmpp-tls}'):
+
+                        self.tls_request_result = obj.tag
+
+                        if self.tls_request_result == '{urn:ietf:params:xml:ns:xmpp-tls}proceed':
+
+                            self._sock_streamer.start_ssl()
+
+                        else:
+
+                            self.result = 'failure'
+
+                            self._stop()
+
+                else:
+                    self.result = 'programming error'
+
+                    self._stop()
+
+        return
+
+
+class SASLClientDriver(org.wayround.xmpp.core.Driver):
+
+    """
+    Driver for authenticating client on server
+    """
+
+    def __init__(self, controller_callback):
+
+        """
+        Initiates object using :meth:`_clear`
+
+        controller_callback must be a callable with following parameters:
+
+            - this object reference
+            - status. possible statuses are:
+                possible statuses:
+
+                    corresponding instances needed:
+                    'sock_streamer'
+                    'io_machine'
+                    'connection_events_hub'
+                    'input_stream_events_hub'
+                    'input_stream_objects_hub'
+                    'output_stream_events_hub'
+
+                    others:
+                    'auth',
+
+                        TODO: can't remember probably same as 'response'
+
+                    'response',
+
+                        server responses to client (this is to be used in server
+                        implementations)
+
+                    'challenge',
+                        server asks controller
+
+                        data: 'text' - string with challenge
+                        return: string with response
+
+                    'success',
+                        auth is ok
+
+                        return value does not matter
+
+                    'failure',
+                        auth failed
+                        data:
+                            'condition': text
+                            'text': None or str
+
+                        return value does not matter
+
+                    'mechanism_name'
+                        must return string containing name of one of client
+                        mechanisms supported by GSASL
+
+                    'bare_jid_from'
+
+                    'bare_jid_to'
+
+            - dict with additional status specific data
+        """
+
+        self.controller_callback = controller_callback
+        self._clear(init=True)
+
+
+    def _set_objects(self):
+
+        """
+        Set objects to work with
+
+        :param sock_streamer: instance of class
+            :class:`org.wayround.utils.stream.SocketStreamer`
+
+        :param io_machine: instance of class
+            :class:`XMPPIOStreamRWMachine`
+
+        :param connection_events_hub: hub to route connection events
+            :class:`ConnectionEventsHub`
+
+        :param input_stream_events_hub: hub to route input stream events
+            :class:`StreamEventsHub`
+
+        :param output_stream_events_hub: hub to route output stream events
+            :class:`StreamEventsHub`
+        """
+
+        self._sock_streamer = self.controller_callback(
+            self, 'sock_streamer', None
+            )
+
+        self._io_machine = self.controller_callback(
+            self, 'io_machine', None
+            )
+
+        self._connection_events_hub = self.controller_callback(
+            self, 'connection_events_hub', None
+            )
+
+        self._input_stream_events_hub = self.controller_callback(
+            self, 'input_stream_events_hub', None)
+
+        self._input_stream_objects_hub = self.controller_callback(
+            self, 'input_stream_objects_hub', None
+            )
+
+        self._output_stream_events_hub = self.controller_callback(
+            self, 'output_stream_events_hub', None
+            )
+
+        return
+
+    def _clear(self, init=False):
+        """
+        Clears instance, setting default values for all attributes
+        """
+
+        self.mechanism_name = None
+        self._sock_streamer = None
+        self._io_machine = None
+        self._input_stream_events_hub = None
+        self._input_stream_objects_hub = None
+        self._output_stream_events_hub = None
+
+        self._driving = False
+        self._exit_event = threading.Event()
+        self._exit_event.clear()
+
+        self.status = 'just created'
+
+        self.result = None
+
+        return
+
+    def _start(self):
+
+        """
+        Started by :meth:`self.drive`
+
+        If not already ``self._driving``, then drive!: register own waiters for
+
+        * ``self._connection_events_hub`` - :meth:`_connection_events_waiter`
+        * ``self._input_stream_events_hub`` - :meth:`_input_stream_events_waiter`
+        * ``self._input_stream_objects_hub`` - :meth:`_stream_objects_waiter`
+        """
+
+        if not self._driving:
+
+            self._driving = True
+
+            self._set_objects()
+
+            logging.debug("SASL Driver driving now! B-)")
+
+            self._connection_events_hub.set_waiter(
+                'sasl_driver', self._connection_events_waiter
+                )
+
+            self._input_stream_events_hub.set_waiter(
+                'sasl_driver', self._input_stream_events_waiter
+                )
+
+            self._input_stream_objects_hub.set_waiter(
+                'sasl_driver', self._stream_objects_waiter
+                )
+
+        return
+
+
+    def _stop(self):
+
+        """
+        If ``self._driving``, then stop it. And don't listen hubs any more!
+        """
+
+        if self._driving:
+
+            self._connection_events_hub.del_waiter('sasl_driver')
+
+            self._input_stream_events_hub.del_waiter('sasl_driver')
+
+            self._input_stream_objects_hub.del_waiter('sasl_driver')
+
+            logging.debug("SASL Driver stopped with result `{}'".format(self.result))
+
+            self._driving = False
+
+            self._exit_event.set()
+
+        return
+
+    def stop(self):
+
+        """
+        Stop driver work. Just calls :meth:`_stop`
+        """
+        self._stop()
+
+        return
+
+    def can_drive(self, obj):
+
+        ret = False
+
+        if org.wayround.xmpp.core.is_features_element(obj):
+
+            mechanisms_element = obj.find('{urn:ietf:params:xml:ns:xmpp-sasl}mechanisms')
+
+            if mechanisms_element != None:
+
+                mechanisms = mechanisms_element.findall(
+                    '{urn:ietf:params:xml:ns:xmpp-sasl}mechanism'
+                    )
+
+                _mechanisms = []
+                for i in mechanisms:
+                    _mechanisms.append(i.text)
+
+                mechanisms = _mechanisms
+
+
+                logging.debug("Proposed mechanisms are:")
+                for i in mechanisms:
+                    logging.debug("    {}".format(i))
+
+                self.mechanism_name = self.controller_callback(self, 'mechanism_name', None)
+                sel_mechanism = self.mechanism_name
+
+                if sel_mechanism in mechanisms:
+                    ret = True
+
+        return ret
+
+    def drive(self, obj):
+
+        if not self.can_drive(obj):
+            self.result = "can't drive"
+        else:
+
+            self._start()
+
+            logging.debug("Sending SASL mechanism start request")
+
+            self.status = 'waiting for server sasl response'
+
+            self._io_machine.send(
+                '<auth xmlns="urn:ietf:params:xml:ns:xmpp-sasl" mechanism="{}"/>'.format(
+                    self.mechanism_name
+                    )
+                )
+
+            self._exit_event.wait()
+
+        ret = self.result
+
+        return ret
+
+    def _connection_events_waiter(self, event, sock):
+
+        if self._driving:
+
+            logging.debug("_connection_events_waiter :: `{}' `{}'".format(event, sock))
+
+        return
+
+
+    def _input_stream_events_waiter(self, event, attrs=None):
+
+        if self._driving:
+
+            logging.debug(
+                "_input_stream_events_waiter :: `{}', `{}'".format(
+                    event,
+                    attrs
+                    )
+                )
+
+            if event == 'start':
+
+                self.result = 'success'
+
+            elif event == 'stop':
+
+                self.result = 'stream stopped'
+
+                self._stop()
+
+            elif event == 'error':
+
+                self.result = 'stream error'
+
+                self._stop()
+
+
+        return
+
+    def _stream_objects_waiter(self, obj):
+
+        if self._driving:
+
+            logging.debug("_stream_objects_waiter :: `{}'".format(obj))
+
+            if org.wayround.xmpp.core.is_features_element(obj):
+                logging.error("SASL driver received stream features")
+                self.result = obj
+                self._stop()
+            else:
+
+                if self.status == 'waiting for server sasl response':
+
+                    if obj.tag.startswith('{urn:ietf:params:xml:ns:xmpp-sasl}'):
+
+                        if obj.tag == '{urn:ietf:params:xml:ns:xmpp-sasl}challenge':
+
+                            response = self.controller_callback(
+                                self, 'challenge', {'text': obj.text}
+                                )
+
+                            self._io_machine.send(
+                                '<response xmlns="urn:ietf:params:xml:ns:xmpp-sasl">{}</response>'.format(response)
+                                )
+
+                        elif obj.tag == '{urn:ietf:params:xml:ns:xmpp-sasl}success':
+
+                            threading.Thread(
+                                target=self.controller_callback,
+                                args=(self, 'success', None,),
+                                name="SASL auth success signal"
+                                ).start()
+
+                            self.result = 'success'
+
+                            logging.debug("Authentication successful")
+
+                            logging.debug("Restarting Machines")
+                            self._io_machine.restart_with_new_objects(
+                                self._sock_streamer,
+                                self._input_stream_events_hub.dispatch,
+                                self._input_stream_objects_hub.dispatch,
+                                self._output_stream_events_hub.dispatch,
+                                None
+                                )
+
+                            logging.debug("Waiting machines restart")
+                            self._io_machine.wait('working')
+                            logging.debug("Machines restarted")
+
+                            logging.debug("Starting new stream")
+                            self._io_machine.send(
+                                org.wayround.xmpp.core.start_stream_tpl(
+                                    jid_from=self.controller_callback(
+                                        self, 'bare_jid_from', None
+                                        ),
+                                    jid_to=self.controller_callback(
+                                        self, 'bare_jid_to', None
+                                        )
+                                    )
+                                )
+
+#                            self.stop()
+
+                        elif obj.tag == '{urn:ietf:params:xml:ns:xmpp-sasl}failure':
+
+                            condition = None
+                            text = None
+                            for i in obj:
+
+                                print("condition tag: {}".format(i.tag))
+
+                                if i.tag != 'text':
+                                    condition = i.tag
+                                    break
+
+                            for i in obj:
+
+                                print("condition tag: {}".format(i.tag))
+
+                                if i.tag == 'text':
+                                    text = i.text
+                                    break
+
+                            threading.Thread(
+                                target=self.controller_callback,
+                                args=(
+                                    self,
+                                    'failure',
+                                    {'condition':condition,
+                                     'text': text
+                                     },
+                                      ),
+                                name="SASL auth failure signal"
+                                ).start()
+
+                            self.result = 'failure'
+
+                            self.stop()
+
+        return
+
+def bind(stanza_processor, resource=None, wait=True):
+
+    """
+    Driver for resource binding
+
+    returns either resulted jid either determine_stanza_error() result
+
+    if returned stanza has wrong stracture - None is returned
+    """
+
+    binding_stanza = org.wayround.xmpp.core.Stanza(
+        kind='iq',
+        typ='set',
+        body=org.wayround.xmpp.core.bind_tpl(
+            typ='resource',
+            value=resource
+            )
         )
 
-    i.set_objects(
-        sock_streamer=client.sock_streamer,
-        io_machine=client.io_machine,
-        connection_events_hub=client.connection_events_hub,
-        input_stream_events_hub=client.input_stream_events_hub,
-        input_stream_objects_hub=client.input_stream_objects_hub,
-        output_stream_events_hub=client.output_stream_events_hub
+    ret = stanza_processor.send(
+        binding_stanza,
+        wait=wait
         )
 
-    ret = i.drive(features_element)
+    if org.wayround.xmpp.core.is_stanza(ret):
+        if ret.is_error():
+            ret = ret.determine_error()
+        else:
+
+            bind_tag = ret.body.find('{urn:ietf:params:xml:ns:xmpp-bind}bind')
+            ret = None
+
+            if bind_tag != None:
+
+                jid_tag = bind_tag.find('{urn:ietf:params:xml:ns:xmpp-bind}jid')
+
+                if jid_tag != None:
+
+                    ret = jid_tag.text
+                    ret = ret.strip()
+
 
     return ret
 
-def client_sasl_auth(
-    client,
-    cb_mech_select,
-    cb_auth,
-    cb_response,
-    cb_challenge,
-    cb_success,
-    cb_failure,
-    cb_text,
-    jid,
-    connection_info,
-    features_element
-    ):
+def session(stanza_processor, jid_to, wait=True):
 
-    i = org.wayround.xmpp.client_stream_feature_drivers.SASLClientDriver(
-        cb_mech_select,
-        cb_auth,
-        cb_response,
-        cb_challenge,
-        cb_success,
-        cb_failure,
-        cb_text,
-        jid,
-        connection_info
+    """
+    Driver for starting session. This is required by old protocol version
+    (rfc 3920)
+    """
+
+    session_starting_stanza = org.wayround.xmpp.core.Stanza(
+        kind='iq',
+        typ='set',
+        jid_to=jid_to,
+        body=org.wayround.xmpp.core.session_tpl()
         )
 
-    i.set_objects(
-        sock_streamer=client.sock_streamer,
-        io_machine=client.io_machine,
-        connection_events_hub=client.connection_events_hub,
-        input_stream_events_hub=client.input_stream_events_hub,
-        input_stream_objects_hub=client.input_stream_objects_hub,
-        output_stream_events_hub=client.output_stream_events_hub
+    ret = stanza_processor.send(
+        session_starting_stanza,
+        wait=wait
         )
-
-    ret = i.drive(features_element)
-
-    return ret
-
-def client_resource_bind(
-    client,
-    jid,
-    connection_info,
-    features_element,
-    stanza_processor
-    ):
-
-    i = org.wayround.xmpp.client_stream_feature_drivers.ResourceBindClientDriver(
-        jid
-        )
-
-    i.set_objects(
-        sock_streamer=client.sock_streamer,
-        io_machine=client.io_machine,
-        connection_events_hub=client.connection_events_hub,
-        input_stream_events_hub=client.input_stream_events_hub,
-        input_stream_objects_hub=client.input_stream_objects_hub,
-        output_stream_events_hub=client.output_stream_events_hub,
-        stanza_processor=stanza_processor
-        )
-
-    ret = i.drive(features_element)
-
-    return ret
-
-def client_session_start(
-    client,
-    jid,
-    connection_info,
-    features_element,
-    stanza_processor
-    ):
-
-    i = org.wayround.xmpp.client_stream_feature_drivers.SessionClientDriver(
-        jid
-        )
-
-    i.set_objects(
-        sock_streamer=client.sock_streamer,
-        io_machine=client.io_machine,
-        connection_events_hub=client.connection_events_hub,
-        input_stream_events_hub=client.input_stream_events_hub,
-        input_stream_objects_hub=client.input_stream_objects_hub,
-        output_stream_events_hub=client.output_stream_events_hub,
-        stanza_processor=stanza_processor
-        )
-
-    ret = i.drive(features_element)
 
     return ret

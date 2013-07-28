@@ -41,6 +41,45 @@ STREAM_ERROR_NAMES = [
     'unsupported-version'
     ]
 
+SASL_ERRORS = [
+    'aborted',
+    'account-disabled',
+    'credentials-expired',
+    'encryption-required',
+    'incorrect-encoding',
+    'invalid-authzid',
+    'invalid-mechanism',
+    'malformed-request',
+    'mechanism-too-weak',
+    'not-authorized',
+    'temporary-auth-failure'
+    ]
+
+STANZA_ERROR_NAMES = [
+    'bad-request',
+    'conflict',
+    'feature-not-implemented',
+    'forbidden',
+    'gone',
+    'internal-server-error',
+    'item-not-found',
+    'jid-malformed',
+    'not-acceptable',
+    'not-allowed',
+    'not-authorized',
+    'policy-violation',
+    'recipient-unavailable',
+    'redirect',
+    'registration-required',
+    'remote-server-not-found',
+    'remote-server-timeout',
+    'resource-constraint',
+    'service-unavailable',
+    'subscription-required',
+    'undefined-condition',
+    'unexpected-request'
+    ]
+
 class XMPPStreamSoftError:
 
     """
@@ -745,7 +784,7 @@ class XMPPOutputStreamWriter:
             snd_obj = obj
         elif isinstance(obj, str):
             snd_obj = bytes(obj, encoding='utf-8')
-        elif isinstance(obj, lxml.etree.Element):
+        elif type(obj) == lxml.etree._Element:
             snd_obj = bytes(
                 lxml.etree.tostring(
                     obj,
@@ -754,7 +793,7 @@ class XMPPOutputStreamWriter:
                 encoding='utf-8'
                 )
         else:
-            raise Exception("Wrong obj type. Can be bytes, str or lxml.etree.Element")
+            raise Exception("Wrong obj type. Can be bytes, str or lxml.etree._Element")
 
 
         self._write_to.write(snd_obj)
@@ -1212,6 +1251,15 @@ class Stanza:
             self.body
             )
 
+    def determine_error(self):
+        return determine_stanza_error(self)
+
+    def is_error(self):
+        """
+        Is stanza of 'error' type
+        """
+        return self.typ == 'error'
+
 class StanzaHub(Hub):
 
     def dispatch(self, obj):
@@ -1265,13 +1313,15 @@ class StanzaProcessor:
 
         if wait == False, wait = 0
 
-        if wait > 0, ide_mode = 'generate_implicit' and cb generated internally
+        if wait == None or wait > 0, then cb must be None
 
-        wait is timeout. it is passed to Event.wait(), so wait == None is wait
-        forever
+        if wait == None or wait > 0, ide_mode = 'generate_implicit' and cb generated internally
 
-        ide_mode can be one of 'from_stanza', 'generate', 'generate_implicit',
-        'implicit'.
+        `wait' is timeout. it is passed to Event.wait(), so wait == None is wait
+        forever. (which can lead to deadlock)
+
+        ide_mode must be in ['from_stanza', 'generate', 'generate_implicit',
+        'implicit'].
 
         if ide_mode == 'from_stanza', then id taken from stanza.
 
@@ -1289,8 +1339,8 @@ class StanzaProcessor:
         if wait == 0, then id of sent stanza is returned (accordingly to
         ide_mode described above)
 
-        if wait > 0, then False is returned in case of timeout, or Stanza object
-        is returned in case of success
+        if wait != 0, then False is returned in case of timeout, or Stanza
+        object is returned in case of success
         """
 
 
@@ -1316,6 +1366,8 @@ class StanzaProcessor:
         if not ide_mode in ['from_stanza', 'generate', 'generate_implicit', 'implicit']:
             raise ValueError("wrong value for ide_mode parameter")
 
+        if isinstance(wait, int) and wait > 0 and cb != None:
+            raise ValueError("`cb' must be None if `wait' > 0")
 
         if ide_mode == 'from_stanza':
             new_stanza_ide = stanza_obj.ide
@@ -1332,7 +1384,7 @@ class StanzaProcessor:
 
         stanza_obj.ide = new_stanza_ide
 
-        if wait != 0:
+        if wait == None or (isinstance(wait, int) and wait > 0):
             cb = self._wait_callback
 
         if cb:
@@ -1344,7 +1396,7 @@ class StanzaProcessor:
         if wait == 0:
             ret = new_stanza_ide
 
-        if wait != 0:
+        if wait == None or (isinstance(wait, int) and wait > 0):
             self._wait_callbacks[stanza_obj.ide] = {
                 'event': threading.Event(),
                 'response': None
@@ -1352,7 +1404,7 @@ class StanzaProcessor:
 
         self._io_machine.send(stanza_obj.to_str())
 
-        if wait != 0:
+        if wait == None or (isinstance(wait, int) and wait > 0):
             wait_res = self._wait_callbacks[stanza_obj.ide]['event'].wait(wait)
 
             if wait_res == False:
@@ -1367,17 +1419,15 @@ class StanzaProcessor:
 
     def delete_callback(self, ide):
 
-        if ide in self.response_cbs:
+        while ide in self.response_cbs:
             del self.response_cbs[ide]
 
         return
 
     def _wait_callback(self, obj):
 
-        ret = obj
-
-        self._wait_callbacks[obj.ide]['response'] = ret
-        self._wait_callbacks[obj.ide]['event'].set
+        self._wait_callbacks[obj.ide]['response'] = obj
+        self._wait_callbacks[obj.ide]['event'].set()
 
         return
 
@@ -1400,11 +1450,7 @@ class StanzaProcessor:
                 )
             )
 
-        if obj.tag in [
-            '{jabber:client}message',
-            '{jabber:client}iq',
-            '{jabber:client}presence'
-            ]:
+        if is_stanza_element(obj):
 
             stanza = stanza_from_element(obj)
 
@@ -1462,12 +1508,16 @@ class WrongErrorStanzaStructure(Exception): pass
 
 def stanza_from_element(element):
 
+    """
+    This function makes Stanza object from stanza of lxml.etree._Element type
+    """
+
     ret = None
 
     tag_parsed = lxml.etree.QName(element)
 
     if not tag_parsed:
-        ret = 1
+        ret = None
 
     else:
 
@@ -1475,11 +1525,11 @@ def stanza_from_element(element):
         tag = tag_parsed.localname
 
         if not ns in ['jabber:client', 'jabber:server']:
-            ret = 2
+            ret = None
         else:
 
             if not tag in ['message', 'iq', 'presence']:
-                ret = 3
+                ret = None
             else:
 
                 kind = tag
@@ -1492,15 +1542,23 @@ def stanza_from_element(element):
 
                 body = element
 
-                ret = Stanza(
-                    kind,
-                    ide,
-                    jid_from,
-                    jid_to,
-                    typ,
-                    xmllang,
-                    body
-                    )
+                try:
+                    ret = Stanza(
+                        kind,
+                        ide,
+                        jid_from,
+                        jid_to,
+                        typ,
+                        xmllang,
+                        body
+                        )
+
+                except WrongStanzaKind:
+                    ret = None
+                except WrongErrorStanzaStructure:
+                    ret = None
+
+
 
     return ret
 
@@ -1569,17 +1627,19 @@ def stanza_tpl(
 
     if body != None:
 
-        if not isinstance(body, (bytes, str, lxml.etree._Element, list,)):
+        if (not isinstance(body, (bytes, str, list,))
+            and not type(body) == lxml.etree._Element):
+
             raise TypeError("body must be None, bytes, str or lxml.etree._Element, list")
 
-        if isinstance(body, (lxml.etree._Element, list,)):
+        if isinstance(body, list) or type(body) == lxml.etree._Element:
 
             for i in body:
 
                 if isinstance(i, StanzaElement):
                     body_t += i.to_str()
 
-                if isinstance(i, lxml.etree._Element):
+                if type(i) == lxml.etree._Element:
                     body_t += str(lxml.etree.tostring(i), 'utf-8')
 
                 if isinstance(i, bytes):
@@ -1610,7 +1670,7 @@ def stanza_tpl(
     return ret
 
 
-def start_stream(
+def start_stream_tpl(
     jid_from,
     jid_to,
     version='1.0',
@@ -1638,19 +1698,19 @@ def start_stream(
 
     return ret
 
-def stop_stream():
+def stop_stream_tpl():
     """
     Standard XMPP stream end template
     """
     return '</stream:stream>'
 
-def starttls():
+def starttls_tpl():
     """
     Standard XMPP TLS layer start text
     """
     return '<starttls xmlns="urn:ietf:params:xml:ns:xmpp-tls"/>'
 
-def bind(typ='resource', value=None):
+def bind_tpl(typ='resource', value=None):
 
     """
     Template for binding client to resource on server
@@ -1681,7 +1741,7 @@ def bind(typ='resource', value=None):
 
     return ret
 
-def session():
+def session_tpl():
     """
     Standard XMPP session begin text
     """
@@ -1720,11 +1780,15 @@ def jid_from_string(in_str):
 
     return ret
 
+jid_from_str = jid_from_string
+str_to_jid = jid_from_string
+string_to_jid = jid_from_string
+
 def determine_stream_error(xml_element):
 
 
     """
-    Returns None if not isinstance(xml_element, lxml.etree.Element)
+    Returns None if not isinstance(xml_element, lxml.etree._Element)
 
     Returns False if not {http://etherx.jabber.org/streams}error
 
@@ -1739,7 +1803,7 @@ def determine_stream_error(xml_element):
 
     ret = None
 
-    if not isinstance(xml_element, lxml.etree.Element):
+    if not type(xml_element) == lxml.etree._Element:
         ret = False
 
     else:
@@ -1777,28 +1841,132 @@ def determine_stream_error(xml_element):
 
 def determine_stanza_error(stanza):
 
+    """
+    If stanza is of error type and has correct structure, return is
+        {
+            'error_type':error_type,
+            'condition':condition,
+            'text':text
+        }
+
+    if `stanza' is stanza and has wrong structure (has no error element),
+        return None
+
+    if `stanza' is not stanza, return None
+
+    if `stanza' is stanza and not of type error, return False
+
+    if returned condition in ['invalid-condition', 'undefined-condition'] stanza
+    must be considered wrong
+    """
+
     ret = None
+    condition = None
+    text = None
+    error_type = None
 
-    if stanza.typ == 'error':
 
-        e1 = stanza.find('error')
+    if not isinstance(stanza, Stanza) and is_stanza_element(stanza):
+        stanza = stanza_from_element(stanza)
 
-        if e1 == None:
-            raise WrongErrorStanzaStructure("error Element not found")
+    if not isinstance(stanza, Stanza):
+        ret = None
+    else:
 
-        if len(e1) == 0:
-            raise WrongErrorStanzaStructure("error Element has no error tag")
+        if stanza.typ == 'error':
 
-        error_type = e1.get('type')
+            e1 = stanza.body.find('error')
 
-        e2 = e1[0]
+            if e1 == None:
+                ret = None
+            else:
 
-        error = e2.tag
+                if len(e1) == 0:
+                    ret = None
+                else:
 
-        ret = (error_type, error,)
+                    error_type = e1.get('type')
+
+                    if not error_type:
+                        ret = None
+
+                    else:
+
+                        for i in e1:
+                            tag_parsed = lxml.etree.QName(i)
+
+                            ns = tag_parsed.namespace
+                            tag = tag_parsed.localname
+
+                            if ns == 'urn:ietf:params:xml:ns:xmpp-stanzas':
+
+                                if tag == 'text':
+                                    text = i.text
+                                    break
+
+                        for i in e1:
+                            tag_parsed = lxml.etree.QName(i)
+
+                            ns = tag_parsed.namespace
+                            tag = tag_parsed.localname
+
+                            if ns == 'urn:ietf:params:xml:ns:xmpp-stanzas':
+
+                                if tag != 'text':
+                                    condition = tag
+                                    break
+
+                        if not condition in STANZA_ERROR_NAMES:
+                            condition = 'invalid-condition'
+
+                        if condition == None:
+                            condition = 'undefined-condition'
+
+                        ret = {
+                            'error_type':error_type,
+                            'condition':condition,
+                            'text':text
+                            }
+
+        else:
+            ret = False
 
     return ret
 
 def is_features_element(obj):
-    return (isinstance(obj, lxml.etree.Element)
+    return (type(obj) == lxml.etree._Element
         and obj.tag == '{http://etherx.jabber.org/streams}features')
+
+def is_stanza_element(obj):
+
+    """
+    Determine is obj is stanza
+    """
+    ret = True
+
+    if not type(obj) == lxml.etree._Element:
+        ret = False
+
+    else:
+
+        tag_parsed = lxml.etree.QName(obj)
+
+        if not tag_parsed:
+            ret = False
+
+        else:
+
+            ns = tag_parsed.namespace
+            tag = tag_parsed.localname
+
+            if not ns in ['jabber:client', 'jabber:server']:
+                ret = False
+            else:
+
+                if not tag in ['message', 'iq', 'presence']:
+                    ret = False
+
+    return ret
+
+def is_stanza(obj):
+    return isinstance(obj, Stanza)
