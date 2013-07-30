@@ -11,6 +11,7 @@ import lxml.etree
 import org.wayround.utils.error
 import org.wayround.utils.stream
 import org.wayround.utils.xml
+import org.wayround.utils.signal
 
 
 STREAM_ERROR_NAMES = [
@@ -809,85 +810,21 @@ class XMPPOutputStreamWriter:
         return
 
 
-
-class Hub():
-
-    def __init__(self):
-
-        self._clear(init=True)
-
-    def _clear(self, init=False):
-
-        self.waiters = {}
-
-    def clear(self):
-
-        self._clear()
-
-    def _dispatch(self, *args, **kwargs):
-
-        w = copy.copy(self.waiters)
-        w_l = list(w.keys())
-        w_l.sort()
-
-        for i in w_l:
-
-            threading.Thread(
-                target=self._waiter_thread,
-                name="`{}' dispatcher to `{}'".format(
-                    type(self).__name__,
-                    i
-                    ),
-                args=(w[i], args, kwargs,),
-                kwargs=dict()
-                ).start()
-
-    def _waiter_thread(self, call, args, kwargs):
-
-        call(*args, **kwargs)
-
-        return
-
-    def set_waiter(self, name, reactor):
-
-        self.waiters[name] = reactor
-
-        return
-
-    def has_waited(self, name):
-        return name in self.waiters
-
-    def get_waiter(self, name):
-
-        ret = None
-
-        if self.has_waited(name):
-            ret = self.waiters[name]
-
-        return ret
-
-    def del_waiter(self, name):
-
-        if name in self.waiters:
-            del self.waiters[name]
-
-        return
-
-class ConnectionEventsHub(Hub):
+class ConnectionEventsHub(org.wayround.utils.signal.Hub):
 
     def dispatch(self, event, sock):
 
         self._dispatch(event, sock)
 
 
-class StreamEventsHub(Hub):
+class StreamEventsHub(org.wayround.utils.signal.Hub):
 
     def dispatch(self, event, attrs=None):
 
         self._dispatch(event, attrs)
 
 
-class StreamObjectsHub(Hub):
+class StreamObjectsHub(org.wayround.utils.signal.Hub):
 
 
     def dispatch(self, obj):
@@ -1260,7 +1197,7 @@ class Stanza:
         """
         return self.typ == 'error'
 
-class StanzaHub(Hub):
+class StanzaHub(org.wayround.utils.signal.Hub):
 
     def dispatch(self, obj):
 

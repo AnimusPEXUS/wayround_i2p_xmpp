@@ -18,6 +18,9 @@ import org.wayround.xmpp.core
 class XMPPC2SClient:
 
     def __init__(self, socket):
+        """
+        :param socket.socket socket:
+        """
 
         self.socket = socket
 
@@ -1072,3 +1075,67 @@ def session(stanza_processor, jid_to, wait=True):
         )
 
     return ret
+
+class Roster:
+
+    def __init__(self, client):
+
+        self.client = client
+
+    def get(self, jid_from, jid_to, stanza_processor, wait=None):
+        """
+        :param org.wayround.xmpp.core.StanzaProcessor stanza_processor:
+        :param str jid_from:
+        :param str jid_to:
+        """
+
+        ret = None
+
+        query = lxml.etree.Element()
+        query.set('xmlns', 'jabber:iq:roster')
+
+        stanza = org.wayround.xmpp.core.Stanza(
+            kind='iq',
+            jid_from=jid_from,
+            jid_to=jid_to,
+            typ='get',
+            body=[
+                query
+                ]
+            )
+
+        res = stanza_processor.send(
+            stanza,
+            wait=wait
+            )
+
+        if not org.wayround.xmpp.core.is_stanza(res):
+            ret = None
+        else:
+            if res.is_error():
+                ret = res.determine_error()
+            else:
+                ret = {}
+
+                query = res.body.find('{jabber:iq:roster}query')
+
+                for i in query:
+                    if i.tag == 'item':
+
+                        jid = i.get('jid')
+
+                        if not jid in ret:
+                            ret[jid] = {
+                                'groups':set(),
+                                'approved': None,
+                                'ask': None,
+                                'name': None,
+                                'subscription': None
+                                }
+
+                        groups = set()
+
+                        for j in i.findall('group'):
+                            groups.add(j.text)
+
+                        ret[jid]['groups'] = groups
