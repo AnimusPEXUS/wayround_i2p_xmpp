@@ -11,11 +11,40 @@ import time
 import lxml.etree
 
 import org.wayround.utils.stream
+import org.wayround.utils.signal
 
 import org.wayround.xmpp.core
 
 
-class XMPPC2SClient:
+class XMPPC2SClient(org.wayround.utils.signal.Signal):
+    """
+    General XMPP Client Class
+
+    It presumed to be used in implementing xmpp functionalities
+
+    Signals: following signals are proxyfied:
+
+    'streamer_start' (self, self.socket)
+    'streamer_stop' (self, self.socket)
+    'streamer_error' (self, self.socket)
+    'streamer_restart' (self, self.socket)
+    'streamer_ssl wrap error' (self, self.socket)
+    'streamer_ssl wrapped' (self, self.socket)
+    'streamer_ssl ununwrapable' (self, self.socket)
+    'streamer_ssl unwrap error' (self, self.socket)
+    'streamer_ssl unwrapped' (self, self.socket)
+
+
+    'io_in_start'(self, attrs=attributes)
+    'io_in_error' (self, attrs=attributes)
+    'io_in_element_readed' (self, element)
+    'io_in_stop' (self, attrs=attributes)
+
+    'io_out_start'(self, attrs=attributes)
+    'io_out_error' (self, attrs=attributes)
+    'io_out_element_readed' (self, element)
+    'io_out_stop' (self, attrs=attributes)
+    """
 
     def __init__(self, socket):
         """
@@ -23,6 +52,33 @@ class XMPPC2SClient:
         """
 
         self.socket = socket
+
+        self.sock_streamer = org.wayround.utils.stream.SocketStreamer(
+            self.socket,
+            socket_transfer_size=4096
+            )
+
+        self.sock_streamer.connect_signal(
+            True,
+            self._connection_event_proxy
+            )
+
+        self.io_machine = org.wayround.xmpp.core.XMPPIOStreamRWMachine()
+
+        self.io_machine.set_objects(self.sock_streamer)
+
+        self.io_machine.connect_signal(
+            True,
+            self._io_event_proxy
+            )
+
+
+        super().__init__(
+            self.sock_streamer.get_signal_names(add_prefix='streamer_') +
+            self.io_machine.get_signal_names(add_prefix='io_')
+            )
+
+        print("Client supported signals: {}".format(self.get_signal_names()))
 
         self._clear(init=True)
 
@@ -37,35 +93,6 @@ class XMPPC2SClient:
         self._stream_stop_sent = False
         self._input_stream_closed_event = threading.Event()
 
-        self.sock_streamer = None
-
-        self.io_machine = None
-
-        self.connection_events_hub = None
-        self.input_stream_events_hub = None
-        self.input_stream_objects_hub = None
-        self.output_stream_events_hub = None
-
-        if self.connection_events_hub:
-            self.connection_events_hub.clear()
-        else:
-            self.connection_events_hub = org.wayround.xmpp.core.ConnectionEventsHub()
-
-        if self.input_stream_events_hub:
-            self.input_stream_events_hub.clear()
-        else:
-            self.input_stream_events_hub = org.wayround.xmpp.core.StreamEventsHub()
-
-        if self.input_stream_objects_hub:
-            self.input_stream_objects_hub.clear()
-        else:
-            self.input_stream_objects_hub = org.wayround.xmpp.core.StreamObjectsHub()
-
-        if self.output_stream_events_hub:
-            self.output_stream_events_hub.clear()
-        else:
-            self.output_stream_events_hub = org.wayround.xmpp.core.StreamEventsHub()
-
 
     def start(self):
 
@@ -78,12 +105,6 @@ class XMPPC2SClient:
             logging.debug('sock is {}'.format(self.socket))
 
             ######### STREAMS
-
-            self.sock_streamer = org.wayround.utils.stream.SocketStreamer(
-                self.socket,
-                socket_transfer_size=4096,
-                on_connection_event=self.connection_events_hub.dispatch
-                )
 
             threading.Thread(
                 name="Socket Streamer Starting Thread",
@@ -152,10 +173,12 @@ class XMPPC2SClient:
             logging.debug("Stopping client correctly")
 
             if not self._stream_stop_sent:
-                self.input_stream_events_hub.set_waiter(
-                    'client_stream_close_waiter',
+
+                self.io_machine.connect_signal(
+                    'in_stop',
                     self._input_stream_close_waiter
                     )
+
                 logging.debug("Sending end of stream")
                 self.io_machine.send(
                     org.wayround.xmpp.core.stop_stream_tpl()
@@ -178,9 +201,7 @@ class XMPPC2SClient:
                 time.sleep(1.0)
                 time_waited += 1.0
 
-            self.input_stream_events_hub.del_waiter(
-                    'client_stream_close_waiter'
-                    )
+            self.io_machine.disconnect_signal(self._input_stream_close_waiter)
 
         return
 
@@ -230,16 +251,17 @@ self.io_machine.stat() == {}
 
         return ret
 
-    def _start_io_machine(self):
-        self.io_machine = org.wayround.xmpp.core.XMPPIOStreamRWMachine()
-        self.io_machine.set_objects(
-            self.sock_streamer,
-            i_stream_events_dispatcher=self.input_stream_events_hub.dispatch,
-            i_stream_objects_dispatcher=self.input_stream_objects_hub.dispatch,
-            o_stream_events_dispatcher=self.output_stream_events_hub.dispatch,
-            o_stream_objects_dispatcher=None
-            )
+    def restart(self):
+        self.io_machine.restart()
 
+    def send(self, data):
+        threading.Thread(
+            target=self.io_machine.send,
+            args=(data,)
+            ).start()
+
+
+    def _start_io_machine(self):
         self.io_machine.start()
 
     def _stop_io_machine(self):
@@ -250,363 +272,224 @@ self.io_machine.stat() == {}
         self._stop_io_machine()
         self._start_io_machine()
 
-    def _input_stream_close_waiter(self, event, attrs):
+    def _input_stream_close_waiter(self, signal_name, io_machine, attrs):
 
-        if event == 'stop':
-            self._input_stream_closed_event.set()
+        self._input_stream_closed_event.set()
 
-class STARTTLSClientDriver(org.wayround.xmpp.core.Driver):
+    def _connection_event_proxy(self, event, streamer, sock):
+        self.emit_signal('streamer_' + event, streamer, sock)
+
+    def _io_event_proxy(self, event, io_machine, attrs):
+        self.emit_signal('io_' + event, io_machine, attrs)
+
+def can_drive_starttls(features_element):
+
+    if not org.wayround.xmpp.core.is_features_element(features_element):
+        raise ValueError("`features_element' must features element")
+
+    return features_element.find('{urn:ietf:params:xml:ns:xmpp-tls}starttls') != None
+
+def drive_starttls(
+    client,
+    features_element,
+    bare_jid_from,
+    bare_jid_to,
+    controller_callback
+    ):
 
     """
-    Driver for starting STARTTLS on client side conection part
+    Drives to STARTTLS, basing on ``features_element``, which must be an XML
+    element instance with features.
+
+    If ``features_element.tag`` is
+    ``{http://etherx.jabber.org/streams}features`` and it is contains
+    ``{urn:ietf:params:xml:ns:xmpp-tls}starttls`` element, then:
+
+    #. switch ``self.status`` to ``'requesting tls'``
+
+    #. run :meth:`_start`
+
+    #. start STARTTLS sequence sending starttls element
+
+    #. wait while ``self._driving`` == True
+
+    #. return ``self.result``
+
+    :rtype: ``str``
+
+    controller_callback will be used in questionable situations, for
+    instance: when certificate need to be checked, in which case user
+    interaction may be needed
+
+    Return can be one of following values:
+
+    =================== ============================================
+    value               meaning
+    =================== ============================================
+    'no tls'            TLS not proposed by server
+    features_object     TLS layer engaged
+    'stream stopped'    stream was closed by server
+    'stream error'      some stream error encountered
+    'failure'           server returned
+                        ``{urn:ietf:params:xml:ns:xmpp-tls}failure``
+    'response error'    wrong server response
+    'programming error' if you received this - mail me a bug report
+    =================== ============================================
     """
 
-    def __init__(self, controller_callback):
+    # TODO: update help
 
-        """
-        Initiates object using :meth:`_clear`
+    if not isinstance(client, XMPPC2SClient):
+        raise TypeError("`client' must be of type XMPPC2SClient")
 
-        controller_callback must be a callable with following parameters:
+    if not org.wayround.xmpp.core.is_features_element(features_element):
+        raise ValueError("`features_element' must features element")
 
-            - this object reference
-            - status:
-                possible statuses:
+    if not isinstance(bare_jid_from, str):
+        raise TypeError("`bare_jid_from' must be str")
 
+    if not isinstance(bare_jid_to, str):
+        raise TypeError("`bare_jid_to' must be str")
 
-                    corresponding instances needed:
-                    'sock_streamer'
-                    'io_machine'
-                    'connection_events_hub'
-                    'input_stream_events_hub'
-                    'input_stream_objects_hub'
-                    'output_stream_events_hub'
+    if not callable(controller_callback):
+        raise ValueError("`controller_callback' must be callable")
 
-                    others:
-                    'bare_jid'
-                        bare jid string is required
+    if not can_drive_starttls(features_element):
+        ret = 'invalid features'
+    else:
 
-                    'connection_info_host'
-                        'host' from connection info is required
+        logging.debug("STARTTLS routines begining now")
 
-                    'bare_jid_from'
+        logging.debug("Connecting SignalWaiter")
 
-                    'bare_jid_to'
-
-            - dict with additional status specific data
-
-            must return True, False. return None in case of error
-        """
-        self.controller_callback = controller_callback
-        self._clear(init=True)
-
-
-    def _set_objects(self):
-
-        """
-        Set objects to work with
-
-        :param sock_streamer: instance of class
-            :class:`org.wayround.utils.stream.SocketStreamer`
-
-        :param io_machine: instance of class
-            :class:`XMPPIOStreamRWMachine`
-
-        :param connection_events_hub: hub to route connection events
-            :class:`ConnectionEventsHub`
-
-        :param input_stream_events_hub: hub to route input stream events
-            :class:`StreamEventsHub`
-
-        :param output_stream_events_hub: hub to route output stream events
-            :class:`StreamEventsHub`
-        """
-
-        self._sock_streamer = self.controller_callback(
-            self, 'sock_streamer', None
+        client_reactions_waiter = org.wayround.utils.signal.SignalWaiter(
+            client,
+            list(
+                set(client.get_signal_names())
+                - set(
+                      ['io_out_element_readed',
+                       'io_out_start',
+                       'io_out_stop'
+                       # NOTE: 'io_out_error' not needed here
+                       ])
+                ),
+            debug=True
             )
 
-        self._io_machine = self.controller_callback(
-            self, 'io_machine', None
+        client_reactions_waiter.start()
+
+        logging.debug("Sending STARTTLS request")
+
+        client.send(
+            org.wayround.xmpp.core.starttls_tpl()
             )
 
-        self._connection_events_hub = self.controller_callback(
-            self, 'connection_events_hub', None
-            )
+        logging.debug("POP")
+        c_r_w_result = client_reactions_waiter.pop(timeout=3)
+        logging.debug("POP!")
 
-        self._input_stream_events_hub = self.controller_callback(
-            self, 'input_stream_events_hub', None)
-
-        self._input_stream_objects_hub = self.controller_callback(
-            self, 'input_stream_objects_hub', None
-            )
-
-        self._output_stream_events_hub = self.controller_callback(
-            self, 'output_stream_events_hub', None
-            )
-
-        return
-
-    def _clear(self, init=False):
-        """
-        Clears instance, setting default values for all attributes
-        """
-        self._sock_streamer = None
-        self._io_machine = None
-        self._input_stream_events_hub = None
-        self._input_stream_objects_hub = None
-        self._output_stream_events_hub = None
-
-        self._driving = False
-        self._exit_event = threading.Event()
-        self._exit_event.clear()
-
-        self.status = 'just created'
-
-        self.result = None
-
-        return
-
-    def _start(self):
-
-        """
-        Started by :meth:`self.drive`
-
-        If not already ``self._driving``, then drive!: register own waiters for
-
-        * ``self._connection_events_hub`` - :meth:`_connection_events_waiter`
-        * ``self._input_stream_events_hub`` - :meth:`_input_stream_events_waiter`
-        * ``self._input_stream_objects_hub`` - :meth:`_stream_objects_waiter`
-        """
-
-        if not self._driving:
-
-            self._set_objects()
-
-            self._driving = True
-
-            logging.debug("STARTTLS Driver driving now! B-)")
-
-            self._connection_events_hub.set_waiter(
-                'tls_driver', self._connection_events_waiter
-                )
-
-            self._input_stream_events_hub.set_waiter(
-                'tls_driver', self._input_stream_events_waiter
-                )
-
-            self._input_stream_objects_hub.set_waiter(
-                'tls_driver', self._stream_objects_waiter
-                )
-
-        return
-
-
-    def _stop(self):
-
-        """
-        If ``self._driving``, then stop it. And don't listen hubs any more!
-        """
-
-        if self._driving:
-
-            self._connection_events_hub.del_waiter('tls_driver')
-
-            self._input_stream_events_hub.del_waiter('tls_driver')
-
-            self._input_stream_objects_hub.del_waiter('tls_driver')
-
-            logging.debug("STARTTLS Driver stopped with result `{}'".format(self.result))
-
-            self._driving = False
-
-            self._exit_event.set()
-
-        return
-
-    def stop(self):
-
-        """
-        Stop driver work. Just calls :meth:`_stop`
-        """
-        self._stop()
-
-        return
-
-    def can_drive(self, obj):
-        return (org.wayround.xmpp.core.is_features_element(obj)
-            and obj.find('{urn:ietf:params:xml:ns:xmpp-tls}starttls') != None)
-
-    def drive(self, obj):
-
-        """
-        Drives to STARTTLS, basing on ``obj``, which must be an XML element
-        instance with features.
-
-        If ``obj.tag`` is ``{http://etherx.jabber.org/streams}features`` and
-        it is contains ``{urn:ietf:params:xml:ns:xmpp-tls}starttls`` element,
-        then:
-
-        #. switch ``self.status`` to ``'requesting tls'``
-
-        #. run :meth:`_start`
-
-        #. start STARTTLS sequence sending starttls element
-
-        #. wait while ``self._driving`` == True
-
-        #. return ``self.result``
-
-        :rtype: ``str``
-
-        Return can be one of following values:
-
-        =================== ============================================
-        value               meaning
-        =================== ============================================
-        'no tls'            TLS not proposed by server
-        features_object     TLS layer engaged
-        'stream stopped'    stream was closed by server
-        'stream error'      some stream error encountered
-        'failure'           server returned
-                            ``{urn:ietf:params:xml:ns:xmpp-tls}failure``
-        'response error'    wrong server response
-        'programming error' if you received this - mail me a bug report
-        =================== ============================================
-        """
-
-
-        if self.can_drive(obj):
-
-            self._start()
-
-            self.status = 'requesting tls'
-
-            logging.debug("Sending STARTTLS request")
-            self._io_machine.send(
-                org.wayround.xmpp.core.starttls_tpl()
-                )
-
-            self._exit_event.wait()
-
+        if not isinstance(c_r_w_result, dict):
+            ret = 'error'
+            logging.debug("POP exited with error")
         else:
-
-            logging.debug("TLS not proposed")
-
-            self.result = 'no tls'
-
-        ret = self.result
-
-        return ret
-
-    def _connection_events_waiter(self, event, sock):
-
-        """
-        If driving, then look for event == ``'ssl wrapped'`` and then:
-
-        #. restart input machine with driven socket streamer, input event and
-           objects hubs;
-
-        #. restart output machine with driven streamer and output event hub
-
-        #. wait till machines working
-
-        #. restart stream with start_stream command
-        """
-
-        if self._driving:
-
-            logging.debug("_connection_events_waiter :: `{}' `{}'".format(event, sock))
-
-            if event == 'ssl wrapped':
-
-                logging.debug("Socket streamer threads restarted")
-                logging.debug("Restarting Machines")
-                self._io_machine.restart_with_new_objects(
-                    self._sock_streamer,
-                    self._input_stream_events_hub.dispatch,
-                    self._input_stream_objects_hub.dispatch,
-                    self._output_stream_events_hub.dispatch,
-                    None
-                    )
-
-                logging.debug("Waiting machines restart")
-                self._io_machine.wait('working')
-                logging.debug("Machines restarted")
-
-                logging.debug("Starting new stream")
-                self._io_machine.send(
-                    org.wayround.xmpp.core.start_stream_tpl(
-                        jid_from=self.controller_callback(self, 'bare_jid_from', None),
-                        jid_to=self.controller_callback(self, 'bare_jid_to', None)
-                        )
-                    )
-
-        return
-
-
-    def _input_stream_events_waiter(self, event, attrs=None):
-
-        if self._driving:
-
-            logging.debug(
-                "_input_stream_events_waiter :: `{}', `{}'".format(
-                    event,
-                    attrs
-                    )
-                )
-
-            if event == 'start':
-
-                self.result = 'success'
-
-            elif event == 'stop':
-
-                self.result = 'stream stopped'
-
-                self._stop()
-
-            elif event == 'error':
-
-                self.result = 'stream error'
-
-                self._stop()
-
-
-        return
-
-    def _stream_objects_waiter(self, obj):
-
-        if self._driving:
-
-            logging.debug("_stream_objects_waiter :: `{}'".format(obj))
-
-            if org.wayround.xmpp.core.is_features_element(obj):
-                self.result = obj
-                self._stop()
+            if c_r_w_result['event'] != 'io_in_element_readed':
+                ret = 'invalid server action 1'
+                logging.debug(ret)
             else:
 
-                if self.status == 'requesting tls':
+                obj = c_r_w_result['args'][1]
 
-                    if obj.tag.startswith('{urn:ietf:params:xml:ns:xmpp-tls}'):
-
-                        self.tls_request_result = obj.tag
-
-                        if self.tls_request_result == '{urn:ietf:params:xml:ns:xmpp-tls}proceed':
-
-                            self._sock_streamer.start_ssl()
-
-                        else:
-
-                            self.result = 'failure'
-
-                            self._stop()
-
+                if not obj.tag.startswith('{urn:ietf:params:xml:ns:xmpp-tls}'):
+                    ret = 'invalid server action 2'
+                    logging.debug(ret)
                 else:
-                    self.result = 'programming error'
+                    if not obj.tag == '{urn:ietf:params:xml:ns:xmpp-tls}proceed':
+                        ret = 'invalid server action 3'
+                        logging.debug(ret)
+                    else:
 
-                    self._stop()
+                        logging.debug("Calling streamer to wrap socket with TLS")
 
-        return
+                        client.sock_streamer.start_ssl()
+
+                        logging.debug("POP")
+                        c_r_w_result = client_reactions_waiter.pop()
+                        logging.debug("POP!")
+
+                        if not isinstance(c_r_w_result, dict):
+                            ret = 'error'
+                        else:
+                            if c_r_w_result['event'] != 'streamer_ssl wrapped':
+                                ret = 'error'
+                                logging.debug("Some other stream event when `streamer_ssl wrapped': {}".format(c_r_w_result['event']))
+                            else:
+
+                                logging.debug("Restarting IO Machine")
+                                client.io_machine.restart()
+
+                                if not client.io_machine.stat() == 'working':
+                                    ret = 'error'
+                                    logging.debug("IO Machine restart failed")
+                                else:
+
+                                    logging.debug("IO Machine restarted")
+                                    logging.debug("Starting new stream")
+
+                                    client.io_machine.send(
+                                        org.wayround.xmpp.core.start_stream_tpl(
+                                            jid_from=bare_jid_from,
+                                            jid_to=bare_jid_to
+                                            )
+                                        )
+
+
+                                    logging.debug("POP")
+                                    c_r_w_result = client_reactions_waiter.pop()
+                                    logging.debug("POP!")
+
+                                    if not isinstance(c_r_w_result, dict):
+                                        ret = 'error'
+                                        logging.debug("POP exited with error")
+                                    else:
+                                        if c_r_w_result['event'] != 'io_in_start':
+                                            ret = 'invalid server action 4'
+                                            logging.debug(ret)
+                                        else:
+
+                                            logging.debug("IO Machine inbound stream start signal received")
+                                            logging.debug("Waiting for features")
+
+                                            logging.debug("POP")
+                                            c_r_w_result = client_reactions_waiter.pop()
+                                            logging.debug("POP!")
+
+                                            if not isinstance(c_r_w_result, dict):
+                                                ret = 'error'
+                                                logging.debug("POP exited with error")
+                                            else:
+                                                if c_r_w_result['event'] != 'io_in_element_readed':
+                                                    ret = 'invalid server action 4'
+                                                    logging.debug(ret)
+                                                else:
+
+                                                    logging.debug("Received some element, analizing...")
+
+                                                    obj = c_r_w_result['args'][1]
+
+                                                    if not org.wayround.xmpp.core.is_features_element(obj):
+                                                        ret = 'error'
+                                                        logging.debug("Server must been give us an stream features, but it's not")
+                                                    else:
+                                                        logging.debug("Stream features recognized. Time to return success to driver caller")
+                                                        ret = obj
+
+        client_reactions_waiter.stop()
+
+        logging.debug("STARTTLS exit point reached")
+
+    return ret
+
+
 
 
 class SASLClientDriver(org.wayround.xmpp.core.Driver):
@@ -620,7 +503,7 @@ class SASLClientDriver(org.wayround.xmpp.core.Driver):
         """
         Initiates object using :meth:`_clear`
 
-        controller_callback must be a callable with following parameters:
+        _controller_callback must be a callable with following parameters:
 
             - this object reference
             - status. possible statuses are:
@@ -674,7 +557,7 @@ class SASLClientDriver(org.wayround.xmpp.core.Driver):
             - dict with additional status specific data
         """
 
-        self.controller_callback = controller_callback
+        self._controller_callback = controller_callback
         self._clear(init=True)
 
 
@@ -699,26 +582,26 @@ class SASLClientDriver(org.wayround.xmpp.core.Driver):
             :class:`StreamEventsHub`
         """
 
-        self._sock_streamer = self.controller_callback(
+        self._sock_streamer = self._controller_callback(
             self, 'sock_streamer', None
             )
 
-        self._io_machine = self.controller_callback(
+        self._io_machine = self._controller_callback(
             self, 'io_machine', None
             )
 
-        self._connection_events_hub = self.controller_callback(
+        self._connection_events_hub = self._controller_callback(
             self, 'connection_events_hub', None
             )
 
-        self._input_stream_events_hub = self.controller_callback(
+        self._input_stream_events_hub = self._controller_callback(
             self, 'input_stream_events_hub', None)
 
-        self._input_stream_objects_hub = self.controller_callback(
+        self._input_stream_objects_hub = self._controller_callback(
             self, 'input_stream_objects_hub', None
             )
 
-        self._output_stream_events_hub = self.controller_callback(
+        self._output_stream_events_hub = self._controller_callback(
             self, 'output_stream_events_hub', None
             )
 
@@ -837,7 +720,7 @@ class SASLClientDriver(org.wayround.xmpp.core.Driver):
                 for i in mechanisms:
                     logging.debug("    {}".format(i))
 
-                self.mechanism_name = self.controller_callback(self, 'mechanism_name', None)
+                self.mechanism_name = self._controller_callback(self, 'mechanism_name', None)
                 sel_mechanism = self.mechanism_name
 
                 if sel_mechanism in mechanisms:
@@ -926,7 +809,7 @@ class SASLClientDriver(org.wayround.xmpp.core.Driver):
 
                         if obj.tag == '{urn:ietf:params:xml:ns:xmpp-sasl}challenge':
 
-                            response = self.controller_callback(
+                            response = self._controller_callback(
                                 self, 'challenge', {'text': obj.text}
                                 )
 
@@ -937,7 +820,7 @@ class SASLClientDriver(org.wayround.xmpp.core.Driver):
                         elif obj.tag == '{urn:ietf:params:xml:ns:xmpp-sasl}success':
 
                             threading.Thread(
-                                target=self.controller_callback,
+                                target=self._controller_callback,
                                 args=(self, 'success', None,),
                                 name="SASL auth success signal"
                                 ).start()
@@ -962,10 +845,10 @@ class SASLClientDriver(org.wayround.xmpp.core.Driver):
                             logging.debug("Starting new stream")
                             self._io_machine.send(
                                 org.wayround.xmpp.core.start_stream_tpl(
-                                    jid_from=self.controller_callback(
+                                    jid_from=self._controller_callback(
                                         self, 'bare_jid_from', None
                                         ),
-                                    jid_to=self.controller_callback(
+                                    jid_to=self._controller_callback(
                                         self, 'bare_jid_to', None
                                         )
                                     )
@@ -994,7 +877,7 @@ class SASLClientDriver(org.wayround.xmpp.core.Driver):
                                     break
 
                             threading.Thread(
-                                target=self.controller_callback,
+                                target=self._controller_callback,
                                 args=(
                                     self,
                                     'failure',

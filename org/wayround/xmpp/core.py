@@ -81,15 +81,6 @@ STANZA_ERROR_NAMES = [
     'unexpected-request'
     ]
 
-class XMPPStreamSoftError:
-
-    """
-    Soft stream errors are 'Stream Errors' described in rfc6120
-    """
-
-    def __init__(self, name, message):
-        self.name = name
-        self.message = message
 
 class JID:
 
@@ -229,22 +220,24 @@ class C2SConnectionInfo:
 
 class XMPPStreamParserTargetClosed(Exception):
     """
-    This exception is rased in case of some one's trying to send some more data
+    This exception is raised in case of some one's trying to send some more data
     to parsed when it is closed already.
     """
 
-class XMPPStreamParserTarget:
+class XMPPStreamParserTarget(org.wayround.utils.signal.Signal):
 
     """
     Target for lxml to build XML objects, which then sent to element hubs or
     stream event listeners
+
+    Signals:
+    'start'(self, attrs=attributes)
+    'error' (self, attrs=attributes)
+    'element_readed' (self, element)
+    'stop' (self, attrs=attributes)
     """
 
-    def __init__(
-        self,
-        on_stream_event=None,
-        on_element_readed=None
-        ):
+    def __init__(self):
 
         """
         :param on_stream_event: callback to call when stream starts, stops or
@@ -255,8 +248,7 @@ class XMPPStreamParserTarget:
             complete
         """
 
-        self._on_stream_event = on_stream_event
-        self._on_element_readed = on_element_readed
+        super().__init__(['start', 'stop', 'error', 'element_readed'])
 
         self.clear(init=True)
 
@@ -301,22 +293,12 @@ class XMPPStreamParserTarget:
         if len(self._depth_tracker) == 0:
 
             if name == '{http://etherx.jabber.org/streams}stream':
-                if self._on_stream_event:
-                    threading.Thread(
-                        target=self._on_stream_event,
-                        args=('start',),
-                        kwargs={'attrs': attributes},
-                        name="Stream Start Thread"
-                        ).start()
+
+                self.emit_signal('start', self, attrs=attributes)
 
             else:
-                if self._on_stream_start_error:
-                    threading.Thread(
-                        target=self._on_stream_event,
-                        args=('error',),
-                        kwargs={'attrs':None},
-                        name="Stream Start Error Thread"
-                        ).start()
+
+                self.emit_signal('error', self, attrs=attributes)
 
         else:
 
@@ -364,12 +346,7 @@ class XMPPStreamParserTarget:
 
             self._tree_builder = None
 
-            if self._on_element_readed:
-                threading.Thread(
-                    target=self._on_element_readed,
-                    args=(element,),
-                    name='Element Building Complete Thread'
-                    ).start()
+            self.emit_signal('element_readed', self, element)
 
         if len(self._depth_tracker) == 0:
 
@@ -426,16 +403,9 @@ class XMPPStreamParserTarget:
         if self.target_closed:
             raise XMPPStreamParserTargetClosed()
 
-        if self._on_stream_event:
+        self.target_closed = True
 
-            self.target_closed = True
-
-            threading.Thread(
-                target=self._on_stream_event,
-                args=('stop',),
-                kwargs={'attrs':None},
-                name="Stream Ended Thread"
-                ).start()
+        self.emit_signal('stop', self, attrs=None)
 
         return
 
@@ -444,25 +414,17 @@ class XMPPStreamParserTarget:
 
 class XMPPInputStreamReader:
 
-    def __init__(
-        self,
-        read_from,
-        xml_parser
-        ):
+    def __init__(self, read_from, xml_parser):
         """
         read_from - xml stream input
         """
 
         self._read_from = read_from
-
         self._xml_parser = xml_parser
 
         self._clear(init=True)
 
-        self._stat = 'stopped'
-
         return
-
 
     def _clear(self, init=False):
 
@@ -478,9 +440,13 @@ class XMPPInputStreamReader:
         self._termination_event = None
 
         self._stat = 'stopped'
+
         return
 
     def start(self):
+        """
+        Synchronous
+        """
 
         thread_name_in = 'Thread feeding data to XML parser'
 
@@ -531,6 +497,9 @@ class XMPPInputStreamReader:
 
 
     def stop(self):
+        """
+        Synchronous
+        """
 
         if not self._stopping and not self._starting and self.stat() == 'working':
             self._stat = 'stopping'
@@ -621,17 +590,13 @@ class XMPPOutputStreamWriter:
     Class for functions related to writing data to socket streamer
     """
 
-    def __init__(
-        self,
-        write_to,
-        xml_parser
-        ):
+    def __init__(self, write_to, xml_parser):
+
         """
         read_from - xml stream input
         """
 
         self._write_to = write_to
-
         self._xml_parser = xml_parser
 
         self._clear(init=True)
@@ -652,9 +617,13 @@ class XMPPOutputStreamWriter:
         self._output_queue = []
 
         self._stat = 'stopped'
+
         return
 
     def start(self):
+        """
+        Synchronous
+        """
 
         if not self._starting and not self._stopping and self.stat() == 'stopped':
 
@@ -688,6 +657,9 @@ class XMPPOutputStreamWriter:
 
 
     def stop(self):
+        """
+        Synchronous
+        """
 
         if not self._starting and not self._stopping:
             self._stopping = True
@@ -810,32 +782,25 @@ class XMPPOutputStreamWriter:
         return
 
 
-class ConnectionEventsHub(org.wayround.utils.signal.Hub):
 
-    def dispatch(self, event, sock):
+class XMPPStreamMachine(org.wayround.utils.signal.Signal):
 
-        self._dispatch(event, sock)
+    """
+    Signals:
+    'start'(self, attrs=attributes)
+    'error' (self, attrs=attributes)
+    'element_readed' (self, element)
+    'stop' (self, attrs=attributes)
+    """
 
+    def __init__(self, mode='reader'):
 
-class StreamEventsHub(org.wayround.utils.signal.Hub):
+        if not mode in ['reader', 'writer']:
+            raise ValueError("Invalid Mode selected")
 
-    def dispatch(self, event, attrs=None):
+        self.mode = mode
 
-        self._dispatch(event, attrs)
-
-
-class StreamObjectsHub(org.wayround.utils.signal.Hub):
-
-
-    def dispatch(self, obj):
-
-        self._dispatch(obj)
-
-
-
-class XMPPStreamMachine:
-
-    def __init__(self):
+        super().__init__(['start', 'stop', 'error', 'element_readed'])
 
         self._clear(init=True)
 
@@ -850,55 +815,90 @@ class XMPPStreamMachine:
 
         self._xml_target = None
         self._xml_parser = None
-        self._stream_worker = None
 
-        self._sock_streamer = None
-        self._stream_events_dispatcher = None
-        self._stream_objects_dispatcher = None
+        self.stream_worker = None
 
-    def set_objects(
-        self,
-        sock_streamer,
-        stream_events_dispatcher,
-        stream_objects_dispatcher
-        ):
+    def set_objects(self, sock_streamer):
 
         self._sock_streamer = sock_streamer
-        self._stream_events_dispatcher = stream_events_dispatcher
-        self._stream_objects_dispatcher = stream_objects_dispatcher
 
-    def start_stream_worker(self):
+    def _signal_proxy(self, signal_name, *args, **kwargs):
 
-        raise RuntimeError("You need to override this")
+        self.emit_signal(signal_name, *args, **kwargs)
+
+    def send(self, obj):
+
+        if (self.stream_worker
+            and hasattr(self.stream_worker, 'send')
+            and callable(self.stream_worker.send)
+            ):
+
+            threading.Thread(
+                target=self.stream_worker.send,
+                args=(obj,)
+                ).start()
+
+        else:
+            raise Exception(
+                "Current stream worker doesn't support send function"
+                )
+
+        return
 
     def start(self):
+        """
+        Synchronous
+        """
+
+        if not hasattr(self, 'stream_worker'):
+            raise Exception("self.stream_worker must be defined")
 
         if not self._starting and not self._stopping and self.stat() == 'stopped':
 
             self._starting = True
 
-            self._xml_target = XMPPStreamParserTarget(
-                on_stream_event=self._stream_events_dispatcher,
-                on_element_readed=self._stream_objects_dispatcher
-                )
+            self._xml_target = XMPPStreamParserTarget()
+
+            self._xml_target.connect_signal(True, self._signal_proxy)
 
             self._xml_parser = lxml.etree.XMLParser(
                 target=self._xml_target
                 )
 
-            self.start_stream_worker()
+            self.stream_worker = None
 
-            self._stream_worker.start()
+            if self.mode == 'reader':
+                self.stream_worker = XMPPInputStreamReader(
+                    self._sock_streamer.strout,
+                    self._xml_parser
+                    )
+
+            elif self.mode == 'writer':
+                self.stream_worker = XMPPOutputStreamWriter(
+                    self._sock_streamer.strin,
+                    self._xml_parser
+                    )
+
+            else:
+                # only two modes allowed
+                raise Exception("Programming error")
+
+            self.stream_worker.start()
 
             self._starting = False
 
     def stop(self):
+        """
+        Synchronous
+        """
 
         if not self._stopping and not self._starting and self.stat() == 'working':
 
             self._stopping = True
 
-            self._stream_worker.stop()
+            self.stream_worker.stop()
+
+            self._xml_target.disconnect_signal(self._signal_proxy)
 
             self.wait('stopped')
             self._clear()
@@ -907,15 +907,15 @@ class XMPPStreamMachine:
 
     def wait(self, what='stopped'):
 
-        if self._stream_worker:
-            self._stream_worker.wait(what=what)
+        if self.stream_worker:
+            self.stream_worker.wait(what=what)
 
     def stat(self):
 
         ret = None
 
-        if self._stream_worker:
-            ret = self._stream_worker.stat()
+        if self.stream_worker:
+            ret = self.stream_worker.stat()
 
         if ret == None:
             ret = 'stopped'
@@ -923,149 +923,83 @@ class XMPPStreamMachine:
         return ret
 
     def restart(self):
+        """
+        Synchronous
+        """
         self.stop()
         self.start()
-
-    def restart_with_new_objects(
-        self,
-        sock_streamer,
-        stream_events_dispatcher,
-        stream_objects_dispatcher
-        ):
-
-        self.stop()
-
-        self.set_objects(
-            sock_streamer,
-            stream_events_dispatcher,
-            stream_objects_dispatcher
-            )
-
-        self.start()
+        return
 
 
-
-
-class XMPPInputStreamReaderMachine(XMPPStreamMachine):
-
+class XMPPIOStreamRWMachine(org.wayround.utils.signal.Signal):
     """
-    Machine for reading xml stream from socket streamer
+    Signals:
+
+    'in_start'(self, attrs=attributes)
+    'in_error' (self, attrs=attributes)
+    'in_element_readed' (self, element)
+    'in_stop' (self, attrs=attributes)
+
+    'out_start'(self, attrs=attributes)
+    'out_error' (self, attrs=attributes)
+    'out_element_readed' (self, element)
+    'out_stop' (self, attrs=attributes)
     """
-
-    def start_stream_worker(self):
-
-        self._stream_worker = XMPPInputStreamReader(
-            self._sock_streamer.strout,
-            self._xml_parser
-            )
-
-class XMPPOutputStreamWriterMachine(XMPPStreamMachine):
-
-    """
-    Machine for writing xml objects to socket streamer
-    """
-
-    def start_stream_worker(self):
-
-        self._stream_worker = XMPPOutputStreamWriter(
-            self._sock_streamer.strin,
-            self._xml_parser
-            )
-
-    def send(self, obj):
-
-        threading.Thread(
-            name="XMPPOutputStreamWriterMachine send thread",
-            target=self._stream_worker.send,
-            args=(obj,)
-            ).start()
-
-class XMPPIOStreamRWMachine:
 
     def __init__(self):
 
-        self.in_machine = XMPPInputStreamReaderMachine()
-        self.out_machine = XMPPOutputStreamWriterMachine()
+        self.in_machine = XMPPStreamMachine(mode='reader')
+        self.out_machine = XMPPStreamMachine(mode='writer')
+
+        logging.debug("XMPPIOStreamRWMachine __init__()")
+        super().__init__(
+            self.in_machine.get_signal_names(add_prefix='in_')
+            + self.in_machine.get_signal_names(add_prefix='out_')
+            )
+
+        self.in_machine.connect_signal(True, self._in_stream_signal_proxy)
+        self.out_machine.connect_signal(True, self._out_stream_signal_proxy)
 
         return
 
-    def set_objects(
-        self,
-        sock_streamer,
-        i_stream_events_dispatcher,
-        i_stream_objects_dispatcher,
-        o_stream_events_dispatcher,
-        o_stream_objects_dispatcher
-        ):
-
-        self.in_machine.set_objects(
-            sock_streamer,
-            i_stream_events_dispatcher,
-            i_stream_objects_dispatcher
-            )
-
-        self.out_machine.set_objects(
-            sock_streamer,
-            o_stream_events_dispatcher,
-            o_stream_objects_dispatcher
-            )
-
+    def set_objects(self, sock_streamer):
+        self.in_machine.set_objects(sock_streamer)
+        self.out_machine.set_objects(sock_streamer)
         return
+
+    def _in_stream_signal_proxy(self, signal_name, *args, **kwargs):
+        self.emit_signal('in_' + signal_name, *args, **kwargs)
+
+    def _out_stream_signal_proxy(self, signal_name, *args, **kwargs):
+        self.emit_signal('out_' + signal_name, *args, **kwargs)
 
     def start(self):
-
-        logging.debug("{} :: received start call".format(type(self).__name__))
-
+        """
+        Synchronous
+        """
         self.in_machine.start()
         self.out_machine.start()
-
         return
 
     def stop(self):
-
-        logging.debug("{} :: received stop call".format(type(self).__name__))
-
+        """
+        Synchronous
+        """
         self.in_machine.stop()
         self.out_machine.stop()
-
         return
 
     def restart(self):
-
-        self.stop()
-        self.start()
-
+        """
+        Synchronous
+        """
+        self.in_machine.restart()
+        self.out_machine.restart()
         return
-
-    def restart_with_new_objects(
-        self,
-        sock_streamer,
-        i_stream_events_dispatcher,
-        i_stream_objects_dispatcher,
-        o_stream_events_dispatcher,
-        o_stream_objects_dispatcher
-        ):
-
-        self.in_machine.restart_with_new_objects(
-            sock_streamer,
-            i_stream_events_dispatcher,
-            i_stream_objects_dispatcher
-            )
-
-        self.out_machine.restart_with_new_objects(
-            sock_streamer,
-            o_stream_events_dispatcher,
-            o_stream_objects_dispatcher
-            )
-
-        return
-
 
     def wait(self, what='stopped'):
-
         self.in_machine.wait(what=what)
         self.out_machine.wait(what=what)
-
         return
 
     def stat(self):
@@ -1111,6 +1045,9 @@ class Driver:
 
     One of methods which will be used by external entities will be 'drive' which
     must wait until all operations done and must return result.
+
+    DEVELOPER NOTE: Currently I can't even hardly imagine usage of this class
+    out of this XMPP implementation, so it will remain her for now
     """
 
     def __init__(self):
@@ -1118,7 +1055,7 @@ class Driver:
         self.title = 'Untitled'
         self.description = 'This driver has no description'
 
-    def drive(self, obj):
+    def drive(self, features_element):
 
         """
         Override this method
@@ -1197,22 +1134,19 @@ class Stanza:
         """
         return self.typ == 'error'
 
-class StanzaHub(org.wayround.utils.signal.Hub):
 
-    def dispatch(self, obj):
+class StanzaProcessor(org.wayround.utils.signal.Signal):
 
-        self._dispatch(obj)
+    """
+    Signals:
+    ('new_stanza', self, stanza)
+    ('response_stanza', self, stanza)
+    """
 
-class StanzaProcessor:
+    def __init__(self, ns='jabber:client'):
 
-    def __init__(
-        self,
-        ns='jabber:client'
-        ):
+        super().__init__(['new_stanza'])
 
-        self.stanza_hub = StanzaHub()
-
-        self._input_objects_hub = None
         self._io_machine = None
 
         self.response_cbs = {}
@@ -1222,18 +1156,21 @@ class StanzaProcessor:
         self._wait_callbacks = {}
 
 
-    def connect_input_object_stream_hub(self, hub_object, name='stanza_processor'):
-        self._input_objects_hub = hub_object
-        self._input_objects_hub.set_waiter(name, self._on_input_object)
-
-    def disconnect_input_object_stream_hub(self, name='stanza_processor'):
-        if self._input_objects_hub.get_waiter(name):
-            self._input_objects_hub.del_waiter(name)
-
     def connect_io_machine(self, io_machine):
+        """
+        :param XMPPIOStreamRWMachine io_machine:
+        """
         self._io_machine = io_machine
+        self._io_machine.connect_signal(
+            'in_element_readed',
+            self._on_input_object
+            )
 
-    def disconnect_io_machine(self, io_machine):
+    def disconnect_io_machine(self):
+        """
+        :param XMPPIOStreamRWMachine io_machine:
+        """
+        self._io_machine.disconnect_signal(self._on_input_object)
         self._io_machine = None
 
     def send(
@@ -1368,7 +1305,7 @@ class StanzaProcessor:
 
         return
 
-    def _on_input_object(self, obj):
+    def _on_input_object(self, signal_name, io_machine, obj):
 
         threading.Thread(
             target=self._process_input_object,
@@ -1395,13 +1332,11 @@ class StanzaProcessor:
                 if stanza.ide in self.response_cbs:
                     self.response_cbs[stanza.ide](stanza)
                     del self.response_cbs[stanza.ide]
+
+                    self.emit_signal('response_stanza', self, stanza)
                 else:
 
-                    threading.Thread(
-                        target=self.stanza_hub.dispatch,
-                        name="Dispatching Stanza",
-                        args=(stanza,)
-                        ).start()
+                    self.emit_signal('new_stanza', self, stanza)
 
             else:
                 logging.error("proposed object not a stanza({}):\n{}".format(stanza, obj))
