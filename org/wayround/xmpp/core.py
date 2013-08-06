@@ -1143,9 +1143,9 @@ class StanzaProcessor(org.wayround.utils.signal.Signal):
     ('response_stanza', self, stanza)
     """
 
-    def __init__(self, ns='jabber:client'):
+    def __init__(self):
 
-        super().__init__(['new_stanza'])
+        super().__init__(['new_stanza', 'response_stanza'])
 
         self._io_machine = None
 
