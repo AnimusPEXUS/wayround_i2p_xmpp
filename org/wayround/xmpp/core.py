@@ -1064,15 +1064,11 @@ class Driver:
         return 'success'
 
 
-
-
-class StanzaElement: pass
-
 class Stanza:
 
     def __init__(
         self,
-        kind='message',
+        tag=None,
         ide=None,
         jid_from=None,
         jid_to=None,
@@ -1081,49 +1077,81 @@ class Stanza:
         body=None
         ):
 
-        self.kind = kind
+        body_is_stanza = is_stanza_element(body)
 
-        self.ide = ide
+        if body_is_stanza:
 
-        self.jid_from = jid_from
-        self.jid_to = jid_to
-        self.typ = typ
-        self.xmllang = xmllang
+            if tag or ide or jid_from or jid_to or typ or xmllang:
+                raise ValueError(
+"if `body' is XML stanza element, then all other parameters must be not set"
+                    )
+
         self.body = body
+
+        if not body_is_stanza:
+
+            self.tag = tag
+            self.ide = ide
+            self.jid_from = jid_from
+            self.jid_to = jid_to
+            self.typ = typ
+            self.xmllang = xmllang
+
+        return
 
     def __str__(self):
         return self.to_str()
 
     @property
-    def kind(self):
-        return self._kind
+    def body(self):
+        return self._body
 
-    @kind.setter
-    def kind(self, kind):
+    @body.setter
+    def body(self, obj):
 
-        if not kind in ['message', 'iq', 'presence']:
-            raise WrongStanzaKind("Some one tried to make stanza of kind `{}'".format(kind))
+        if obj == None:
+            obj = []
 
-        self._kind = kind
+        if is_stanza_element(obj):
+            self._body = obj
+        else:
+
+            self._body = lxml.etree.Element('message')
+
+            if not isinstance(obj, list):
+                obj = [obj]
+
+            for i in obj:
+
+                if type(i) == lxml.etree._Element:
+                    self._body.append(i)
+
+                elif isinstance(i, bytes):
+                    self._body.append(
+                        lxml.etree.fromstring(str(i, 'utf-8'))
+                        )
+
+                elif isinstance(i, str):
+                    self._body.append(
+                        lxml.etree.fromstring(i)
+                        )
+
+                else:
+                    logging.warning(
+                        "Adding directly unsupported element"
+                        " type to new stanza {}".format(type(i))
+                        )
+                    self._body.append(
+                        lxml.etree.fromstring(str(i))
+                        )
 
         return
 
-    @property
-    def body_element(self):
-        # TODO: testing required
-        b = self.body.find('body')
-        return b
-
     def to_str(self):
-        return stanza_tpl(
-            self.kind,
-            self.ide,
-            self.typ,
-            self.jid_from,
-            self.jid_to,
-            self.xmllang,
-            self.body
-            )
+        ret = lxml.etree.tostring(self._body)
+        if isinstance(ret, bytes):
+            ret = str(ret, 'utf-8')
+        return ret
 
     def determine_error(self):
         return determine_stanza_error(self)
@@ -1133,6 +1161,53 @@ class Stanza:
         Is stanza of 'error' type
         """
         return self.typ == 'error'
+
+    @property
+    def tag(self):
+        return self._body.tag
+
+    @tag.setter
+    def tag(self, tag):
+
+        if not tag in ['message', 'iq', 'presence']:
+            raise WrongStanzaKind(
+                "Someone has tried to make stanza of tag `{}'".format(tag)
+                )
+
+        self._body.tag = tag
+
+        return
+
+    for i in [
+        ('ide', 'id'),
+        ('jid_from', 'from'),
+        ('jid_to', 'to'),
+        ('typ', 'type'),
+        ('xmllang', 'xml:lang')
+        ]:
+        exec(
+"""
+@property
+def {meth_name}(self):
+
+    ret = self._body.get('{elem_attr}')
+
+    return ret
+
+@{meth_name}.setter
+def {meth_name}(self, value):
+
+    if value == None:
+        if '{elem_attr}' in self._body.attrib:
+            del self._body.attrib['{elem_attr}']
+    else:
+        self._body.set('{elem_attr}', value)
+
+    return
+""".format(meth_name=i[0], elem_attr=i[1])
+        )
+
+    del(i)
 
 
 class StanzaProcessor(org.wayround.utils.signal.Signal):
@@ -1329,11 +1404,15 @@ class StanzaProcessor(org.wayround.utils.signal.Signal):
             stanza = stanza_from_element(obj)
 
             if isinstance(stanza, Stanza):
+
                 if stanza.ide in self.response_cbs:
+
                     self.response_cbs[stanza.ide](stanza)
+
                     del self.response_cbs[stanza.ide]
 
                     self.emit_signal('response_stanza', self, stanza)
+
                 else:
 
                     self.emit_signal('new_stanza', self, stanza)
@@ -1394,49 +1473,31 @@ def stanza_from_element(element):
     else:
 
         ns = tag_parsed.namespace
-        tag = tag_parsed.localname
+        ttag = tag_parsed.localname
 
         if not ns in ['jabber:client', 'jabber:server']:
             ret = None
         else:
 
-            if not tag in ['message', 'iq', 'presence']:
+            if not ttag in ['message', 'iq', 'presence']:
                 ret = None
             else:
-
-                kind = tag
-
-                ide = element.get('id')
-                jid_from = element.get('from')
-                jid_to = element.get('to')
-                typ = element.get('type')
-                xmllang = element.get('xml:lang')
 
                 body = element
 
                 try:
-                    ret = Stanza(
-                        kind,
-                        ide,
-                        jid_from,
-                        jid_to,
-                        typ,
-                        xmllang,
-                        body
-                        )
+                    ret = Stanza(body=body)
 
                 except WrongStanzaKind:
                     ret = None
                 except WrongErrorStanzaStructure:
                     ret = None
 
-
-
     return ret
 
 
 def stanza_tpl(
-    kind=None,
+    tag=None,
     ide=None,
     typ=None,
     jid_from=None,
@@ -1455,7 +1516,7 @@ def stanza_tpl(
     if body is str, it's used as is
 
     if body is lxml.etree._Element or list, it's items must be in set of
-    (bytes, str, lxml.etree._Element, StanzaElement,)
+    (bytes, str, lxml.etree._Element)
 
     if body is list of items:
 
@@ -1465,15 +1526,15 @@ def stanza_tpl(
         if list item is lxml.etree._Element, it is rendered with
         lxml.etree.tostring()
 
-        if list item is StanzaElement instance, it's .to_str() method is used to
-        make string of it
-
-
 
         in case when body is list, all it's stringified items summarized to
         single string
 
     """
+
+    raise Exception(
+        "This function is deprecated: use Stanza class and it's to_str() method"
+        )
 
     ide_t = ''
     if ide:
@@ -1508,9 +1569,6 @@ def stanza_tpl(
 
             for i in body:
 
-                if isinstance(i, StanzaElement):
-                    body_t += i.to_str()
-
                 if type(i) == lxml.etree._Element:
                     body_t += str(lxml.etree.tostring(i), 'utf-8')
 
@@ -1529,8 +1587,8 @@ def stanza_tpl(
 
             body_t = body
 
-    ret = '<{kind}{ide_t}{typ_t}{jid_from_t}{jid_to_t}{xmllang_t}>{body_t}</{kind}>'.format(
-        kind=xml.sax.saxutils.escape(kind),
+    ret = '<{tag}{ide_t}{typ_t}{jid_from_t}{jid_to_t}{xmllang_t}>{body_t}</{tag}>'.format(
+        tag=xml.sax.saxutils.escape(tag),
         ide_t=ide_t,
         typ_t=typ_t,
         jid_from_t=jid_from_t,
@@ -1668,7 +1726,7 @@ def determine_stream_error(xml_element):
     paragraph 4.9. of rfc-6120 in case of successful error recognition
 
     dict['name'] can have additionally one of two special values, both of which
-    means standard violation thus presume some kind of xmpp error:
+    means standard violation thus presume some tag of xmpp error:
         'non-standard-error-name' - issuer tries supply nonstandard name
         'error-name-absent'       - issuer did not supplied error name
     """

@@ -12,6 +12,7 @@ import lxml.etree
 
 import org.wayround.utils.stream
 import org.wayround.utils.signal
+import org.wayround.utils.types
 
 import org.wayround.xmpp.core
 
@@ -44,6 +45,9 @@ class XMPPC2SClient(org.wayround.utils.signal.Signal):
     'io_out_error' (self, attrs=attributes)
     'io_out_element_readed' (self, element)
     'io_out_stop' (self, attrs=attributes)
+
+    'stanza_processor_new_stanza' (self, stanza)
+    'stanza_processor_response_stanza' (self, stanza)
     """
 
     def __init__(self, socket):
@@ -72,10 +76,18 @@ class XMPPC2SClient(org.wayround.utils.signal.Signal):
             self._io_event_proxy
             )
 
+        self.stanza_processor = org.wayround.xmpp.core.StanzaProcessor()
+        self.stanza_processor.connect_io_machine(self.io_machine)
+        self.stanza_processor.connect_signal(
+            True,
+            self._stanza_processor_proxy
+            )
+
 
         super().__init__(
             self.sock_streamer.get_signal_names(add_prefix='streamer_') +
-            self.io_machine.get_signal_names(add_prefix='io_')
+            self.io_machine.get_signal_names(add_prefix='io_') +
+            self.stanza_processor.get_signal_names(add_prefix='stanza_processor_')
             )
 
         print("Client supported signals: {}".format(self.get_signal_names()))
@@ -281,6 +293,9 @@ self.io_machine.stat() == {}
 
     def _io_event_proxy(self, event, io_machine, attrs):
         self.emit_signal('io_' + event, io_machine, attrs)
+
+    def _stanza_processor_proxy(self, event, stanza_processor, stanza):
+        self.emit_signal('stanza_processor_' + event, stanza_processor, stanza)
 
 def can_drive_starttls(features_element):
 
@@ -805,7 +820,7 @@ def drive_sasl(
 #
 #        return
 
-def bind(stanza_processor, resource=None, wait=True):
+def bind(client, resource=None, wait=True):
 
     """
     Driver for resource binding
@@ -815,8 +830,14 @@ def bind(stanza_processor, resource=None, wait=True):
     if returned stanza has wrong stracture - None is returned
     """
 
+    if not isinstance(client, XMPPC2SClient):
+        raise TypeError("`client' must be a XMPPC2SClient")
+
+    if resource and not isinstance(resource, str):
+        raise TypeError("`resource' must be a str")
+
     binding_stanza = org.wayround.xmpp.core.Stanza(
-        kind='iq',
+        tag='iq',
         typ='set',
         body=org.wayround.xmpp.core.bind_tpl(
             typ='resource',
@@ -824,7 +845,7 @@ def bind(stanza_processor, resource=None, wait=True):
             )
         )
 
-    ret = stanza_processor.send(
+    ret = client.stanza_processor.send(
         binding_stanza,
         wait=wait
         )
@@ -849,47 +870,103 @@ def bind(stanza_processor, resource=None, wait=True):
 
     return ret
 
-def session(stanza_processor, jid_to, wait=True):
+def session(client, jid_to, wait=True):
 
     """
     Driver for starting session. This is required by old protocol version
     (rfc 3920)
     """
+    if not isinstance(client, XMPPC2SClient):
+        raise TypeError("`client' must be a XMPPC2SClient")
+
+    if jid_to and not isinstance(jid_to, str):
+        raise TypeError("`resource' must be a str")
 
     session_starting_stanza = org.wayround.xmpp.core.Stanza(
-        kind='iq',
+        tag='iq',
         typ='set',
         jid_to=jid_to,
         body=org.wayround.xmpp.core.session_tpl()
         )
 
-    ret = stanza_processor.send(
+    ret = client.stanza_processor.send(
         session_starting_stanza,
         wait=wait
         )
 
     return ret
 
-class Roster:
+class Roster(org.wayround.utils.signal.Signal):
 
-    def __init__(self, client):
+    """
+    Signals:
+    push_invalid (self, stanza) - stanza is normal core Stanza object
+    push (self, stanza_data)
+    push_invalid_from (self, stanza_data)
+
+
+    stanza_data - is dict of struct:
+    {
+        'groups':       set,
+        'approved':     bool,
+        'ask':          str,
+        'name':         str,
+        'subscription': str
+        }
+    """
+
+    def __init__(self, client, client_jid):
+
+        if not isinstance(client, XMPPC2SClient):
+            raise TypeError("`client' must be of type XMPPC2SClient")
+
+        if not isinstance(client_jid, org.wayround.xmpp.core.JID):
+            raise TypeError("`client_jid' must be of type org.wayround.xmpp.core.JID")
 
         self.client = client
+        self.client_jid = client_jid
 
-    def get(self, jid_from, jid_to, stanza_processor, wait=None):
+        self.client.signal_connect('stanza_processor_new_stanza', self._push)
+
+        super().__init__(['push', 'push_invalid', 'push_invalid_from'])
+
+    def _item_element_to_dict(self, element):
+
+        ret = {
+            'jid': None,
+            'data': None
+            }
+
+        ret['jid'] = element.get('jid')
+
+        data = {
+            'groups':       set(),
+            'approved':     element.get('approved') == 'true',
+            'ask':          element.get('ask'),
+            'name':         element.get('name'),
+            'subscription': element.get('subscription')
+            }
+
+        groups = data['groups']
+
+        for j in element.findall('group'):
+            groups.add(j.text)
+
+        return ret
+
+    def get(self, jid_from, jid_to, wait=None):
         """
-        :param org.wayround.xmpp.core.StanzaProcessor stanza_processor:
         :param str jid_from:
         :param str jid_to:
         """
 
         ret = None
 
-        query = lxml.etree.Element()
+        query = lxml.etree.Element('query')
         query.set('xmlns', 'jabber:iq:roster')
 
         stanza = org.wayround.xmpp.core.Stanza(
-            kind='iq',
+            tag='iq',
             jid_from=jid_from,
             jid_to=jid_to,
             typ='get',
@@ -898,7 +975,7 @@ class Roster:
                 ]
             )
 
-        res = stanza_processor.send(
+        res = self.client.stanza_processor.send(
             stanza,
             wait=wait
             )
@@ -909,27 +986,321 @@ class Roster:
             if res.is_error():
                 ret = res.determine_error()
             else:
+
                 ret = {}
 
                 query = res.body.find('{jabber:iq:roster}query')
 
                 for i in query:
+
                     if i.tag == 'item':
 
-                        jid = i.get('jid')
+                        res = self._item_element_to_dict(i)
 
-                        if not jid in ret:
-                            ret[jid] = {
-                                'groups':set(),
-                                'approved': None,
-                                'ask': None,
-                                'name': None,
-                                'subscription': None
-                                }
+                        data = res['data']
 
-                        groups = set()
+                        if not data['subscription'] in [
+                            'none', 'to', 'from', 'both'
+                            ]:
 
-                        for j in i.findall('group'):
-                            groups.add(j.text)
+                            data['subscription'] = None
 
-                        ret[jid]['groups'] = groups
+                        ret[res['jid']] = data
+
+        return ret
+
+    def set(
+        self,
+        jid_from,
+        jid_to,
+        subject_bare_jid,
+        groups=None,
+        name=None,
+        subscription=None,
+        wait=None
+        ):
+
+        """
+        :param str jid_from:
+        :param str jid_to:
+
+        no 'approved', 'ask' parameters: read RFC-6121 and use subscription
+        functionality
+        """
+
+        ret = None
+
+        if groups:
+            _types = org.wayround.utils.types.types(groups)
+
+            if not 'Sequence' in _types and not 'Iterable' in _types:
+                raise TypeError("Invalid `groups' value type")
+
+            groups = set(groups)
+
+        query = lxml.etree.Element('query')
+        query.set('xmlns', 'jabber:iq:roster')
+
+        item = lxml.etree.Element('item')
+
+        if subscription:
+
+            if not subscription in ['remove']:
+                raise ValueError("Invalid subscription value. Only remove is allowed")
+
+            item.set('subscription', subscription)
+
+        if name:
+            item.set('name', name)
+
+        if groups:
+
+            for i in groups:
+                _e = lxml.etree.Element('group')
+                _e.text = i
+                item.append(_e)
+
+        query.append(item)
+
+        stanza = org.wayround.xmpp.core.Stanza(
+            tag='iq',
+            jid_from=jid_from,
+            jid_to=jid_to,
+            typ='set',
+            body=[
+                query
+                ]
+            )
+
+        res = self.client.stanza_processor.send(
+            stanza,
+            wait=wait
+            )
+
+        if not org.wayround.xmpp.core.is_stanza(res):
+            ret = None
+        else:
+            if res.is_error():
+                ret = res.determine_error()
+            else:
+                ret = True
+
+        return ret
+
+    def _push(self, event, stanza_processor, stanza):
+
+        error = False
+
+        wrong_from = False
+        if not stanza.jid_from or stanza.jid_from == self.client_jid.bare():
+            wrong_from = False
+        else:
+            wrong_from = True
+
+        stanza_data = None
+
+        query = stanza.body.find('{jabber:iq:roster}query')
+
+        if query == None:
+            error = True
+        else:
+
+            item = query.find('item')
+
+            if item == None:
+                error = True
+            else:
+                stanza_data = self._item_element_to_dict(item)
+
+                if not stanza_data['data']['subscription'] in [
+                    'none', 'to', 'from', 'both', 'remove'
+                    ]:
+
+                    stanza_data['data']['subscription'] = None
+
+        if error:
+            self.emit_signal('push_invalid', self, stanza)
+        else:
+
+            if wrong_from:
+                self.emit_signal('push_invalid_from', self, stanza_data)
+            else:
+                self.emit_signal('push', self, stanza_data)
+
+        return
+
+class Subscription(org.wayround.utils.signal.Signal):
+
+    """
+    Signals:
+        'subscribe', 'unsubscribe',
+        'subscribed', 'unsubscribed' (self, stanza.jid_from, stanza.jid_to,
+                                                                    stanza)
+
+        'error' (self, stanza)
+    """
+
+    def __init__(self, client, client_jid):
+
+        if not isinstance(client, XMPPC2SClient):
+            raise TypeError("`client', must be of type XMPPC2SClient")
+
+        if not isinstance(client_jid, org.wayround.xmpp.core.JID):
+            raise TypeError(
+                "`client_jid' must be of type org.wayround.xmpp.core.JID"
+                )
+
+        self.client = client
+        self.client_jid = client_jid
+
+        super().__init__(
+            [
+            'subscribe', 'unsubscribe',
+            'subscribed', 'unsubscribed',
+            'error'
+            ]
+            )
+
+        self.client.stanza_processor.connect_signal(
+            'stanza_processor_new_stanza',
+            self._in_stanza
+            )
+
+
+    def subscribe(self, to_bare_jid, wait=False):
+        self._subscribe(to_bare_jid, typ='subscribe', wait=wait)
+
+    def unsubscribe(self, to_bare_jid, wait=False):
+        self._subscribe(to_bare_jid, typ='unsubscribe', wait=wait)
+
+    def subscribed(self, to_bare_jid, wait=False):
+        self._subscribe(to_bare_jid, typ='subscribed', wait=wait)
+
+    def unsubscribed(self, to_bare_jid, wait=False):
+        self._subscribe(to_bare_jid, typ='unsubscribed', wait=wait)
+
+
+    def _subscribe(self, to_bare_jid, typ='subscribe', wait=False):
+
+        """
+        Send subscribtion request to someone
+
+        wait is passed to StanzaProcessor.send()
+
+        return is result of StanzaProcessor.send()
+        """
+
+        if not isinstance(to_bare_jid, str):
+            raise TypeError("`to_bare_jid' must be a str")
+
+        stanza = org.wayround.xmpp.core.Stanza(
+            tag='presence',
+            jid_from=self.client_jid.bare(),
+            jid_to=to_bare_jid,
+            typ=typ
+            )
+
+        ret = self.client.stanza_processor.send(
+            stanza,
+            wait=wait
+            )
+
+        return ret
+
+    def _in_stanza(self, event, client, stanza):
+
+        """
+        :param org.wayround.xmpp.core.Stanza stanza:
+        """
+
+        if event == 'stanza_processor_new_stanza':
+
+            if stanza.tag == 'presence':
+
+                if stanza.is_error():
+
+                    self.emit_signal('error', self, stanza)
+
+                else:
+
+                    if stanza.typ in [
+                        'subscribe', 'unsubscribe',
+                        'subscribed', 'unsubscribed'
+                        ]:
+
+                        self.emit_signal(
+                            stanza.typ,
+                            self,
+                            stanza.jid_from,
+                            stanza.jid_to,
+                            stanza
+                            )
+
+        return
+
+class Presence(org.wayround.utils.signal.Signal):
+
+    def __init__(self, client, client_jid):
+
+        if not isinstance(client, XMPPC2SClient):
+            raise TypeError("`client', must be of type XMPPC2SClient")
+
+        if not isinstance(client_jid, org.wayround.xmpp.core.JID):
+            raise TypeError(
+                "`client_jid' must be of type org.wayround.xmpp.core.JID"
+                )
+
+        self.client = client
+        self.client_jid = client_jid
+
+        super().__init__(['presence', 'error'])
+
+        self.client.stanza_processor.connect_signal(
+            'stanza_processor_new_stanza',
+            self._in_stanza
+            )
+
+        return
+
+    def presence(self, to_full_or_bare_jid=None):
+
+        if to_full_or_bare_jid and not isinstance(to_full_or_bare_jid, str):
+            raise TypeError("`to_bare_jid' must be a str")
+
+        stanza = org.wayround.xmpp.core.Stanza(
+            tag='presence',
+            jid_from=self.client_jid.bare(),
+            jid_to=to_full_or_bare_jid
+            )
+
+        ret = self.client.stanza_processor.send(stanza, wait=False)
+
+        return ret
+
+    def _in_stanza(self, event, client, stanza):
+
+        """
+        :param org.wayround.xmpp.core.Stanza stanza:
+        """
+
+        if event == 'stanza_processor_new_stanza':
+
+            if stanza.tag == 'presence':
+
+                if stanza.is_error():
+
+                    self.emit_signal('error', self, stanza)
+
+                else:
+
+                    if stanza.typ in [
+                        'presence'
+                        ]:
+
+                        self.emit_signal(
+                            stanza.typ,
+                            self,
+                            stanza.jid_from,
+                            stanza.jid_to,
+                            stanza
+                            )
