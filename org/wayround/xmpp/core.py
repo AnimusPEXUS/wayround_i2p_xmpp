@@ -108,7 +108,19 @@ class JID:
 
 
     def __str__(self):
-        return self.full()
+
+        ret = None
+
+        if self.is_bare():
+            ret = self.bare()
+        elif self.is_full():
+            ret = self.full()
+        elif self.is_domain():
+            ret = self.domain
+        else:
+            ret = None
+
+        return ret
 
     @property
     def user(self):
@@ -116,6 +128,9 @@ class JID:
 
     @user.setter
     def user(self, value):
+        # TODO: this is under question
+        if value == '':
+            value = None
         self._set('user', value)
 
     @property
@@ -124,6 +139,9 @@ class JID:
 
     @domain.setter
     def domain(self, value):
+        # TODO: this is under question
+        if value == '':
+            value = None
         self._set('domain', value)
 
     @property
@@ -132,6 +150,9 @@ class JID:
 
     @resource.setter
     def resource(self, value):
+        # TODO: this is under question
+        if value == '':
+            value = None
         self._values['resource'] = str(value)
 
     def _set(self, name, value):
@@ -149,18 +170,86 @@ class JID:
 
         return ret
 
+    def _bare_part(self, user, domain):
+
+        if user == None:
+            user = ''
+
+        if domain == None:
+            domain = ''
+
+        at = '@'
+
+        if self.user == '' or self.user == None:
+            at = ''
+
+        return user, domain, at
+
     def bare(self):
-        return '{user}@{domain}'.format(
-            user=self.user,
-            domain=self.domain
+
+        user, domain, at = self._bare_part(self.user, self.domain)
+
+        return '{user}{at}{domain}'.format(
+            user=user,
+            domain=domain,
+            at=at
             )
 
     def full(self):
-        return '{user}@{domain}/{resource}'.format(
-            user=self.user,
-            domain=self.domain,
-            resource=self.resource or 'default'
+
+        user, domain, at = self._bare_part(self.user, self.domain)
+        resource = self.resource or 'default'
+
+        return '{user}{at}{domain}/{resource}'.format(
+            user=user,
+            domain=domain,
+            resource=resource,
+            at=at
             )
+
+    def update(self, jid_obj):
+
+        if not isinstance(jid_obj, JID):
+            raise TypeError("`jid_obj' must be of type JID")
+
+        self.user = jid_obj.user
+        self.domain = jid_obj.domain
+        self.resource = jid_obj.resource
+
+        return self
+
+    def get_type(self):
+
+        ret = 'unknown'
+
+        if self.user == None and self.domain != None and self.resource == None:
+            ret = 'domain'
+
+        elif self.user != None and self.domain != None and self.resource == None:
+            ret = 'bare'
+
+        elif self.user != None and self.domain != None and self.resource != None:
+            ret = 'full'
+
+        else:
+            ret = 'unknown'
+
+        return ret
+
+    def is_full(self):
+        return self.get_type() == 'full'
+
+    def is_bare(self):
+        return self.get_type() == 'bare'
+
+    def is_domain(self):
+        return self.get_type() == 'domain'
+
+    def is_unknown(self):
+        return self.get_type() == 'unknown'
+
+    def copy(self):
+        return JID().update(self)
 
     def make_connection_info(self):
         """
@@ -1153,7 +1242,7 @@ class Stanza:
             ret = str(ret, 'utf-8')
         return ret
 
-    def determine_error(self):
+    def get_error(self):
         return determine_stanza_error(self)
 
     def is_error(self):
@@ -1177,6 +1266,13 @@ class Stanza:
         self._body.tag = tag
 
         return
+
+    # all this attributes will be redefined as methods with next `for i' loop
+    ide = None
+    jid_from = None
+    jid_to = None
+    typ = None
+    xmllang = None
 
     for i in [
         ('ide', 'id'),
@@ -1309,7 +1405,7 @@ class StanzaProcessor(org.wayround.utils.signal.Signal):
         elif wait == False:
             wait = 0
 
-        elif wait < 0:
+        elif isinstance(wait, int) and wait < 0:
             wait = None
 
         if not ide_mode in ['from_stanza', 'generate', 'generate_implicit', 'implicit']:
