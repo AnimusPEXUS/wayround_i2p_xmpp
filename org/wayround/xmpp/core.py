@@ -91,6 +91,7 @@ class JID:
 
     """
 
+
     def __init__(self, user='name', domain='domain', resource=None):
 
         self._values = {}
@@ -122,9 +123,11 @@ class JID:
 
         return ret
 
+
     @property
     def user(self):
         return self._get('user')
+
 
     @user.setter
     def user(self, value):
@@ -133,33 +136,43 @@ class JID:
             value = None
         self._set('user', value)
 
+
     @property
     def domain(self):
         return self._get('domain')
 
+
     @domain.setter
     def domain(self, value):
-        # TODO: this is under question
         if value == '':
             value = None
         self._set('domain', value)
+
 
     @property
     def resource(self):
         return self._get('resource')
 
+
     @resource.setter
     def resource(self, value):
-        # TODO: this is under question
         if value == '':
             value = None
-        self._values['resource'] = str(value)
+
+        if value != None:
+            self._values['resource'] = str(value)
+        else:
+            self._values['resource'] = value
+        return
+
 
     def _set(self, name, value):
-        if value:
+        if value != None:
             self._values[name] = str(value).lower()
         else:
             self._values[name] = None
+        return
+
 
     def _get(self, name):
 
@@ -207,17 +220,6 @@ class JID:
             at=at
             )
 
-    def update(self, jid_obj):
-
-        if not isinstance(jid_obj, JID):
-            raise TypeError("`jid_obj' must be of type JID")
-
-        self.user = jid_obj.user
-        self.domain = jid_obj.domain
-        self.resource = jid_obj.resource
-
-        return self
-
     def get_type(self):
 
         ret = 'unknown'
@@ -247,6 +249,17 @@ class JID:
 
     def is_unknown(self):
         return self.get_type() == 'unknown'
+
+    def update(self, jid_obj):
+
+        if not isinstance(jid_obj, JID):
+            raise TypeError("`jid_obj' must be of type JID")
+
+        self.user = jid_obj.user
+        self.domain = jid_obj.domain
+        self.resource = jid_obj.resource
+
+        return self
 
     def copy(self):
         return JID().update(self)

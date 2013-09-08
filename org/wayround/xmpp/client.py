@@ -907,7 +907,7 @@ class Roster(org.wayround.utils.signal.Signal):
 
     roster_data - dict with key(jid) and dict of information:
 
-    (
+    {
     'jid@example.org',
      {
         'groups':       set,
@@ -916,7 +916,7 @@ class Roster(org.wayround.utils.signal.Signal):
         'name':         str,
         'subscription': str
         }
-    )
+    }
 
     get result - dict with many keys(jids) each of which is corresponds to dict
     of information
@@ -965,7 +965,7 @@ class Roster(org.wayround.utils.signal.Signal):
             'subscription': element.get('subscription')
             }
 
-        for j in element.findall('group'):
+        for j in element.findall('{jabber:iq:roster}group'):
             data['groups'].add(j.text)
 
         return element.get('jid'), data
@@ -1028,9 +1028,9 @@ class Roster(org.wayround.utils.signal.Signal):
 
     def set(
         self,
-        jid_from,
-        jid_to,
-        subject_bare_jid,
+        jid_to=False,
+        jid_from=False,
+        subject_jid=None,
         groups=None,
         name=None,
         subscription=None,
@@ -1067,8 +1067,11 @@ class Roster(org.wayround.utils.signal.Signal):
 
             item.set('subscription', subscription)
 
-        if name:
+        if name != None:
             item.set('name', name)
+
+        if subject_jid != None:
+            item.set('jid', subject_jid)
 
         if groups:
 
@@ -1078,6 +1081,12 @@ class Roster(org.wayround.utils.signal.Signal):
                 item.append(_e)
 
         query.append(item)
+
+        if jid_to == False:
+            jid_to = self.client_jid.bare()
+
+        if jid_from == False:
+            jid_from = self.client_jid.full()
 
         stanza = org.wayround.xmpp.core.Stanza(
             tag='iq',
@@ -1122,7 +1131,7 @@ class Roster(org.wayround.utils.signal.Signal):
             error = True
         else:
 
-            item = query.find('item')
+            item = query.find('{jabber:iq:roster}item')
 
             if item == None:
                 error = True
@@ -1328,3 +1337,90 @@ class Presence(org.wayround.utils.signal.Signal):
 
         return
 
+class Message(org.wayround.utils.signal.Signal):
+
+    def __init__(self, client, client_jid):
+
+        if not isinstance(client, XMPPC2SClient):
+            raise TypeError("`client', must be of type XMPPC2SClient")
+
+        if not isinstance(client_jid, org.wayround.xmpp.core.JID):
+            raise TypeError(
+                "`client_jid' must be of type org.wayround.xmpp.core.JID"
+                )
+
+        self.client = client
+        self.client_jid = client_jid
+
+        super().__init__([
+            'message', 'error'
+            ])
+
+        self.client.connect_signal(
+            'stanza_processor_new_stanza',
+            self._in_stanza
+            )
+
+    def message(
+        self,
+        to_jid=None, from_jid=None, typ=None, thread=None, subject=None, body=None,
+        wait=False
+        ):
+
+        if not typ in [None, 'normal', 'chat', 'groupchat', 'headline', 'error']:
+            raise ValueError("Wrong `typ' value")
+
+        if to_jid == False:
+            to_jid = self.client_jid.bare()
+
+        if from_jid == False:
+            from_jid = self.client_jid.full()
+
+        stanza = org.wayround.xmpp.core.Stanza(
+            tag='message',
+            jid_to=to_jid,
+            typ=typ
+            )
+
+        if isinstance(thread, str):
+            thread_el = lxml.etree.Element('thread')
+            thread_el.text = thread
+            stanza.body.append(thread_el)
+
+        if isinstance(subject, str):
+            subject_el = lxml.etree.Element('subject')
+            subject_el.text = subject
+            stanza.body.append(subject_el)
+
+        if isinstance(body, str):
+            body_el = lxml.etree.Element('body')
+            body_el.text = body
+            stanza.body.append(body_el)
+
+        ret = self.client.stanza_processor.send(stanza, wait=wait)
+
+        return ret
+
+    def _in_stanza(self, event, client, stanza):
+
+        """
+        :param org.wayround.xmpp.core.Stanza stanza:
+        """
+
+        if event == 'stanza_processor_new_stanza':
+
+            if stanza.tag == '{jabber:client}message':
+
+                if stanza.is_error():
+
+                    self.emit_signal('error', self, stanza)
+
+                else:
+
+                    self.emit_signal(
+                        'message',
+                        self,
+                        stanza
+                        )
+
+        return
