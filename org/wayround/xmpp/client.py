@@ -694,7 +694,7 @@ def drive_sasl(
                             logging.debug("POP exited with error")
                         else:
                             if c_r_w_result['event'] != 'io_in_element_readed':
-                                ret = 'invalid server action 4'
+                                ret = 'invalid server action 5'
                                 logging.debug(ret)
                             else:
 

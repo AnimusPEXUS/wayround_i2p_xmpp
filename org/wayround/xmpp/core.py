@@ -2,8 +2,10 @@
 import copy
 import logging
 import threading
+import queue
 import time
 import re
+import uuid
 
 import xml.sax.saxutils
 import lxml.etree
@@ -526,6 +528,10 @@ class XMPPInputStreamReader:
 
         self._clear(init=True)
 
+        self._feed_pool = queue.Queue()
+#        self._feed_lock = threading.Lock()
+        self._feed_pool_thread = None
+
         return
 
     def _clear(self, init=False):
@@ -591,9 +597,17 @@ class XMPPInputStreamReader:
                 else:
                     self._stream_reader_thread.start()
 
+            if self._feed_pool_thread == None:
+                self._feed_pool_thread = threading.Thread(
+                    name="{} _feed pool worker".format(type(self).__name__),
+                    target=self._feed_pool_worker_thread
+                    )
+                self._feed_pool_thread.start()
+
             self.wait('working')
             self._stat = 'started'
             self._starting = False
+
 
         return
 
@@ -658,32 +672,47 @@ class XMPPInputStreamReader:
 
     def _feed(self, bytes_text):
 
-        logging.debug(
-            "{} :: received feed of {}".format(
-                type(self).__name__, repr(bytes_text)
-                )
-            )
-
         if not isinstance(bytes_text, bytes):
             raise TypeError("bytes_text must be bytes type")
 
-        ret = 0
+        self._feed_pool.put(bytes_text)
 
-        try:
-            self._xml_parser.feed(bytes_text)
-        except:
-            logging.exception(
-                "{} :: _feed {}".format(
-                    type(self).__name__, str(bytes_text, encoding='utf-8')
-                    )
-                )
-            ret = 0
-        else:
-            ret = len(bytes_text)
+        return len(bytes_text)
 
-        return ret
+    def _feed_pool_worker_thread(self):
 
+        while True:
 
+            while not self._feed_pool.empty():
+
+                try:
+                    bb = self._feed_pool.get()
+                except queue.Empty:
+                    pass
+                else:
+                    logging.debug(
+                        "{} :: got next feed of {}".format(
+                            type(self).__name__, repr(bb)
+                            )
+                        )
+
+                    try:
+                        self._xml_parser.feed(bb)
+                    except:
+                        logging.exception(
+                            "{} :: _feed {}".format(
+                                type(self).__name__, str(bb, encoding='utf-8')
+                                )
+                            )
+
+            time.sleep(0.2)
+
+            if self._termination_event.is_set():
+                break
+
+        self._feed_pool_thread = None
+
+        return
 
 
 class XMPPOutputStreamWriter:
@@ -964,7 +993,8 @@ class XMPPStreamMachine(org.wayround.utils.signal.Signal):
             self._xml_target.connect_signal(True, self._signal_proxy)
 
             self._xml_parser = lxml.etree.XMLParser(
-                target=self._xml_target
+                target=self._xml_target,
+                huge_tree=True
                 )
 
             self.stream_worker = None
@@ -1335,6 +1365,7 @@ class StanzaProcessor(org.wayround.utils.signal.Signal):
 
         self.response_cbs = {}
 
+        self._stanza_id_generation_unifire = uuid.uuid4().hex
         self._stanza_id_generation_counter = 0
 
         self._wait_callbacks = {}
@@ -1406,13 +1437,14 @@ class StanzaProcessor(org.wayround.utils.signal.Signal):
 
         new_stanza_ide = None
 
+        self._stanza_id_generation_unifire = uuid.uuid4().hex
         self._stanza_id_generation_counter += 1
 
         if wait != None and not isinstance(wait, (bool, int,)):
             raise TypeError("`wait' must be None, bool or int")
 
         if wait == True:
-            wait = 10000
+            wait = 10
             ide_mode = 'generate_implicit'
 
         elif wait == False:
@@ -1434,7 +1466,10 @@ class StanzaProcessor(org.wayround.utils.signal.Signal):
             if ((not stanza_obj.ide and ide_mode == 'generate')
                 or ide_mode == 'generate_implicit'):
 
-                new_stanza_ide = hex(self._stanza_id_generation_counter)
+                new_stanza_ide = '{}:{}'.format(
+                    self._stanza_id_generation_unifire,
+                    hex(self._stanza_id_generation_counter)
+                    )
 
         elif ide_mode == 'implicit':
 
