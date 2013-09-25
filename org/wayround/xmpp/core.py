@@ -995,6 +995,7 @@ class XMPPStreamMachine(org.wayround.utils.signal.Signal):
             self._xml_parser = lxml.etree.XMLParser(
                 target=self._xml_target,
                 huge_tree=True
+                # strip_cdata=False
                 )
 
             self.stream_worker = None
@@ -1209,9 +1210,9 @@ class Stanza:
         body=None
         ):
 
-        body_is_stanza = is_stanza_element(body)
+        aa = is_stanza_element(body)
 
-        if body_is_stanza:
+        if aa:
 
             if tag or ide or jid_from or jid_to or typ or xmllang:
                 raise ValueError(
@@ -1220,7 +1221,7 @@ class Stanza:
 
         self.body = body
 
-        if not body_is_stanza:
+        if not aa:
 
             self.tag = tag
             self.ide = ide
@@ -1249,33 +1250,9 @@ class Stanza:
         else:
 
             self._body = lxml.etree.Element('message')
+            self._body.set('xmlns', 'jabber:client')
 
-            if not isinstance(obj, list):
-                obj = [obj]
-
-            for i in obj:
-
-                if type(i) == lxml.etree._Element:
-                    self._body.append(i)
-
-                elif isinstance(i, bytes):
-                    self._body.append(
-                        lxml.etree.fromstring(str(i, 'utf-8'))
-                        )
-
-                elif isinstance(i, str):
-                    self._body.append(
-                        lxml.etree.fromstring(i)
-                        )
-
-                else:
-                    logging.warning(
-                        "Adding directly unsupported element"
-                        " type to new stanza {}".format(type(i))
-                        )
-                    self._body.append(
-                        lxml.etree.fromstring(str(i))
-                        )
+            element_add_object(self._body, obj)
 
         return
 
@@ -1319,10 +1296,10 @@ class Stanza:
 
     for i in [
         ('ide', 'id'),
-        ('jid_from', 'from'),
-        ('jid_to', 'to'),
         ('typ', 'type'),
-        ('xmllang', 'xml:lang')
+        ('xmllang', 'xml:lang'),
+        ('jid_from', 'from'),
+        ('jid_to', 'to')
         ]:
         exec(
 """
@@ -1348,12 +1325,45 @@ def {meth_name}(self, value):
 
     del(i)
 
+def element_add_object(element, obj):
+
+    if type(element) != lxml.etree._Element:
+        raise TypeError("`element' must be lxml.etree._Element")
+
+    if not isinstance(obj, list):
+        obj = [obj]
+
+    for i in obj:
+
+        if type(i) == lxml.etree._Element:
+            element.append(i)
+
+        elif isinstance(i, bytes):
+            element.append(
+                lxml.etree.fromstring(str(i, 'utf-8'))
+                )
+
+        elif isinstance(i, str):
+            element.append(
+                lxml.etree.fromstring(i)
+                )
+
+        else:
+            logging.warning(
+                "Adding directly unsupported element"
+                " type as element child {}".format(type(i))
+                )
+            element.append(
+                lxml.etree.fromstring(str(i))
+                )
+    return
 
 class StanzaProcessor(org.wayround.utils.signal.Signal):
 
     """
     Signals:
     ('new_stanza', self, stanza)
+    ('new_stanza_to_send, self, stanza')
     ('response_stanza', self, stanza)
     """
 
@@ -1466,7 +1476,7 @@ class StanzaProcessor(org.wayround.utils.signal.Signal):
             if ((not stanza_obj.ide and ide_mode == 'generate')
                 or ide_mode == 'generate_implicit'):
 
-                new_stanza_ide = '{}:{}'.format(
+                new_stanza_ide = '{}-stanza-{}'.format(
                     self._stanza_id_generation_unifire,
                     hex(self._stanza_id_generation_counter)
                     )

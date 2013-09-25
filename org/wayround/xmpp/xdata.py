@@ -31,14 +31,19 @@ def element_to_data(element):
         raise TypeError("`element' must be lxml.etree.Element")
 
     if element.tag != '{jabber:x:data}x':
-        raise Exception("Invalid element")
+        raise ValueError("Invalid element")
 
     data = {}
 
     data['form_type'] = element.get('type')
 
     if data['form_type'] == None:
-        raise InvalidForm("Invalid form element")
+        data['form_type'] = 'form'
+
+    if not data['form_type'] in ['cancel', 'form', 'result', 'submit']:
+        raise InvalidForm(
+            "Invalid form element type ({})".format(data['form_type'])
+            )
 
     data['title'] = None
     t = element.find('{jabber:x:data}title')
@@ -47,48 +52,198 @@ def element_to_data(element):
 
     data['instructions'] = []
 
-    for i in element:
-        if i.tag == '{jabber:x:data}instruction':
-            t = i.text
-            if t == None:
-                t = ''
+    data['fields'] = []
+    data['reported_fields'] = []
+    data['reported_items'] = []
+
+    for i in element.findall('{jabber:x:data}instruction'):
+        t = i.text
+        if t != None:
             data['instructions'].append(t)
 
-    data['fields'] = []
 
-    for i in element:
-        if i.tag == '{jabber:x:data}field':
-            f = {
-                'var': None,
-                'label': None,
-                'type': None,
-                'label': None,
-                'desc': None,
-                'required': False,
-                'values':[],
-                'options':[]
-                }
-            f['var'] = i.get('var')
-            f['label'] = i.get('label')
-            f['type'] = i.get('type')
+    for i in element.findall('{jabber:x:data}field'):
+        data['fields'].append(_field_to_data(i))
 
-            if not f['type'] in [
-                'boolean', 'fixed', 'hidden', 'jid-multi',
-                'jid-single', 'list-multi', 'list-single',
-                'text-multi', 'text-private', 'text-single'
-                ]:
-                raise InvalidForm("Invalid field type value")
+    for i in element.findall('{jabber:x:data}reported'):
+        if len(i) == 0:
+            raise InvalidForm("Invalid `reported' children count")
+        else:
+            for j in i:
+                data['reported_fields'].append(_field_to_data(j))
 
-            v = i.findall('{jabber:x:data}value')
-            for j in v:
-                f['value'].append(j.text)
+    for i in element.findall('{jabber:x:data}item'):
+        items = []
+        for j in i:
+            if len(j) != len(data['reported_fields']):
+                raise InvalidForm(
+"Reported item field count does not corresponds to reported header"
+                    )
+            items.append(_field_to_data(j))
 
-            o = i.findall('{jabber:x:data}option')
-            for j in o:
-                v = j.find('{jabber:x:data}value')
-                if v != None:
-                    f['option'].append({'label':j.get('label'), 'value':v.text})
-                else:
-                    raise InvalidForm("Option without value")
+        data['reported_items'].append(items)
 
     return data
+
+def _field_to_data(element):
+
+    if type(element) != lxml.etree._Element:
+        raise TypeError("`element' must be lxml.etree.Element")
+
+    if element.tag != '{jabber:x:data}field':
+        raise Exception("Invalid element")
+
+    f = {
+        'var': element.get('var'),
+        'label': element.get('label'),
+        'type': element.get('type'),
+        'desc': None,
+        'required': False,
+        'values':[],
+        'options':[]
+        }
+
+    if not f['type'] in [
+        'boolean', 'fixed', 'hidden', 'jid-multi',
+        'jid-single', 'list-multi', 'list-single',
+        'text-multi', 'text-private', 'text-single'
+        ]:
+        raise InvalidForm("Invalid field type value")
+
+    v = element.findall('{jabber:x:data}value')
+    for j in v:
+        f['values'].append(_value_to_data(j))
+
+    d = element.find('{jabber:x:data}desc')
+    if d != None:
+        f['desc'] = d.text
+
+    f['required'] = element.find('{jabber:x:data}required') != None
+
+    o = element.findall('{jabber:x:data}option')
+    for j in o:
+        v = j.find('{jabber:x:data}value')
+        if v != None:
+            f['options'].append({'label':j.get('label'), 'value':_value_to_data(v)})
+        else:
+            raise InvalidForm("Option without value")
+
+    return f
+
+def _value_to_data(element):
+
+    if type(element) != lxml.etree._Element:
+        raise TypeError("`element' must be lxml.etree.Element")
+
+    if element.tag != '{jabber:x:data}value':
+        raise Exception("Invalid element")
+
+    return element.text
+
+def _data_to_value(data):
+
+    e = lxml.etree.Element('{jabber:x:data}value')
+    e.text = data
+
+    return e
+
+def _data_to_field(data):
+
+    if not isinstance(data, dict):
+        raise TypeError("`data' must be dict")
+
+    e = lxml.etree.Element('{jabber:x:data}field')
+
+    for i in ['var', 'label', 'type']:
+        if data[i]:
+            e.set(i, data[i])
+
+    if not data['type'] in [
+        'boolean', 'fixed', 'hidden', 'jid-multi',
+        'jid-single', 'list-multi', 'list-single',
+        'text-multi', 'text-private', 'text-single'
+        ]:
+        raise InvalidForm("Invalid field type value")
+
+    if len(data['values']) != 0:
+        for i in data['values']:
+            e.append(_data_to_value(i))
+
+    if data['desc']:
+        d = lxml.etree.Element('{jabber:x:data}desc')
+        d.text = data['desc']
+        e.append(d)
+
+    if data['required']:
+        e.append(lxml.etree.Element('{jabber:x:data}required'))
+
+
+    if len(data['options']) != 0:
+
+        for i in data['options']:
+            o = lxml.etree.Element('{jabber:x:data}option')
+            if i['label']:
+                o.set('label', i['label'])
+            o.append(_data_to_value(i['value']))
+
+            e.append(o)
+
+    return e
+
+
+def data_to_element(data):
+
+    if not isinstance(data, dict):
+        raise TypeError("`data' must be dict")
+
+    e = lxml.etree.Element('{jabber:x:data}x')
+
+    if not data['form_type'] in ['cancel', 'form', 'result', 'submit']:
+        raise InvalidForm(
+            "Invalid form element type ({})".format(data['form_type'])
+            )
+
+    e.set('type', data['form_type'])
+
+    if data['title']:
+        t = lxml.etree.Element('{jabber:x:data}title')
+        t.text = data['title']
+        e.append(t)
+
+    if len(data['instructions']) != 0:
+        for i in data['instructions']:
+            t = lxml.etree.Element('{jabber:x:data}instruction')
+            t.text = i
+            e.append(t)
+
+
+    if len(data['fields']) != 0:
+        for i in data['fields']:
+            e.append(_data_to_field(i))
+
+
+    if len(data['reported_fields']) != 0:
+
+        t = lxml.etree.Element('{jabber:x:data}reported')
+        for i in data['reported_fields']:
+            t.append(_data_to_field(i))
+
+        e.append(t)
+
+    if len(data['reported_items']) != 0:
+
+        for i in data['reported_items']:
+
+            if len(i) != len(data['reported_fields']):
+                raise InvalidForm(
+"Reported item field count does not corresponds to reported header"
+                )
+
+            t = lxml.etree.Element('{jabber:x:data}item')
+
+            for j in i:
+                t.append(_data_to_field(j))
+
+            e.append(t)
+
+    return e

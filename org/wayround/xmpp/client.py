@@ -677,10 +677,8 @@ def drive_sasl(
                     ret = 'error'
                     logging.debug("POP exited with error")
                 else:
-                    if c_r_w_result['event'] != 'io_in_start':
-                        ret = 'invalid server action 4'
-                        logging.debug(ret)
-                    else:
+                    ret = 'invalid server action 4'
+                    if c_r_w_result['event'] == 'io_in_start':
 
                         logging.debug("IO Machine inbound stream start signal received")
                         logging.debug("Waiting for features")
@@ -690,24 +688,21 @@ def drive_sasl(
                         logging.debug("POP!")
 
                         if not isinstance(c_r_w_result, dict):
-                            ret = 'error'
+                            ret = 'invalid server action 5'
                             logging.debug("POP exited with error")
+
+                    if c_r_w_result['event'] == 'io_in_element_readed':
+
+                        logging.debug("Received some element, analizing...")
+
+                        obj = c_r_w_result['args'][1]
+
+                        if not org.wayround.xmpp.core.is_features_element(obj):
+                            ret = 'invalid server action 6'
+                            logging.debug("Server must been give us an stream features, but it's not")
                         else:
-                            if c_r_w_result['event'] != 'io_in_element_readed':
-                                ret = 'invalid server action 5'
-                                logging.debug(ret)
-                            else:
-
-                                logging.debug("Received some element, analizing...")
-
-                                obj = c_r_w_result['args'][1]
-
-                                if not org.wayround.xmpp.core.is_features_element(obj):
-                                    ret = 'error'
-                                    logging.debug("Server must been give us an stream features, but it's not")
-                                else:
-                                    logging.debug("Stream features recognized. Time to return success to driver caller")
-                                    ret = obj
+                            logging.debug("Stream features recognized. Time to return success to driver caller")
+                            ret = obj
 
         client_reactions_waiter.stop()
 

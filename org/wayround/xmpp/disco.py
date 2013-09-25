@@ -32,9 +32,9 @@ def _x(jid_to, jid_from, node=None, stanza_processor=None, mode='info'):
             ]
         )
 
-    print("Sending disco stanza")
-    ret = stanza_processor.send(stanza, wait=20)
-    print("Sending disco stanza result achived: {}".format(ret))
+#    print("Sending disco stanza")
+    ret = stanza_processor.send(stanza, wait=None)
+#    print("Sending disco stanza result achived: {}".format(ret))
 
     return ret
 
