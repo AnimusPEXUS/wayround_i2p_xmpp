@@ -1,4 +1,6 @@
 
+import copy
+
 import lxml.etree
 
 def get_x_data_elements(element):
@@ -142,7 +144,8 @@ def _value_to_data(element):
 
 def _data_to_value(data):
 
-    e = lxml.etree.Element('{jabber:x:data}value')
+    e = lxml.etree.Element('value')
+    e.set('xmlns', 'jabber:x:data')
     e.text = data
 
     return e
@@ -152,7 +155,8 @@ def _data_to_field(data):
     if not isinstance(data, dict):
         raise TypeError("`data' must be dict")
 
-    e = lxml.etree.Element('{jabber:x:data}field')
+    e = lxml.etree.Element('field')
+    e.set('xmlns', 'jabber:x:data')
 
     for i in ['var', 'label', 'type']:
         if data[i]:
@@ -170,18 +174,22 @@ def _data_to_field(data):
             e.append(_data_to_value(i))
 
     if data['desc']:
-        d = lxml.etree.Element('{jabber:x:data}desc')
+        d = lxml.etree.Element('desc')
+        d.set('xmlns', 'jabber:x:data')
         d.text = data['desc']
         e.append(d)
 
     if data['required']:
-        e.append(lxml.etree.Element('{jabber:x:data}required'))
+        o = lxml.etree.Element('required')
+        o.set('xmlns', 'jabber:x:data')
+        e.append(o)
 
 
     if len(data['options']) != 0:
 
         for i in data['options']:
-            o = lxml.etree.Element('{jabber:x:data}option')
+            o = lxml.etree.Element('option')
+            o.set('xmlns', 'jabber:x:data')
             if i['label']:
                 o.set('label', i['label'])
             o.append(_data_to_value(i['value']))
@@ -196,7 +204,8 @@ def data_to_element(data):
     if not isinstance(data, dict):
         raise TypeError("`data' must be dict")
 
-    e = lxml.etree.Element('{jabber:x:data}x')
+    e = lxml.etree.Element('x')
+    e.set('xmlns', 'jabber:x:data')
 
     if not data['form_type'] in ['cancel', 'form', 'result', 'submit']:
         raise InvalidForm(
@@ -206,13 +215,15 @@ def data_to_element(data):
     e.set('type', data['form_type'])
 
     if data['title']:
-        t = lxml.etree.Element('{jabber:x:data}title')
+        t = lxml.etree.Element('title')
+        t.set('xmlns', 'jabber:x:data')
         t.text = data['title']
         e.append(t)
 
     if len(data['instructions']) != 0:
         for i in data['instructions']:
-            t = lxml.etree.Element('{jabber:x:data}instruction')
+            t = lxml.etree.Element('instruction')
+            t.set('xmlns', 'jabber:x:data')
             t.text = i
             e.append(t)
 
@@ -224,7 +235,8 @@ def data_to_element(data):
 
     if len(data['reported_fields']) != 0:
 
-        t = lxml.etree.Element('{jabber:x:data}reported')
+        t = lxml.etree.Element('reported')
+        t.set('xmlns', 'jabber:x:data')
         for i in data['reported_fields']:
             t.append(_data_to_field(i))
 
@@ -239,7 +251,8 @@ def data_to_element(data):
 "Reported item field count does not corresponds to reported header"
                 )
 
-            t = lxml.etree.Element('{jabber:x:data}item')
+            t = lxml.etree.Element('item')
+            t.set('xmlns', 'jabber:x:data')
 
             for j in i:
                 t.append(_data_to_field(j))
@@ -247,3 +260,9 @@ def data_to_element(data):
             e.append(t)
 
     return e
+
+def data_clena_for_submit(data):
+    data = copy.deepcopy(data)
+    
+    
+    
