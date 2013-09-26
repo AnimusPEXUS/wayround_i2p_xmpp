@@ -1,6 +1,4 @@
 
-import copy
-
 import lxml.etree
 
 def get_x_data_elements(element):
@@ -145,7 +143,6 @@ def _value_to_data(element):
 def _data_to_value(data):
 
     e = lxml.etree.Element('value')
-    e.set('xmlns', 'jabber:x:data')
     e.text = data
 
     return e
@@ -156,7 +153,6 @@ def _data_to_field(data):
         raise TypeError("`data' must be dict")
 
     e = lxml.etree.Element('field')
-    e.set('xmlns', 'jabber:x:data')
 
     for i in ['var', 'label', 'type']:
         if data[i]:
@@ -175,13 +171,11 @@ def _data_to_field(data):
 
     if data['desc']:
         d = lxml.etree.Element('desc')
-        d.set('xmlns', 'jabber:x:data')
         d.text = data['desc']
         e.append(d)
 
     if data['required']:
         o = lxml.etree.Element('required')
-        o.set('xmlns', 'jabber:x:data')
         e.append(o)
 
 
@@ -189,7 +183,6 @@ def _data_to_field(data):
 
         for i in data['options']:
             o = lxml.etree.Element('option')
-            o.set('xmlns', 'jabber:x:data')
             if i['label']:
                 o.set('label', i['label'])
             o.append(_data_to_value(i['value']))
@@ -216,14 +209,12 @@ def data_to_element(data):
 
     if data['title']:
         t = lxml.etree.Element('title')
-        t.set('xmlns', 'jabber:x:data')
         t.text = data['title']
         e.append(t)
 
     if len(data['instructions']) != 0:
         for i in data['instructions']:
             t = lxml.etree.Element('instruction')
-            t.set('xmlns', 'jabber:x:data')
             t.text = i
             e.append(t)
 
@@ -236,7 +227,6 @@ def data_to_element(data):
     if len(data['reported_fields']) != 0:
 
         t = lxml.etree.Element('reported')
-        t.set('xmlns', 'jabber:x:data')
         for i in data['reported_fields']:
             t.append(_data_to_field(i))
 
@@ -252,7 +242,6 @@ def data_to_element(data):
                 )
 
             t = lxml.etree.Element('item')
-            t.set('xmlns', 'jabber:x:data')
 
             for j in i:
                 t.append(_data_to_field(j))
@@ -261,8 +250,3 @@ def data_to_element(data):
 
     return e
 
-def data_clena_for_submit(data):
-    data = copy.deepcopy(data)
-    
-    
-    
