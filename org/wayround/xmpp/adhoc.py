@@ -6,7 +6,6 @@ import lxml.etree
 import org.wayround.utils.signal
 
 import org.wayround.xmpp.core
-import org.wayround.xmpp.xdata
 import org.wayround.xmpp.disco
 
 def get_commands_list(jid_to, jid_from, stanza_processor=None):
@@ -263,47 +262,5 @@ def {meth_name}(self, value):
         if isinstance(ret, bytes):
             ret = str(ret, 'utf-8')
         return ret
-
-
-class CommandProcessor(org.wayround.utils.signal.Signal):
-
-    """
-    Signals:
-    """
-
-    def __init__(self):
-
-        super().__init__([])
-
-        self._io_machine = None
-
-        self.response_cbs = {}
-
-        self._stanza_id_generation_unifire = uuid.uuid4().hex
-        self._stanza_id_generation_counter = 0
-
-        self._wait_callbacks = {}
-
-
-    def connect_stanza_processor(self, stanza_processor):
-        """
-        :param XMPPIOStreamRWMachine stanza_processor:
-        """
-        self._stanza_processor = stanza_processor
-        self._stanza_processor.connect_signal(
-            'new_stanza',
-            self._on_new_stanza
-            )
-
-    def disconnect_stanza_processor(self):
-        """
-        :param XMPPIOStreamRWMachine stanza_processor:
-        """
-        self._stanza_processor.disconnect_signal(self._on_input_object)
-        self._stanza_processor = None
-
-
-    def _on_new_stanza(self):
-        pass
 
 
