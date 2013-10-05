@@ -59,7 +59,8 @@ class XMPPC2SClient(org.wayround.utils.signal.Signal):
 
         self.sock_streamer = org.wayround.utils.stream.SocketStreamer(
             self.socket,
-            socket_transfer_size=4096
+            socket_transfer_size=4096,
+            debug=False
             )
 
         self.sock_streamer.connect_signal(
@@ -425,6 +426,9 @@ def drive_starttls(
                         logging.debug(ret)
                     else:
 
+                        logging.debug(
+                            "TLS request successful: proceed signal achieved"
+                            )
                         logging.debug("Calling streamer to wrap socket with TLS")
 
                         client.sock_streamer.start_ssl()

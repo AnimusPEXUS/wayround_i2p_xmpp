@@ -261,6 +261,41 @@ class XData:
 
         return e
 
+    def gen_info_text(self):
+
+        text = ''
+
+        title = self.get_title()
+
+        if title:
+            text += "Title:\n{}".format(title)
+
+        insts = self.get_instructions()
+
+        for i in insts:
+            text += "[i]: {}\n".format(i)
+
+        fields = self.get_fields()
+        for i in fields:
+            typ = i.get_type()
+            values = i.get_values()
+            values_l = len(values)
+
+            if values_l == 0:
+                text += "{} ({})\n".format(i.get_label(), typ)
+
+            else:
+                text += "{} ({}):\n".format(
+                    i.get_label(), typ
+                    )
+
+                for j in values:
+                    lines = j.get_value().splitlines()
+                    for k in lines:
+                        text += '    {}\n'.format(k)
+
+        # print("Out text is: {}".format(text))
+        return text
 
 class XDataField:
 
@@ -297,7 +332,6 @@ class XDataField:
 
         ret.set_var(element.get('var'))
         ret.set_label(element.get('label'))
-        ret.set_type(element.get('type'))
 
         v = element.findall('{jabber:x:data}value')
         cv = ret.get_values()
@@ -315,6 +349,12 @@ class XDataField:
         for j in o:
             co.append(XDataOption.new_from_element(j))
 
+        t = element.get('type')
+        if t == None:
+            t = 'text-single'
+
+        ret.set_type(t)
+
         ret.check()
 
         return ret
@@ -330,8 +370,8 @@ class XDataField:
         return
 
     def check_options(self, value):
-        if not org.wayround.utils.types.struct_check(value, {'t': list, '.':{'t':str}}):
-            raise ValueError("must be list of strings")
+        if not org.wayround.utils.types.struct_check(value, {'t': list, '.':{'t':XDataOption}}):
+            raise ValueError("must be list of XDataOption")
 
     def get_values(self):
         ret = self._values
@@ -468,13 +508,7 @@ class XDataField:
         if len(options) != 0:
 
             for i in options:
-                _t = lxml.etree.Element('option')
-                label = i.get_label()
-                if label:
-                    _t.set('label', label)
-                _t.append(i.gen_element())
-
-                e.append(_t)
+                e.append(i.gen_element())
 
         return e
 
@@ -498,7 +532,7 @@ class XDataOption:
         ret.set_label(element.get('label'))
         v = element.find('{jabber:x:data}value')
         if v != None:
-            ret.set_value(v)
+            ret.set_value(XDataValue.new_from_element(v))
         else:
             raise InvalidForm("Option without value")
 
@@ -568,8 +602,12 @@ class XDataValue:
         if element.tag != '{jabber:x:data}value':
             raise Exception("Invalid element")
 
-        ret = cls(element.text)
-        ret.check()
+        t = element.text
+        if t == None:
+            t = ''
+
+        ret = cls(t)
+
         return ret
 
     def get_value(self):
@@ -582,7 +620,7 @@ class XDataValue:
 
     def check_value(self, value):
         if not isinstance(value, str):
-            raise ValueError("`value' must be str")
+            raise ValueError("`value' must be str, not {}".format(type(value)))
 
     def check(self):
         self.check_value(self.get_value())

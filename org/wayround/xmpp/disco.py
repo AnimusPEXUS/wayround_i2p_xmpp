@@ -48,7 +48,7 @@ def get_info(jid_to, jid_from, node=None, stanza_processor=None):
     if isinstance(res, org.wayround.xmpp.core.Stanza):
         ret = res.body.find('{http://jabber.org/protocol/disco#info}query')
 
-    return ret
+    return ret, res
 
 def get_items(jid_to, jid_from, node=None, stanza_processor=None):
 
@@ -59,7 +59,7 @@ def get_items(jid_to, jid_from, node=None, stanza_processor=None):
     if isinstance(res, org.wayround.xmpp.core.Stanza):
         ret = res.body.find('{http://jabber.org/protocol/disco#items}query')
 
-    return ret
+    return ret, res
 
 def get(jid_to, jid_from, node=None, stanza_processor=None):
     return {

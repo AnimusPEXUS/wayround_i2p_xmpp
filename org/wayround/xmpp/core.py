@@ -94,21 +94,36 @@ class JID:
     """
 
 
-    def __init__(self, user='name', domain='domain', resource=None):
+    def __init__(self, user=None, domain=None, resource=None):
 
         self._values = {}
-
-        if not isinstance(user, str):
-            raise TypeError("`user' must be str")
-
-        if not isinstance(domain, str):
-            raise TypeError("`domain' must be str")
-
 
         self.user = user
         self.domain = domain
         self.resource = resource
 
+    @classmethod
+    def new_from_string(cls, in_str):
+        """
+        Try to convert string to JID instance. Returns None in case of error.
+        """
+
+        ret = None
+
+        res = re.match(
+            r'^((?P<localpart>.+?)@)?(?P<domainpart>.+?)(/(?P<resourcepart>.+?))?$',
+            in_str
+            )
+
+        if res:
+
+            ret = cls(
+                res.group('localpart'),
+                res.group('domainpart'),
+                res.group('resourcepart')
+                )
+
+        return ret
 
     def __str__(self):
 
@@ -130,14 +145,12 @@ class JID:
     def user(self):
         return self._get('user')
 
-
     @user.setter
     def user(self, value):
-        # TODO: this is under question
+
         if value == '':
             value = None
         self._set('user', value)
-
 
     @property
     def domain(self):
@@ -222,12 +235,16 @@ class JID:
             at=at
             )
 
+
     def get_type(self):
 
         ret = 'unknown'
 
         if self.user == None and self.domain != None and self.resource == None:
             ret = 'domain'
+
+        elif self.user == None and self.domain != None and self.resource == None:
+            ret = 'domain_res'
 
         elif self.user != None and self.domain != None and self.resource == None:
             ret = 'bare'
@@ -248,6 +265,9 @@ class JID:
 
     def is_domain(self):
         return self.get_type() == 'domain'
+
+    def is_domain_res(self):
+        return self.get_type() == 'domain_res'
 
     def is_unknown(self):
         return self.get_type() == 'unknown'
@@ -545,7 +565,7 @@ class XMPPInputStreamReader:
         self._starting = False
         self._stopping = False
 
-        self._termination_event = None
+        self._termination_event = threading.Event()
 
         self._stat = 'stopped'
 
@@ -564,8 +584,6 @@ class XMPPInputStreamReader:
             self._starting = True
 
             if not self._stream_reader_thread:
-
-                self._termination_event = threading.Event()
 
                 try:
                     self._stream_reader_thread = org.wayround.utils.stream.cat(
@@ -995,7 +1013,8 @@ class XMPPStreamMachine(org.wayround.utils.signal.Signal):
             self._xml_parser = lxml.etree.XMLParser(
                 target=self._xml_target,
                 huge_tree=True
-                # strip_cdata=False
+#                strip_cdata=False,
+#                resolve_entities=False
                 )
 
             self.stream_worker = None
@@ -1833,36 +1852,7 @@ def session_tpl():
 
 
 def jid_from_string(in_str):
-    """
-    Try to convert string to JID instance. Returns None in case of error.
-    """
-
-    ret = None
-
-    res = re.match(
-        r'^(?P<localpart>.+?)@(?P<domainpart>.+?)(/(?P<resourcepart>.+?))?$',
-        in_str
-        )
-
-    if res:
-
-        if len(res.group('localpart')) > 32:
-
-            ret = None
-
-        else:
-
-            try:
-                ret = JID(
-                    res.group('localpart'),
-                    res.group('domainpart'),
-                    res.group('resourcepart')
-                    )
-
-            except:
-                ret = None
-
-    return ret
+    return JID.new_from_string(in_str)
 
 jid_from_str = jid_from_string
 str_to_jid = jid_from_string
@@ -1945,9 +1935,6 @@ def determine_stanza_error(stanza):
     """
 
     ret = None
-    condition = None
-    text = None
-    error_type = None
 
 
     if not isinstance(stanza, Stanza) and is_stanza_element(stanza):
@@ -1958,64 +1945,99 @@ def determine_stanza_error(stanza):
     else:
 
         if stanza.typ == 'error':
-
-            e1 = stanza.body.find('error')
-
-            if e1 == None:
-                ret = None
-            else:
-
-                if len(e1) == 0:
-                    ret = None
-                else:
-
-                    error_type = e1.get('type')
-
-                    if not error_type:
-                        ret = None
-
-                    else:
-
-                        for i in e1:
-                            tag_parsed = lxml.etree.QName(i)
-
-                            ns = tag_parsed.namespace
-                            tag = tag_parsed.localname
-
-                            if ns == 'urn:ietf:params:xml:ns:xmpp-stanzas':
-
-                                if tag == 'text':
-                                    text = i.text
-                                    break
-
-                        for i in e1:
-                            tag_parsed = lxml.etree.QName(i)
-
-                            ns = tag_parsed.namespace
-                            tag = tag_parsed.localname
-
-                            if ns == 'urn:ietf:params:xml:ns:xmpp-stanzas':
-
-                                if tag != 'text':
-                                    condition = tag
-                                    break
-
-                        if not condition in STANZA_ERROR_NAMES:
-                            condition = 'invalid-condition'
-
-                        if condition == None:
-                            condition = 'undefined-condition'
-
-                        ret = {
-                            'error_type':error_type,
-                            'condition':condition,
-                            'text':text
-                            }
-
+            e1 = stanza.body.find('{jabber:client}error')
+            ret = determine_stanza_element_error(e1)
         else:
             ret = False
 
     return ret
+
+def determine_stanza_element_error(element):
+
+    if type(element) != lxml.etree._Element:
+        raise TypeError("`element' must be lxml.etree._Element")
+
+    if not element.tag == '{jabber:client}error':
+        raise ValueError("`element' must be {jabber:client}error")
+
+    ret = None
+
+    condition = None
+    text = None
+    error_type = None
+    code = None
+
+    e1 = element
+
+    if e1 == None:
+        ret = None
+    else:
+
+        if len(e1) == 0:
+            ret = None
+        else:
+
+            error_type = e1.get('type')
+            code = e1.get('code')
+
+            if not error_type:
+                ret = None
+
+            else:
+
+                for i in e1:
+                    tag_parsed = lxml.etree.QName(i)
+
+                    ns = tag_parsed.namespace
+                    tag = tag_parsed.localname
+
+                    if ns == 'urn:ietf:params:xml:ns:xmpp-stanzas':
+
+                        if tag == 'text':
+                            text = i.text
+                            break
+
+                for i in e1:
+                    tag_parsed = lxml.etree.QName(i)
+
+                    ns = tag_parsed.namespace
+                    tag = tag_parsed.localname
+
+                    if ns == 'urn:ietf:params:xml:ns:xmpp-stanzas':
+
+                        if tag != 'text':
+                            condition = tag
+                            break
+
+                if not condition in STANZA_ERROR_NAMES:
+                    condition = 'invalid-condition'
+
+                if condition == None:
+                    condition = 'undefined-condition'
+
+                ret = {
+                    'error_type':error_type,
+                    'condition':condition,
+                    'text':text,
+                    'code':code
+                    }
+
+    return ret
+
+def stanza_error_to_text(in_dict):
+
+    return """\
+Error Type: {}
+Condition: {}
+Code: {}
+Text:
+{}
+""".format(
+    in_dict.get('error_type'),
+    in_dict.get('code'),
+    in_dict.get('condition'),
+    in_dict.get('text')
+    )
 
 def is_features_element(obj):
     return (type(obj) == lxml.etree._Element
