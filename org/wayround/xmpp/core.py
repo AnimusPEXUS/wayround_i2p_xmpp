@@ -12,7 +12,6 @@ import lxml.etree
 
 import org.wayround.utils.error
 import org.wayround.utils.stream
-import org.wayround.utils.xml
 import org.wayround.utils.signal
 
 

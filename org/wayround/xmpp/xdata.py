@@ -2,6 +2,7 @@
 import lxml.etree
 
 import org.wayround.utils.types
+import org.wayround.utils.factory
 
 class InvalidForm(Exception): pass
 
@@ -32,16 +33,6 @@ class XData:
         self.set_reported_fields(reported_fields)
         self.set_reported_items(reported_items)
 
-    def get_form_type(self):
-        ret = self._form_type
-        self.check_form_type(ret)
-        return ret
-
-    def set_form_type(self, value):
-        self.check_form_type(value)
-        self._form_type = value
-        return
-
     def check_form_type(self, value):
         if not value in ['cancel', 'form', 'result', 'submit']:
             raise ValueError(
@@ -50,43 +41,13 @@ class XData:
 
         return
 
-    def get_title(self):
-        ret = self._title
-        self.check_title(ret)
-        return ret
-
-    def set_title(self, value):
-        self.check_title(value)
-        self._title = value
-        return
-
     def check_title(self, value):
         if value != None and not isinstance(value, str):
             raise ValueError("title must be str or None")
 
-    def get_instructions(self):
-        ret = self._instructions
-        self.check_instructions(ret)
-        return ret
-
-    def set_instructions(self, value):
-        self.check_instructions(value)
-        self._instructions = value
-        return
-
     def check_instructions(self, value):
         if not org.wayround.utils.types.struct_check(value, {'t': list, '.':{'t':str}}):
             raise ValueError("instructions must be list of str")
-
-    def get_fields(self):
-        ret = self._fields
-        self.check_fields(ret)
-        return ret
-
-    def set_fields(self, value):
-        self.check_fields(value)
-        self._fields = value
-        return
 
     def check_fields(self, value):
         if not org.wayround.utils.types.struct_check(
@@ -98,27 +59,7 @@ class XData:
                 )
         return
 
-    def get_reported_fields(self):
-        ret = self._reported_fields
-        self.check_reported_fields(ret)
-        return ret
-
-    def set_reported_fields(self, value):
-        self.check_reported_fields(value)
-        self._reported_fields = value
-        return
-
     check_reported_fields = check_fields
-
-    def get_reported_items(self):
-        ret = self._reported_items
-        self.check_reported_items(ret)
-        return ret
-
-    def set_reported_items(self, value):
-        self.check_reported_items(value)
-        self._reported_items = value
-        return
 
     def check_reported_items(self, value):
         if not org.wayround.utils.types.struct_check(
@@ -135,13 +76,8 @@ class XData:
                 )
         return
 
-    def check(self):
-        self.check_fields(self.get_fields())
-        self.check_form_type(self.get_form_type())
-        self.check_instructions(self.get_instructions())
-        self.check_reported_fields(self.get_reported_fields())
-        self.check_reported_items(self.get_reported_items())
-        self.check_title(self.get_title())
+    def logical_structure_check(self):
+        pass
 
     @classmethod
     def new_from_element(cls, element):
@@ -294,8 +230,20 @@ class XData:
                     for k in lines:
                         text += '    {}\n'.format(k)
 
-        # print("Out text is: {}".format(text))
         return text
+
+org.wayround.utils.factory.class_generate_attributes(
+    XData,
+    ['form_type', 'title', 'instructions', 'fields', 'reported_fields',
+     'reported_items']
+    )
+org.wayround.utils.factory.class_generate_check(
+    XData,
+    ['form_type', 'title', 'instructions', 'fields', 'reported_fields',
+     'reported_items']
+    )
+
+
 
 class XDataField:
 
@@ -359,71 +307,21 @@ class XDataField:
 
         return ret
 
-    def get_options(self):
-        ret = self._options
-        self.check_options(ret)
-        return ret
-
-    def set_options(self, value):
-        self.check_options(value)
-        self._options = value
-        return
-
     def check_options(self, value):
         if not org.wayround.utils.types.struct_check(value, {'t': list, '.':{'t':XDataOption}}):
             raise ValueError("must be list of XDataOption")
-
-    def get_values(self):
-        ret = self._values
-        self.check_values(ret)
-        return ret
-
-    def set_values(self, value):
-        self.check_values(value)
-        self._values = value
-        return
 
     def check_values(self, value):
         if not org.wayround.utils.types.struct_check(value, {'t': list, '.':{'t':XDataValue}}):
             raise ValueError("must be list of XDataValue")
 
-
-    def set_required(self, value):
-        self.check_required(value)
-        self._required = value
-
-    def get_required(self):
-        ret = self._required
-        self.check_required(ret)
-        return ret
-
     def check_required(self, value):
         if not isinstance(value, bool):
             raise TypeError("`value' must be bool")
 
-    def get_desc(self):
-        ret = self._desc
-        self.check_desc(ret)
-        return ret
-
-    def set_desc(self, value):
-        self.check_desc(value)
-        self._desc = value
-        return
-
     def check_desc(self, value):
         if value != None and not isinstance(value, str):
             raise TypeError("`value' must be None or str")
-
-    def get_type(self):
-        ret = self._type
-        self.check_type(ret)
-        return ret
-
-    def set_type(self, value):
-        self.check_type(value)
-        self._type = value
-        return
 
     def check_type(self, value):
         if not value in [
@@ -433,42 +331,16 @@ class XDataField:
             ]:
             raise InvalidForm("Invalid field type value")
 
-    def get_var(self):
-        ret = self._var
-        self.check_var(ret)
-        return ret
-
-    def set_var(self, value):
-        self.check_var(value)
-        self._var = value
-        return
-
     def check_var(self, value):
         if value != None and not isinstance(value, str):
             raise TypeError("`value' must be None or str")
-
-    def get_label(self):
-        ret = self._label
-        self.check_label(ret)
-        return self._label
-
-    def set_label(self, value):
-        self.check_label(value)
-        self._label = value
-        return
 
     def check_label(self, value):
         if value != None and not isinstance(value, str):
             raise TypeError("`value' must be None or str")
 
-    def check(self):
-        self.check_desc(self.get_desc())
-        self.check_label(self.get_label())
-        self.check_options(self.get_options())
-        self.check_required(self.get_required())
-        self.check_type(self.get_type())
-        self.check_values(self.get_values())
-        self.check_var(self.get_var())
+    def logical_structure_check(self):
+        pass
 
     def gen_element(self):
 
@@ -512,6 +384,16 @@ class XDataField:
 
         return e
 
+org.wayround.utils.factory.class_generate_attributes(
+    XDataField,
+    ['var', 'label', 'type', 'desc', 'required', 'values', 'options']
+    )
+org.wayround.utils.factory.class_generate_check(
+    XDataField,
+    ['var', 'label', 'type', 'desc', 'required', 'values', 'options']
+    )
+
+
 class XDataOption:
 
     def __init__(self, label=None, value=None):
@@ -540,36 +422,16 @@ class XDataOption:
 
         return ret
 
-    def get_label(self):
-        ret = self._label
-        self.check_label(ret)
-        return ret
-
-    def set_label(self, value):
-        self.check_label(value)
-        self._label = value
-
     def check_label(self, value):
         if value != None and not isinstance(value, str):
             raise TypeError("`value' must be None or str")
-
-    def get_value(self):
-        ret = self._value
-        self.check_value(ret)
-        return ret
-
-    def set_value(self, value):
-        self.check_value(value)
-        self._value = value
 
     def check_value(self, value):
         if value != None and not isinstance(value, XDataValue):
             raise TypeError("`value' must be None or XDataValue")
 
-    def check(self):
-        self.check_value(self.get_value())
-        self.check_label(self.get_label())
-        return
+    def logical_structure_check(self):
+        pass
 
     def gen_element(self):
 
@@ -586,6 +448,15 @@ class XDataOption:
         o.append(value.gen_element())
 
         return o
+
+org.wayround.utils.factory.class_generate_attributes(
+    XDataOption,
+    ['label', 'value']
+    )
+org.wayround.utils.factory.class_generate_check(
+    XDataOption,
+    ['label', 'value']
+    )
 
 class XDataValue:
 
@@ -610,26 +481,28 @@ class XDataValue:
 
         return ret
 
-    def get_value(self):
-        return self._value
-
-    def set_value(self, value):
-        self.check_value(value)
-        self._value = value
-        return
-
     def check_value(self, value):
         if not isinstance(value, str):
             raise ValueError("`value' must be str, not {}".format(type(value)))
 
-    def check(self):
-        self.check_value(self.get_value())
+    def logical_structure_check(self):
+        pass
 
     def gen_element(self):
         self.check()
         e = lxml.etree.Element('value')
         e.text = self._value
         return e
+
+org.wayround.utils.factory.class_generate_attributes(
+    XDataValue,
+    ['value']
+    )
+org.wayround.utils.factory.class_generate_check(
+    XDataValue,
+    ['value']
+    )
+
 
 def get_x_data_elements(element):
 
