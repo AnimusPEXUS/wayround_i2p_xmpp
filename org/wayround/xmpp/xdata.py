@@ -3,8 +3,12 @@ import lxml.etree
 
 import org.wayround.utils.types
 import org.wayround.utils.factory
+import org.wayround.utils.lxml
 
-class InvalidForm(Exception): pass
+
+class InvalidForm(Exception):
+    pass
+
 
 class XData:
 
@@ -46,13 +50,15 @@ class XData:
             raise ValueError("title must be str or None")
 
     def check_instructions(self, value):
-        if not org.wayround.utils.types.struct_check(value, {'t': list, '.':{'t':str}}):
+        if not org.wayround.utils.types.struct_check(
+            value, {'t': list, '.': {'t': str}}
+            ):
             raise ValueError("instructions must be list of str")
 
     def check_fields(self, value):
         if not org.wayround.utils.types.struct_check(
             value,
-            {'t': list, '.':{'t':XDataField}}
+            {'t': list, '.': {'t': XDataField}}
             ):
             raise ValueError(
                 "fields and reported must be lists of XDataField"
@@ -65,8 +71,8 @@ class XData:
         if not org.wayround.utils.types.struct_check(
             value,
             {'t': list, '.':
-             {'t':list, '.':
-              {'t':XDataField
+             {'t': list, '.':
+              {'t': XDataField
                }
               }
              }
@@ -76,16 +82,17 @@ class XData:
                 )
         return
 
-    def logical_structure_check(self):
-        pass
-
     @classmethod
     def new_from_element(cls, element):
 
         if type(element) != lxml.etree._Element:
             raise TypeError("`element' must be lxml.etree.Element")
 
-        if element.tag != '{jabber:x:data}x':
+        tag, ns = org.wayround.utils.lxml.parse_element_tag(
+            element, 'x', ['jabber:x:data']
+            )
+
+        if tag is None:
             raise ValueError("Invalid element")
 
         ret = cls()
@@ -94,7 +101,6 @@ class XData:
         if ft == None:
             ft = 'form'
         ret.set_form_type(ft)
-
 
         t = element.find('{jabber:x:data}title')
         if t != None:
@@ -151,24 +157,19 @@ class XData:
             t.text = ti
             e.append(t)
 
-
         ins = self.get_instructions()
-
         if len(ins) != 0:
             for i in ins:
                 t = lxml.etree.Element('instruction')
                 t.text = i
                 e.append(t)
 
-
         fields = self.get_fields()
         if len(fields) != 0:
             for i in fields:
                 e.append(i.gen_element())
 
-
         rfields = self.get_reported_fields()
-
         if len(rfields) != 0:
 
             t = lxml.etree.Element('reported')
@@ -244,7 +245,6 @@ org.wayround.utils.factory.class_generate_check(
     )
 
 
-
 class XDataField:
 
     def __init__(
@@ -308,11 +308,15 @@ class XDataField:
         return ret
 
     def check_options(self, value):
-        if not org.wayround.utils.types.struct_check(value, {'t': list, '.':{'t':XDataOption}}):
+        if not org.wayround.utils.types.struct_check(
+            value, {'t': list, '.': {'t': XDataOption}}
+            ):
             raise ValueError("must be list of XDataOption")
 
     def check_values(self, value):
-        if not org.wayround.utils.types.struct_check(value, {'t': list, '.':{'t':XDataValue}}):
+        if not org.wayround.utils.types.struct_check(
+            value, {'t': list, '.': {'t': XDataValue}}
+            ):
             raise ValueError("must be list of XDataValue")
 
     def check_required(self, value):
@@ -458,6 +462,7 @@ org.wayround.utils.factory.class_generate_check(
     ['label', 'value']
     )
 
+
 class XDataValue:
 
     def __init__(self, value):
@@ -515,6 +520,7 @@ def get_x_data_elements(element):
 
     return element.findall('{jabber:x:data}x')
 
+
 def get_x_data_element(element):
 
     ret = get_x_data_elements(element)
@@ -525,4 +531,3 @@ def get_x_data_element(element):
         ret = None
 
     return ret
-

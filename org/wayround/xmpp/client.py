@@ -84,14 +84,13 @@ class XMPPC2SClient(org.wayround.utils.signal.Signal):
             self._stanza_processor_proxy
             )
 
-
         super().__init__(
             self.sock_streamer.get_signal_names(add_prefix='streamer_') +
             self.io_machine.get_signal_names(add_prefix='io_') +
-            self.stanza_processor.get_signal_names(add_prefix='stanza_processor_')
+            self.stanza_processor.get_signal_names(
+                add_prefix='stanza_processor_'
+                )
             )
-
-        print("Client supported signals: {}".format(self.get_signal_names()))
 
         self._clear(init=True)
 
@@ -106,10 +105,11 @@ class XMPPC2SClient(org.wayround.utils.signal.Signal):
         self._stream_stop_sent = False
         self._input_stream_closed_event = threading.Event()
 
-
     def start(self):
 
-        if not self._starting and not self._stopping and self.stat() == 'stopped':
+        if (not self._starting
+            and not self._stopping
+            and self.stat() == 'stopped'):
 
             self._starting = True
 
@@ -137,7 +137,9 @@ class XMPPC2SClient(org.wayround.utils.signal.Signal):
 
     def stop(self):
 
-        if not self._stopping and not self._starting and self.stat() == 'working':
+        if (not self._stopping
+            and not self._starting
+            and self.stat() == 'working'):
             self._stopping = True
 
             logging.debug("Starting shutdown sequence")
@@ -147,7 +149,6 @@ class XMPPC2SClient(org.wayround.utils.signal.Signal):
         return
 
     def stop_violent(self, _forced=False):
-
 
         if (not self._stopping and not self._starting) or _forced:
             self._stopping = True
@@ -198,16 +199,19 @@ class XMPPC2SClient(org.wayround.utils.signal.Signal):
                     )
                 self._stream_stop_sent = True
 
-
             while True:
                 if self.stat() == 'stopped':
                     break
 
                 if self._input_stream_closed_event.is_set():
-                    logging.debug("Input stream closed - ending shutdown timout")
+                    logging.debug(
+                        "Input stream closed - ending shutdown timout"
+                        )
                     break
 
-                logging.debug("Timeout in {:3.2f} sec".format(timeout_sec - time_waited))
+                logging.debug(
+                    "Timeout in {:3.2f} sec".format(timeout_sec - time_waited)
+                    )
                 if time_waited >= timeout_sec:
                     break
 
@@ -217,7 +221,6 @@ class XMPPC2SClient(org.wayround.utils.signal.Signal):
             self.io_machine.disconnect_signal(self._input_stream_close_waiter)
 
         return
-
 
     def wait(self, what='stopped'):
 
@@ -273,7 +276,6 @@ self.io_machine.stat() == {}
             args=(data,)
             ).start()
 
-
     def _start_io_machine(self):
         self.io_machine.start()
 
@@ -298,18 +300,22 @@ self.io_machine.stat() == {}
     def _stanza_processor_proxy(self, event, stanza_processor, stanza):
         self.emit_signal('stanza_processor_' + event, stanza_processor, stanza)
 
+
 def can_drive_starttls(features_element):
 
     if not org.wayround.xmpp.core.is_features_element(features_element):
         raise ValueError("`features_element' must features element")
 
-    return features_element.find('{urn:ietf:params:xml:ns:xmpp-tls}starttls') != None
+    return features_element.find(
+        '{urn:ietf:params:xml:ns:xmpp-tls}starttls'
+        ) != None
+
 
 def drive_starttls(
     client,
     features_element,
-    bare_jid_from,
-    bare_jid_to,
+    bare_from_jid,
+    bare_to_jid,
     controller_callback
     ):
 
@@ -355,7 +361,7 @@ def drive_starttls(
 
     # TODO: update help
 
-    ret = 'error'
+    ret = None
 
     if not isinstance(client, XMPPC2SClient):
         raise TypeError("`client' must be of type XMPPC2SClient")
@@ -363,18 +369,19 @@ def drive_starttls(
     if not org.wayround.xmpp.core.is_features_element(features_element):
         raise ValueError("`features_element' must features element")
 
-    if not isinstance(bare_jid_from, str):
-        raise TypeError("`bare_jid_from' must be str")
+    if not isinstance(bare_from_jid, str):
+        raise TypeError("`bare_from_jid' must be str")
 
-    if not isinstance(bare_jid_to, str):
-        raise TypeError("`bare_jid_to' must be str")
+    if not isinstance(bare_to_jid, str):
+        raise TypeError("`bare_to_jid' must be str")
 
     if not callable(controller_callback):
         raise ValueError("`controller_callback' must be callable")
 
     if not can_drive_starttls(features_element):
         ret = 'invalid features'
-    else:
+
+    if not isinstance(ret, str):
 
         logging.debug("STARTTLS routines beginning now")
 
@@ -399,7 +406,9 @@ def drive_starttls(
         logging.debug("Sending STARTTLS request")
 
         client.send(
-            org.wayround.xmpp.core.starttls_tpl()
+            lxml.etree.tostring(
+                org.wayround.xmpp.core.STARTTLS().gen_element()
+                )
             )
 
         logging.debug("POP")
@@ -409,109 +418,124 @@ def drive_starttls(
         if not isinstance(c_r_w_result, dict):
             ret = 'error'
             logging.debug("POP exited with error")
-        else:
-            if c_r_w_result['event'] != 'io_in_element_readed':
-                ret = 'invalid server action 1'
-                logging.debug(ret)
-            else:
 
-                obj = c_r_w_result['args'][1]
+    if not isinstance(ret, str):
+        if c_r_w_result['event'] != 'io_in_element_readed':
+            ret = 'invalid server action 1'
+            logging.debug(ret)
 
-                if not obj.tag.startswith('{urn:ietf:params:xml:ns:xmpp-tls}'):
-                    ret = 'invalid server action 2'
-                    logging.debug(ret)
-                else:
-                    if not obj.tag == '{urn:ietf:params:xml:ns:xmpp-tls}proceed':
-                        ret = 'invalid server action 3'
-                        logging.debug(ret)
-                    else:
+    if not isinstance(ret, str):
 
-                        logging.debug(
-                            "TLS request successful: proceed signal achieved"
-                            )
-                        logging.debug("Calling streamer to wrap socket with TLS")
+        obj = c_r_w_result['args'][1]
 
-                        client.sock_streamer.start_ssl()
+        if not obj.tag.startswith('{urn:ietf:params:xml:ns:xmpp-tls}'):
+            ret = 'invalid server action 2'
+            logging.debug(ret)
 
-                        logging.debug("POP")
-                        c_r_w_result = client_reactions_waiter.pop()
-                        logging.debug("POP!")
+    if not isinstance(ret, str):
+        if not obj.tag == '{urn:ietf:params:xml:ns:xmpp-tls}proceed':
+            ret = 'invalid server action 3'
+            logging.debug(ret)
 
-                        if not isinstance(c_r_w_result, dict):
-                            ret = 'error'
-                        else:
-                            if c_r_w_result['event'] != 'streamer_ssl wrapped':
-                                ret = 'error'
-                                logging.debug("Some other stream event when `streamer_ssl wrapped': {}".format(c_r_w_result['event']))
-                            else:
+    if not isinstance(ret, str):
 
-                                logging.debug("Restarting IO Machine")
-                                client.io_machine.restart()
+        logging.debug(
+            "TLS request successful: proceed signal achieved"
+            )
+        logging.debug("Calling streamer to wrap socket with TLS")
 
-                                if not client.io_machine.stat() == 'working':
-                                    ret = 'error'
-                                    logging.debug("IO Machine restart failed")
-                                else:
+        client.sock_streamer.start_ssl()
 
-                                    logging.debug("IO Machine restarted")
-                                    logging.debug("Starting new stream")
+        logging.debug("POP")
+        c_r_w_result = client_reactions_waiter.pop()
+        logging.debug("POP!")
 
-                                    client.io_machine.send(
-                                        org.wayround.xmpp.core.start_stream_tpl(
-                                            jid_from=bare_jid_from,
-                                            jid_to=bare_jid_to
-                                            )
-                                        )
+        if not isinstance(c_r_w_result, dict):
+            ret = 'error'
 
+    if not isinstance(ret, str):
+        if c_r_w_result['event'] != 'streamer_ssl wrapped':
+            ret = 'error'
+            logging.debug(
+                ("Some other stream event when "
+                "`streamer_ssl wrapped': {}").format(c_r_w_result['event'])
+                )
 
-                                    logging.debug("POP")
-                                    c_r_w_result = client_reactions_waiter.pop()
-                                    logging.debug("POP!")
+    if not isinstance(ret, str):
 
-                                    if not isinstance(c_r_w_result, dict):
-                                        ret = 'error'
-                                        logging.debug("POP exited with error")
-                                    else:
-                                        if c_r_w_result['event'] != 'io_in_start':
-                                            ret = 'invalid server action 4'
-                                            logging.debug(ret)
-                                        else:
+        logging.debug("Restarting IO Machine")
+        client.io_machine.restart()
 
-                                            logging.debug("IO Machine inbound stream start signal received")
-                                            logging.debug("Waiting for features")
+        if not client.io_machine.stat() == 'working':
+            ret = 'error'
+            logging.debug("IO Machine restart failed")
 
-                                            logging.debug("POP")
-                                            c_r_w_result = client_reactions_waiter.pop()
-                                            logging.debug("POP!")
+    if not isinstance(ret, str):
 
-                                            if not isinstance(c_r_w_result, dict):
-                                                ret = 'error'
-                                                logging.debug("POP exited with error")
-                                            else:
-                                                if c_r_w_result['event'] != 'io_in_element_readed':
-                                                    ret = 'invalid server action 4'
-                                                    logging.debug(ret)
-                                                else:
+        logging.debug("IO Machine restarted")
+        logging.debug("Starting new stream")
 
-                                                    logging.debug("Received some element, analizing...")
+        client.io_machine.send(
+            org.wayround.xmpp.core.start_stream_tpl(
+                from_jid=bare_from_jid,
+                to_jid=bare_to_jid
+                )
+            )
 
-                                                    obj = c_r_w_result['args'][1]
+        logging.debug("POP")
+        c_r_w_result = client_reactions_waiter.pop()
+        logging.debug("POP!")
 
-                                                    if not org.wayround.xmpp.core.is_features_element(obj):
-                                                        ret = 'error'
-                                                        logging.debug("Server must been give us an stream features, but it's not")
-                                                    else:
-                                                        logging.debug("Stream features recognized. Time to return success to driver caller")
-                                                        ret = obj
+        if not isinstance(c_r_w_result, dict):
+            ret = 'error'
+            logging.debug("POP exited with error")
 
-        client_reactions_waiter.stop()
+    if not isinstance(ret, str):
+        if c_r_w_result['event'] != 'io_in_start':
+            ret = 'invalid server action 4'
+            logging.debug(ret)
 
-        logging.debug("STARTTLS exit point reached")
+    if not isinstance(ret, str):
+
+        logging.debug("IO Machine inbound stream start signal received")
+        logging.debug("Waiting for features")
+
+        logging.debug("POP")
+        c_r_w_result = client_reactions_waiter.pop()
+        logging.debug("POP!")
+
+        if not isinstance(c_r_w_result, dict):
+            ret = 'error'
+            logging.debug("POP exited with error")
+
+    if not isinstance(ret, str):
+        if c_r_w_result['event'] != 'io_in_element_readed':
+            ret = 'invalid server action 4'
+            logging.debug(ret)
+
+    if not isinstance(ret, str):
+
+        logging.debug("Received some element, analizing...")
+
+        obj = c_r_w_result['args'][1]
+
+        if not org.wayround.xmpp.core.is_features_element(obj):
+            ret = 'error'
+            logging.debug(
+                "Server must been give us an stream features, but it's not"
+                )
+
+    if not isinstance(ret, str):
+        logging.debug(
+            "Stream features recognized. Time success to driver caller"
+            )
+        ret = obj
+
+    client_reactions_waiter.stop()
+
+    logging.debug("STARTTLS exit point reached")
 
     return ret
-
-
-
 
 
 def can_drive_sasl(features_element, controller_callback):
@@ -521,7 +545,6 @@ def can_drive_sasl(features_element, controller_callback):
 
     if not callable(controller_callback):
         raise ValueError("`controller_callback' must be callable")
-
 
     ret = False
 
@@ -547,7 +570,7 @@ def can_drive_sasl(features_element, controller_callback):
 
         mechanism_name = controller_callback(
             'mechanism_name',
-            {'mechanisms':mechanisms}
+            {'mechanisms': mechanisms}
             )
 
         if mechanism_name in mechanisms:
@@ -555,11 +578,12 @@ def can_drive_sasl(features_element, controller_callback):
 
     return ret
 
+
 def drive_sasl(
     client,
     features_element,
-    bare_jid_from,
-    bare_jid_to,
+    bare_from_jid,
+    bare_to_jid,
     controller_callback
     ):
 
@@ -571,11 +595,11 @@ def drive_sasl(
     if not org.wayround.xmpp.core.is_features_element(features_element):
         raise ValueError("`features_element' must features element")
 
-    if not isinstance(bare_jid_from, str):
-        raise TypeError("`bare_jid_from' must be str")
+    if not isinstance(bare_from_jid, str):
+        raise TypeError("`bare_from_jid' must be str")
 
-    if not isinstance(bare_jid_to, str):
-        raise TypeError("`bare_jid_to' must be str")
+    if not isinstance(bare_to_jid, str):
+        raise TypeError("`bare_to_jid' must be str")
 
     if not callable(controller_callback):
         raise ValueError("`controller_callback' must be callable")
@@ -609,11 +633,11 @@ def drive_sasl(
         logging.debug("Sending SASL mechanism start request")
 
         client.io_machine.send(
-            '<auth xmlns="urn:ietf:params:xml:ns:xmpp-sasl" mechanism="{}"/>'.format(
+            ('<auth xmlns="urn:ietf:params:xml:ns:xmpp-sasl" '
+            'mechanism="{}"/>').format(
                 mechanism_name
                 )
             )
-
 
         chall_failed = False
 
@@ -634,17 +658,22 @@ def drive_sasl(
 
                     obj = c_r_w_result['args'][1]
 
-                    if obj.tag == '{urn:ietf:params:xml:ns:xmpp-sasl}challenge':
+                    if (obj.tag ==
+                        '{urn:ietf:params:xml:ns:xmpp-sasl}challenge'):
 
                         response = controller_callback(
                             'challenge', {'text': obj.text}
                             )
 
                         client.send(
-                            '<response xmlns="urn:ietf:params:xml:ns:xmpp-sasl">{}</response>'.format(response)
+                            ('<response xmlns="urn:ietf:params:xml:ns'
+                             ':xmpp-sasl">'
+                            '{}</response>').format(response)
                             )
 
-                    elif obj.tag == '{urn:ietf:params:xml:ns:xmpp-sasl}success':
+                    elif (obj.tag ==
+                            '{urn:ietf:params:xml:ns:xmpp-sasl}success'
+                            ):
                         break
                     else:
                         chall_failed = True
@@ -667,11 +696,10 @@ def drive_sasl(
 
                 client.io_machine.send(
                     org.wayround.xmpp.core.start_stream_tpl(
-                        jid_from=bare_jid_from,
-                        jid_to=bare_jid_to
+                        from_jid=bare_from_jid,
+                        to_jid=bare_to_jid
                         )
                     )
-
 
                 logging.debug("POP")
                 c_r_w_result = client_reactions_waiter.pop()
@@ -684,7 +712,9 @@ def drive_sasl(
                     ret = 'invalid server action 4'
                     if c_r_w_result['event'] == 'io_in_start':
 
-                        logging.debug("IO Machine inbound stream start signal received")
+                        logging.debug(
+                            "IO Machine inbound stream start signal received"
+                            )
                         logging.debug("Waiting for features")
 
                         logging.debug("POP")
@@ -703,121 +733,23 @@ def drive_sasl(
 
                         if not org.wayround.xmpp.core.is_features_element(obj):
                             ret = 'invalid server action 6'
-                            logging.debug("Server must been give us an stream features, but it's not")
+                            logging.debug(
+                                "Server must been give us an stream features, "
+                                "but it's not"
+                                )
                         else:
-                            logging.debug("Stream features recognized. Time to return success to driver caller")
+                            logging.debug(
+                                "Stream features recognized. "
+                                "Time to return success to driver caller"
+                                )
                             ret = obj
 
         client_reactions_waiter.stop()
 
         logging.debug("STARTTLS exit point reached")
 
-
     return ret
 
-
-#    def _stream_objects_waiter(self, obj):
-#
-#        if self._driving:
-#
-#            logging.debug("_stream_objects_waiter :: `{}'".format(obj))
-#
-#            if org.wayround.xmpp.core.is_features_element(obj):
-#                logging.error("SASL driver received stream features")
-#                self.result = obj
-#                self._stop()
-#            else:
-#
-#                if self.status == 'waiting for server sasl response':
-#
-#                    if obj.tag.startswith('{urn:ietf:params:xml:ns:xmpp-sasl}'):
-#
-#                        if obj.tag == '{urn:ietf:params:xml:ns:xmpp-sasl}challenge':
-#
-#                            response = self._controller_callback(
-#                                self, 'challenge', {'text': obj.text}
-#                                )
-#
-#                            self._io_machine.send(
-#                                '<response xmlns="urn:ietf:params:xml:ns:xmpp-sasl">{}</response>'.format(response)
-#                                )
-#
-#                        elif obj.tag == '{urn:ietf:params:xml:ns:xmpp-sasl}success':
-#
-#                            threading.Thread(
-#                                target=self._controller_callback,
-#                                args=(self, 'success', None,),
-#                                name="SASL auth success signal"
-#                                ).start()
-#
-#                            self.result = 'success'
-#
-#                            logging.debug("Authentication successful")
-#
-#                            logging.debug("Restarting Machines")
-#                            self._io_machine.restart_with_new_objects(
-#                                self._sock_streamer,
-#                                self._input_stream_events_hub.dispatch,
-#                                self._input_stream_objects_hub.dispatch,
-#                                self._output_stream_events_hub.dispatch,
-#                                None
-#                                )
-#
-#                            logging.debug("Waiting machines restart")
-#                            self._io_machine.wait('working')
-#                            logging.debug("Machines restarted")
-#
-#                            logging.debug("Starting new stream")
-#                            self._io_machine.send(
-#                                org.wayround.xmpp.core.start_stream_tpl(
-#                                    jid_from=self._controller_callback(
-#                                        self, 'bare_jid_from', None
-#                                        ),
-#                                    jid_to=self._controller_callback(
-#                                        self, 'bare_jid_to', None
-#                                        )
-#                                    )
-#                                )
-#
-##                            self.stop()
-#
-#                        elif obj.tag == '{urn:ietf:params:xml:ns:xmpp-sasl}failure':
-#
-#                            condition = None
-#                            text = None
-#                            for i in obj:
-#
-#                                print("condition tag: {}".format(i.tag))
-#
-#                                if i.tag != 'text':
-#                                    condition = i.tag
-#                                    break
-#
-#                            for i in obj:
-#
-#                                print("condition tag: {}".format(i.tag))
-#
-#                                if i.tag == 'text':
-#                                    text = i.text
-#                                    break
-#
-#                            threading.Thread(
-#                                target=self._controller_callback,
-#                                args=(
-#                                    self,
-#                                    'failure',
-#                                    {'condition':condition,
-#                                     'text': text
-#                                     },
-#                                      ),
-#                                name="SASL auth failure signal"
-#                                ).start()
-#
-#                            self.result = 'failure'
-#
-#                            self.stop()
-#
-#        return
 
 def bind(client, resource=None, wait=True):
 
@@ -838,10 +770,10 @@ def bind(client, resource=None, wait=True):
     binding_stanza = org.wayround.xmpp.core.Stanza(
         tag='iq',
         typ='set',
-        body=org.wayround.xmpp.core.bind_tpl(
+        objects=[org.wayround.xmpp.core.Bind(
             typ='resource',
             value=resource
-            )
+            )]
         )
 
     ret = client.stanza_processor.send(
@@ -849,27 +781,31 @@ def bind(client, resource=None, wait=True):
         wait=wait
         )
 
-    if org.wayround.xmpp.core.is_stanza(ret):
+    if isinstance(ret, org.wayround.xmpp.core.Stanza):
         if ret.is_error():
-            ret = ret.get_error()
+            ret = ret.gen_error()
         else:
 
-            bind_tag = ret.body.find('{urn:ietf:params:xml:ns:xmpp-bind}bind')
+            bind_tag = ret.get_element().find(
+                '{urn:ietf:params:xml:ns:xmpp-bind}bind'
+                )
             ret = None
 
             if bind_tag != None:
 
-                jid_tag = bind_tag.find('{urn:ietf:params:xml:ns:xmpp-bind}jid')
+                jid_tag = bind_tag.find(
+                    '{urn:ietf:params:xml:ns:xmpp-bind}jid'
+                    )
 
                 if jid_tag != None:
 
                     ret = jid_tag.text
                     ret = ret.strip()
 
-
     return ret
 
-def session(client, jid_to, wait=True):
+
+def session(client, to_jid, wait=True):
 
     """
     Driver for starting session. This is required by old protocol version
@@ -878,14 +814,14 @@ def session(client, jid_to, wait=True):
     if not isinstance(client, XMPPC2SClient):
         raise TypeError("`client' must be a XMPPC2SClient")
 
-    if jid_to and not isinstance(jid_to, str):
+    if to_jid and not isinstance(to_jid, str):
         raise TypeError("`resource' must be a str")
 
     session_starting_stanza = org.wayround.xmpp.core.Stanza(
         tag='iq',
         typ='set',
-        jid_to=jid_to,
-        body=org.wayround.xmpp.core.session_tpl()
+        to_jid=to_jid,
+        objects=[org.wayround.xmpp.core.Session()]
         )
 
     ret = client.stanza_processor.send(
@@ -944,7 +880,9 @@ class Roster(org.wayround.utils.signal.Signal):
             raise TypeError("`client' must be of type XMPPC2SClient")
 
         if not isinstance(client_jid, org.wayround.xmpp.core.JID):
-            raise TypeError("`client_jid' must be of type org.wayround.xmpp.core.JID")
+            raise TypeError(
+                "`client_jid' must be of type org.wayround.xmpp.core.JID"
+                )
 
         self.client = client
         self.client_jid = client_jid
@@ -952,7 +890,6 @@ class Roster(org.wayround.utils.signal.Signal):
         super().__init__(['push', 'push_invalid', 'push_invalid_from'])
 
         self.client.connect_signal('stanza_processor_new_stanza', self._push)
-
 
     def _item_element_to_dict(self, element):
 
@@ -969,23 +906,22 @@ class Roster(org.wayround.utils.signal.Signal):
 
         return element.get('jid'), data
 
-    def get(self, jid_from=None, jid_to=None, wait=None):
+    def get(self, from_jid=None, to_jid=None, wait=None):
         """
-        :param str jid_from:
-        :param str jid_to:
+        :param str from_jid:
+        :param str to_jid:
         """
 
         ret = None
 
-        query = lxml.etree.Element('query')
-        query.set('xmlns', 'jabber:iq:roster')
+        query = org.wayround.xmpp.core.IQRoster()
 
         stanza = org.wayround.xmpp.core.Stanza(
             tag='iq',
-            jid_from=jid_from,
-            jid_to=jid_to,
+            from_jid=from_jid,
+            to_jid=to_jid,
             typ='get',
-            body=[
+            objects=[
                 query
                 ]
             )
@@ -995,40 +931,28 @@ class Roster(org.wayround.utils.signal.Signal):
             wait=wait
             )
 
-        if not org.wayround.xmpp.core.is_stanza(res):
+        if not isinstance(res, org.wayround.xmpp.core.Stanza):
             ret = None
         else:
             if res.is_error():
                 ret = res
             else:
 
-                ret = {}
+                query = res.get_element().find('{jabber:iq:roster}query')
 
-                query = res.body.find('{jabber:iq:roster}query')
+                if query != None:
+                    ret = org.wayround.xmpp.core.IQRoster.new_from_element(
+                        query
+                        )
 
-                for i in query:
-
-                    if i.tag == '{jabber:iq:roster}item':
-
-                        res = self._item_element_to_dict(i)
-
-                        jid = res[0]
-                        data = res[1]
-
-                        if not data['subscription'] in [
-                            'none', 'to', 'from', 'both'
-                            ]:
-
-                            data['subscription'] = None
-
-                        ret[jid] = data
+                    ret = ret.get_item_dict()
 
         return ret
 
     def set(
         self,
-        jid_to=False,
-        jid_from=False,
+        to_jid=False,
+        from_jid=False,
         subject_jid=None,
         groups=None,
         name=None,
@@ -1037,8 +961,8 @@ class Roster(org.wayround.utils.signal.Signal):
         ):
 
         """
-        :param str jid_from:
-        :param str jid_to:
+        :param str from_jid:
+        :param str to_jid:
 
         no 'approved', 'ask' parameters: read RFC-6121 and use subscription
         functionality
@@ -1046,53 +970,29 @@ class Roster(org.wayround.utils.signal.Signal):
 
         ret = None
 
-        if groups:
-            _types = org.wayround.utils.types.types(groups)
+        query = org.wayround.xmpp.core.IQRoster()
 
-            if not 'Sequence' in _types and not 'Iterable' in _types:
-                raise TypeError("Invalid `groups' value type")
+        item = org.wayround.xmpp.core.IQRosterItem()
 
-            groups = set(groups)
+        item.set_subscription(subscription)
+        item.set_name(name)
+        item.set_jid(subject_jid)
+        item.set_groups(groups)
 
-        query = lxml.etree.Element('query')
-        query.set('xmlns', 'jabber:iq:roster')
+        query.set_item([item])
 
-        item = lxml.etree.Element('item')
+        if to_jid == False:
+            to_jid = self.client_jid.bare()
 
-        if subscription:
-
-            if not subscription in ['remove']:
-                raise ValueError("Invalid subscription value. Only remove is allowed")
-
-            item.set('subscription', subscription)
-
-        if name != None:
-            item.set('name', name)
-
-        if subject_jid != None:
-            item.set('jid', subject_jid)
-
-        if groups:
-
-            for i in groups:
-                _e = lxml.etree.Element('group')
-                _e.text = i
-                item.append(_e)
-
-        query.append(item)
-
-        if jid_to == False:
-            jid_to = self.client_jid.bare()
-
-        if jid_from == False:
-            jid_from = self.client_jid.full()
+        if from_jid == False:
+            from_jid = self.client_jid.full()
 
         stanza = org.wayround.xmpp.core.Stanza(
             tag='iq',
-            jid_from=jid_from,
-            jid_to=jid_to,
+            from_jid=from_jid,
+            to_jid=to_jid,
             typ='set',
-            body=[
+            objects=[
                 query
                 ]
             )
@@ -1102,11 +1002,11 @@ class Roster(org.wayround.utils.signal.Signal):
             wait=wait
             )
 
-        if not org.wayround.xmpp.core.is_stanza(res):
+        if not isinstance(res, org.wayround.xmpp.core.Stanza):
             ret = None
         else:
             if res.is_error():
-                ret = res.get_error()
+                ret = res.gen_error()
             else:
                 ret = True
 
@@ -1117,34 +1017,29 @@ class Roster(org.wayround.utils.signal.Signal):
         error = False
 
         wrong_from = False
-        if not stanza.jid_from or stanza.jid_from == self.client_jid.bare():
+        if (not stanza.get_from_jid()
+            or stanza.get_from_jid() == self.client_jid.bare()):
             wrong_from = False
         else:
             wrong_from = True
 
         roster_data = None
 
-        query = stanza.body.find('{jabber:iq:roster}query')
+        query = stanza.get_element().find('{jabber:iq:roster}query')
 
         if query == None:
             error = True
         else:
 
-            item = query.find('{jabber:iq:roster}item')
-
-            if item == None:
+            try:
+                roster = org.wayround.xmpp.core.IQRoster.new_from_element(
+                    query
+                    )
+            except:
+                roster_data = None
                 error = True
             else:
-                res = self._item_element_to_dict(item)
-
-                roster_data = {res[0]:res[1]}
-                data = res[1]
-
-                if not data['subscription'] in [
-                    'none', 'to', 'from', 'both', 'remove'
-                    ]:
-
-                    data['subscription'] = None
+                roster_data = roster.get_item_dict()
 
         if error:
             self.emit_signal('push_invalid', self, stanza)
@@ -1158,20 +1053,19 @@ class Roster(org.wayround.utils.signal.Signal):
         return
 
 
-
 class Presence(org.wayround.utils.signal.Signal):
 
     """
     Presence and subscription manipulations
 
-    Since both subscription and presence using one stanza tag ('presence'), both
-    of them are grouped in single class with same name - 'Presence'
+    Since both subscription and presence using one stanza tag ('presence'),
+    both of them are grouped in single class with same name - 'Presence'
 
     Signals:
         'subscribe', 'unsubscribe',
         'subscribed', 'unsubscribed',
         'presence'
-        (self, stanza.jid_from, stanza.jid_to, stanza)
+        (self, stanza.from_jid, stanza.to_jid, stanza)
 
         'error' (self, stanza)
     """
@@ -1199,7 +1093,6 @@ class Presence(org.wayround.utils.signal.Signal):
             self._in_stanza
             )
 
-
     def presence(
         self,
         to_full_or_bare_jid=None,
@@ -1222,25 +1115,20 @@ class Presence(org.wayround.utils.signal.Signal):
         if status and not isinstance(status, str):
             raise ValueError("`status' must be str or None")
 
-
         stanza = org.wayround.xmpp.core.Stanza(
             tag='presence',
-            jid_from=self.client_jid.bare(),
-            jid_to=to_full_or_bare_jid
+            from_jid=self.client_jid.bare(),
+            to_jid=to_full_or_bare_jid
             )
 
         if typ:
-            stanza.typ = typ
+            stanza.set_typ(typ)
 
         if show:
-            show_elm = lxml.etree.Element('show')
-            show_elm.text = show
-            stanza.body.append(show_elm)
+            stanza.set_show(show)
 
         if status:
-            stat_elm = lxml.etree.Element('status')
-            stat_elm.text = status
-            stanza.body.append(stat_elm)
+            stanza.set_status(status)
 
         ret = self.client.stanza_processor.send(stanza, wait=wait)
 
@@ -1318,7 +1206,7 @@ class Presence(org.wayround.utils.signal.Signal):
 
         if event == 'stanza_processor_new_stanza':
 
-            if stanza.tag == '{jabber:client}presence':
+            if stanza.get_tag() == 'presence':
 
                 if stanza.is_error():
 
@@ -1329,12 +1217,13 @@ class Presence(org.wayround.utils.signal.Signal):
                     self.emit_signal(
                         'presence',
                         self,
-                        stanza.jid_from,
-                        stanza.jid_to,
+                        stanza.get_from_jid(),
+                        stanza.get_to_jid(),
                         stanza
                         )
 
         return
+
 
 class Message(org.wayround.utils.signal.Signal):
 
@@ -1362,11 +1251,13 @@ class Message(org.wayround.utils.signal.Signal):
 
     def message(
         self,
-        to_jid=None, from_jid=None, typ=None, thread=None, subject=None, body=None,
-        wait=False
+        to_jid=None, from_jid=None, typ=None, thread=None, subject=None,
+        body=None, wait=False
         ):
 
-        if not typ in [None, 'normal', 'chat', 'groupchat', 'headline', 'error']:
+        if not typ in [
+            None, 'normal', 'chat', 'groupchat', 'headline', 'error'
+            ]:
             raise ValueError("Wrong `typ' value")
 
         if to_jid == False:
@@ -1377,24 +1268,13 @@ class Message(org.wayround.utils.signal.Signal):
 
         stanza = org.wayround.xmpp.core.Stanza(
             tag='message',
-            jid_to=to_jid,
+            to_jid=to_jid,
             typ=typ
             )
 
-        if isinstance(thread, str):
-            thread_el = lxml.etree.Element('thread')
-            thread_el.text = thread
-            stanza.body.append(thread_el)
-
-        if isinstance(subject, str):
-            subject_el = lxml.etree.Element('subject')
-            subject_el.text = subject
-            stanza.body.append(subject_el)
-
-        if isinstance(body, str):
-            body_el = lxml.etree.Element('body')
-            body_el.text = body
-            stanza.body.append(body_el)
+        stanza.set_thread(org.wayround.xmpp.core.MessageThread(thread))
+        stanza.set_subject([org.wayround.xmpp.core.MessageSubject(subject)])
+        stanza.set_body([org.wayround.xmpp.core.MessageBody(body)])
 
         ret = self.client.stanza_processor.send(stanza, wait=wait)
 
@@ -1408,7 +1288,7 @@ class Message(org.wayround.utils.signal.Signal):
 
         if event == 'stanza_processor_new_stanza':
 
-            if stanza.tag == '{jabber:client}message':
+            if stanza.get_tag() == 'message':
 
                 if stanza.is_error():
 

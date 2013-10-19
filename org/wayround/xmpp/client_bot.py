@@ -367,7 +367,7 @@ class Bot:
 #                                            self.stanza_processor.send(
 #                                                org.wayround.xmpp.core.Stanza(
 #                                                    kind='presence',
-#                                                    jid_from=self.jid.full(),
+#                                                    from_jid=self.jid.full(),
 #                                                    body='<show>online</show><status>online</status>'
 #                                                    )
 #                                                )
@@ -376,8 +376,8 @@ class Bot:
 #                                                org.wayround.xmpp.core.Stanza(
 #                                                    kind='message',
 #                                                    typ='chat',
-#                                                    jid_from=self.jid.full(),
-#                                                    jid_to='animus@wayround.org',
+#                                                    from_jid=self.jid.full(),
+#                                                    to_jid='animus@wayround.org',
 #                                                    body='<body>TaskTracker bot is now online</body><subject>WOW!</subject>'
 #                                                    )
 #                                                )
@@ -481,15 +481,15 @@ class Bot:
 #                    org.wayround.xmpp.core.Stanza(
 #                        kind='message',
 #                        typ='chat',
-#                        jid_from=self.jid.full(),
-#                        jid_to='animus@wayround.org',
+#                        from_jid=self.jid.full(),
+#                        to_jid='animus@wayround.org',
 #                        body='<body>TaskTracker bot is now online</body><subject>WOW!</subject>'
 #                        )
 #                    )
 
                 ret_stanza = org.wayround.xmpp.core.Stanza(
-                    jid_from=self.jid.bare(),
-                    jid_to=obj.jid_from,
+                    from_jid=self.jid.bare(),
+                    to_jid=obj.from_jid,
                     kind='message',
                     typ='chat',
                     body=[
@@ -499,8 +499,8 @@ class Bot:
                         ]
                     )
 
-                asker_jid = org.wayround.xmpp.core.jid_from_string(
-                    obj.jid_from
+                asker_jid = org.wayround.xmpp.core.JID.new_from_str(
+                    obj.from_jid
                     ).bare()
 
                 res = org.wayround.utils.program.command_processor(
@@ -563,8 +563,8 @@ class Bot:
 
                 self.client.io_machine.send(
                     org.wayround.xmpp.core.start_stream(
-                        jid_from=self.jid.bare(),
-                        jid_to=self.connection_info.host
+                        from_jid=self.jid.bare(),
+                        to_jid=self.connection_info.host
                         )
                     )
 

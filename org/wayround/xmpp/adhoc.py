@@ -1,46 +1,51 @@
 
-import uuid
+"""
+Implementation of XMPP Ad-Hoc commands protocol
+"""
 
 import lxml.etree
 
 import org.wayround.utils.signal
+import org.wayround.utils.lxml
 
 import org.wayround.xmpp.core
 import org.wayround.xmpp.disco
 
-def get_commands_list(jid_to, jid_from, stanza_processor=None):
 
-    q, stanza = org.wayround.xmpp.disco.get_info(
-        jid_to, jid_from, None, stanza_processor
-        )
+def get_commands_list(to_jid, from_jid, stanza_processor=None):
 
     ret = None
 
-    if q != None:
-        r = q.find(
-            "{http://jabber.org/protocol/disco#info}feature[@var='http://jabber.org/protocol/commands']"
-            )
+    q, stanza = org.wayround.xmpp.disco.get_info(
+        to_jid, from_jid, None, stanza_processor
+        )
 
-        if r != None:
+    if q is not None:
+
+        if q.has_feature('http://jabber.org/protocol/commands'):
             q, stanza = org.wayround.xmpp.disco.get_items(
-                jid_to,
-                jid_from,
+                to_jid,
+                from_jid,
                 'http://jabber.org/protocol/commands',
                 stanza_processor
                 )
 
-            if q != None:
+            if q is not None:
 
-                items = q.findall('{http://jabber.org/protocol/disco#items}item')
+                items = q.get_item()
 
                 ret = {}
 
                 for i in items:
 
-                    ret[i.get('node')] = {
-                        'jid': i.get('jid'),
-                        'name': i.get('name')
-                        }
+                    node = i.get_node()
+
+                    if node is not None:
+
+                        ret[node] = {
+                            'jid': i.get_jid(),
+                            'name':  '{} ({})'.format(i.get_name(), node)
+                            }
 
     return ret
 
@@ -51,6 +56,7 @@ def is_command_element(element):
         element.tag == '{http://jabber.org/protocol/commands}command'
         )
 
+
 def extract_element_commands(element):
 
     if type(element) != lxml.etree._Element:
@@ -60,207 +66,265 @@ def extract_element_commands(element):
 
     for i in element:
         if is_command_element(i):
-            ret.append(i)
+            ret.append(Command.new_from_element(i))
 
     return ret
+
 
 class Command:
 
     def __init__(
-        self,
-        node=None,
-        sessionid=None,
-        action=None,
-        actions=None,
-        execute=None,
-        status=None,
-        body=None
-        ):
+            self, objects=None,
 
-        aa = is_command_element(body)
+            note=None,
 
-        if aa:
+            sessionid=None, node=None, action=None, status=None,
 
-            if node or sessionid or action or actions or execute or status:
+            actions=None, execute=None,
+
+            xdata=None
+            ):
+
+        if objects is None:
+            objects = []
+
+        if actions is None:
+            actions = []
+
+        if note is None:
+            note = []
+
+        if xdata is None:
+            xdata = []
+
+        self.set_element(None)
+        self.set_objects(objects)
+
+        self.set_note(note)
+
+        self.set_sessionid(sessionid)
+        self.set_node(node)
+        self.set_action(action)
+        self.set_status(status)
+
+        self.set_actions(actions)
+        self.set_execute(execute)
+
+        self.set_xdata(xdata)
+
+        return
+
+    def check_element(self, value):
+        if value is not None and not is_command_element(value):
+            raise TypeError(
+                "`element' must be stanza command lxml.etree.Element"
+                )
+
+    def check_objects(self, value):
+        for i in value:
+            if (not hasattr(i, 'gen_element')
+                or not callable(getattr(i, 'gen_element'))):
                 raise ValueError(
-"if `body' is XML command element, then all other parameters must be not set"
+                    "all objects in `objects' must have gen_element() method"
                     )
 
-        self.body = body
+    def check_note(self, value):
+        if not org.wayround.utils.types.struct_check(
+            value,
+            {'t': list, '.': {'t': CommandNote}}
+            ):
+            raise ValueError("`note' must be list of CommandNote")
 
-        if not aa:
+    def check_sessionid(self, value):
+        if value is not None and not isinstance(value, str):
+            raise ValueError("`sessionid' must be str")
 
-            self.node = node
-            self.sessionid = sessionid
-            self.action = action
-            self.actions = actions
-            self.execute = execute
-            self.status = status
+    def check_node(self, value):
+        if value is not None and not isinstance(value, str):
+            raise ValueError("`node' must be None or str")
 
-        return
+    def check_action(self, value):
+        if not value in [
+                None, 'cancel', 'complete', 'execute', 'next', 'prev'
+                ]:
+            raise ValueError("value is invalid")
 
-    node = None
-    sessionid = None
-    action = None
-    status = None
+    def check_status(self, value):
+        if not value in [None, 'canceled', 'completed', 'executing']:
+            raise ValueError("`value' is invalid")
 
-    for i in [
-        ('node', 'node'),
-        ('sessionid', 'sessionid'),
-        ('action', 'action'),
-        ('status', 'status')
-        ]:
-        check = ''
-        if i[0] == 'action':
-            check = 'self._action_check(value)'
-        if i[0] == 'status':
-            check = 'self._status_check(value)'
-        exec(
-"""
-@property
-def {meth_name}(self):
+    def check_actions(self, value):
+        for i in value:
+            if not i in ['cancel', 'complete', 'execute', 'next', 'prev']:
+                raise ValueError("actions is invalid")
 
-    ret = self._body.get('{elem_attr}')
+    def check_execute(self, value):
+        if value is not None and not isinstance(value, str):
+            raise ValueError("`execute' must be str")
 
-    return ret
+    def check_xdata(self, value):
+        if not org.wayround.utils.types.struct_check(
+            value,
+            {'t': list, '.': {'t': org.wayround.xmpp.xdata.XData}}
+            ):
+            raise ValueError(
+                "`xdata' must be list of org.wayround.xmpp.xdata.XData"
+                )
 
-@{meth_name}.setter
-def {meth_name}(self, value):
+    @classmethod
+    def new_from_element(cls, element):
 
-    {check}
+        tag, ns = org.wayround.utils.lxml.parse_element_tag(
+            element, 'command', ['http://jabber.org/protocol/commands']
+            )
 
-    if value == None:
-        if '{elem_attr}' in self._body.attrib:
-            del self._body.attrib['{elem_attr}']
-    else:
-        self._body.set('{elem_attr}', value)
+        if tag is None:
+            raise ValueError("Invalid element")
 
-    return
-""".format(meth_name=i[0], elem_attr=i[1], check=check)
-        )
+        ret_class = cls()
 
-    def _action_check(self, action):
-        if not action in [None, 'cancel', 'complete', 'execute', 'next', 'prev']:
-            raise ValueError("action is invalid")
-        return
+        ret_class.set_element(element)
 
-    def _status_check(self, status):
-        if not status in [None, 'canceled', 'completed', 'executing']:
-            raise ValueError("`status' is invalid")
-        return
+        org.wayround.utils.lxml.elem_props_to_object_props(
+            element, ret_class,
+            [
+                ('sessionid', 'sessionid'),
+                ('node', 'node'),
+                ('action', 'action'),
+                ('status', 'status')
+                ]
+            )
 
-    @property
-    def actions(self):
+        org.wayround.utils.lxml.subelemsm_to_object_propsm(
+            element, ret_class,
+            [
+             ('{http://jabber.org/protocol/commands}note',
+              CommandNote,
+              'note'
+              ),
+             ('{jabber:x:data}x',
+              org.wayround.xmpp.xdata.XData,
+              'xdata')
+             ]
+            )
 
-        ret = None
+        ret_class.check()
 
-        a = self._body.findall('{http://jabber.org/protocol/commands}actions')
+        return ret_class
 
-        if a != None and len(a) != 0:
-            a = a[0]
+    def gen_element(self):
 
-            lst = set()
+        self.check()
 
-            for i in a:
-                res = lxml.etree.QName(i)
-                tag = res.localname
+        ret_element = lxml.etree.Element('command')
+        ret_element.set('xmlns', 'http://jabber.org/protocol/commands')
 
-                lst.add(tag)
+        org.wayround.utils.lxml.object_props_to_elem_props(
+            self, ret_element,
+            [
+                ('sessionid', 'sessionid'),
+                ('node', 'node'),
+                ('action', 'action'),
+                ('status', 'status')
+                ]
+            )
 
-            lst = list(a)
-            ret = lst
+        org.wayround.utils.lxml.object_propsm_to_subelemsm(
+            self, ret_element,
+            ['note', 'xdata']
+            )
 
-        return ret
+        actions = self.get_actions()
+        execute = self.get_execute()
 
-    @actions.setter
-    def actions(self, val):
+        if actions or execute:
+            new_element = lxml.etree.Element('actions')
+            if execute:
+                new_element.set('execute', execute)
+            for i in actions:
+                new_element.append(lxml.etree.Element(i))
 
-        if val != None:
-            if not isinstance(val, list):
-                raise TypeError("value must be list")
-            else:
-                for i in val:
-                    self._action_check(i)
+            ret_element.append(new_element)
 
-        e = self.execute
+        objects = self.get_objects()
+        for i in objects:
+            ret_element.append(i.gen_element())
 
-        a = self._body.findall('{http://jabber.org/protocol/commands}actions')
+        return ret_element
 
-        for i in a[:]:
-            self._body.remove(i)
+org.wayround.utils.factory.class_generate_attributes(
+    Command,
+    ['element', 'objects', 'note', 'sessionid', 'node', 'action', 'status',
+     'actions', 'execute', 'xdata']
+    )
+org.wayround.utils.factory.class_generate_check(
+    Command,
+    ['element', 'objects', 'note', 'sessionid', 'node', 'action', 'status',
+     'actions', 'execute', 'xdata']
+    )
 
-        if isinstance(val, list):
+class CommandNote:
 
-            el = lxml.etree.Element('{http://jabber.org/protocol/commands}actions')
-            for i in val:
-                el.append(lxml.etree.Element(i))
+    def __init__(self, text='', typ='info'):
 
-            self._body.insert(0, el)
+        self.set_text(text)
+        self.set_typ(typ)
 
-            self.execute = e
+    def check_text(self, value):
+        if not isinstance(value, str):
+            raise ValueError("`text' must be str")
 
-        return
+    def check_typ(self, value):
+        if not value in ['info', 'error', 'warn']:
+            raise ValueError("`typ' must be in ['info', 'error', 'warn']")
 
-    @property
-    def execute(self):
-        ret = None
+    @classmethod
+    def new_from_element(cls, element):
 
-        a = self._body.findall('{http://jabber.org/protocol/commands}actions')
+        tag, ns = org.wayround.utils.lxml.parse_element_tag(
+            element, 'note', ['http://jabber.org/protocol/commands']
+            )
 
-        if a != None and len(a) != 0:
-            a = a[0]
-            ret = a.get('execute')
+        if tag is None:
+            raise ValueError("Invalid element")
 
-        return ret
+        cl = cls()
 
-    @execute.setter
-    def execute(self, val):
-        if val != None and not isinstance(val, str):
-            raise TypeError("value must be str or None")
+        org.wayround.utils.lxml.elem_props_to_object_props(
+            element, cl,
+            [
+             ('type', 'typ')
+             ]
+            )
 
-        a = self._body.findall('{http://jabber.org/protocol/commands}actions')
+        cl.set_text(element.text)
 
-        if len(a) == 0:
-            pass
-        else:
-            a = a[0]
+        cl.check()
 
-            if val == None:
-                if 'execute' in a.attrib:
-                    del a.attrib['execute']
-            else:
-                a.set('execute', val)
+        return cl
 
-        return
+    def gen_element(self):
 
-    @property
-    def body(self):
-        return self._body
+        self.check()
 
-    @body.setter
-    def body(self, obj):
+        element = lxml.etree.Element('note')
 
-        if obj == None:
-            obj = []
+        org.wayround.utils.lxml.object_props_to_elem_props(
+            self, element,
+            [
+             ('typ', 'type')
+             ]
+            )
 
-        if is_command_element(obj):
-            self._body = obj
-        else:
+        element.text = self.get_text()
 
-            self._body = lxml.etree.Element('command')
-            self._body.set('xmlns', 'http://jabber.org/protocol/commands')
+        return element
 
-            org.wayround.xmpp.core.element_add_object(self._body, obj)
-
-        return
-
-    def __str__(self):
-        return self.to_str()
-
-    def to_str(self):
-        ret = lxml.etree.tostring(self._body)
-        if isinstance(ret, bytes):
-            ret = str(ret, 'utf-8')
-        return ret
-
-
+org.wayround.utils.factory.class_generate_attributes(
+    CommandNote,
+    ['text', 'typ']
+    )
+org.wayround.utils.factory.class_generate_check(
+    CommandNote,
+    ['text', 'typ']
+    )

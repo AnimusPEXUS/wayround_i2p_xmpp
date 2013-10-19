@@ -3,7 +3,7 @@ import datetime
 
 import lxml.etree
 import org.wayround.utils.factory
-import org.wayround.utils.factory_lxml
+import org.wayround.utils.lxml
 import org.wayround.utils.types
 
 import org.wayround.xmpp.core
@@ -18,9 +18,7 @@ class X:
         xmlns='',
         history=None, password=None,
 
-        decline=None, destroy=None, invite=None, item=None,
-        status=None
-
+        decline=None, destroy=None, invite=None, item=None, status=None
         ):
 
         if invite == None:
@@ -43,9 +41,9 @@ class X:
         return
 
     def check_xmlns(self, value):
-        if not value in ['', '#user', '#admin', '#owner', '#unique']:
+        if not value in ['', '#user']:
             raise ValueError(
-            "`xmlns' must be in ['', '#user', '#admin', '#owner', '#unique']"
+            "`xmlns' must be in ['', '#user']"
             )
 
     def check_history(self, value):
@@ -80,7 +78,7 @@ class X:
             value,
             {'t':list, '.':{'t':Status}}
             ):
-            raise ValueError("`status' must be list of Status")
+            raise ValueError("`value' must be list of Status")
 
     @classmethod
     def new_from_element(cls, element):
@@ -90,7 +88,7 @@ class X:
         cl = cls()
         cl.set_xmlns(xmlns)
 
-        org.wayround.utils.factory_lxml.subelems_to_object_props(
+        org.wayround.utils.lxml.subelems_to_object_props(
             element, cl,
             [
              ('{{http://jabber.org/protocol/muc{}}}history'.format(xmlns),
@@ -108,7 +106,7 @@ class X:
              ]
             )
 
-        org.wayround.utils.factory_lxml.subelemsm_to_object_propsm(
+        org.wayround.utils.lxml.subelemsm_to_object_propsm(
             element, cl,
             [
              ('{{http://jabber.org/protocol/muc{}}}invite'.format(xmlns),
@@ -140,7 +138,7 @@ class X:
             'http://jabber.org/protocol/muc{}'.format(self.get_xmlns())
             )
 
-        org.wayround.utils.factory_lxml.object_props_to_subelems(
+        org.wayround.utils.lxml.object_props_to_subelems(
             self, el, ['history', 'decline', 'destroy', 'item']
             )
 
@@ -150,7 +148,7 @@ class X:
             password_el.text = password
             el.append(password_el)
 
-        org.wayround.utils.factory_lxml.object_propsm_to_subelemsm(
+        org.wayround.utils.lxml.object_propsm_to_subelemsm(
             self, el, ['invite', 'status']
             )
 
@@ -169,7 +167,7 @@ org.wayround.utils.factory.class_generate_check(
 
 class Query:
 
-    def __init__(self, xmlns='', item=None, destroy=None, xdata=None):
+    def __init__(self, xmlns='#owner', item=None, destroy=None, xdata=None):
 
 
         if item == None:
@@ -178,15 +176,16 @@ class Query:
         self.set_xmlns(xmlns)
         self.set_item(item)
         self.set_destroy(destroy)
+        self.set_xdata(xdata)
 
     def check_xmlns(self, value):
-        if not value in ['', '#user', '#admin', '#owner', '#unique']:
+        if not value in ['#admin', '#owner']:
             raise ValueError(
-            "`xmlns' must be in ['', '#user', '#admin', '#owner', '#unique']"
+            "`xmlns' must be in ['#admin', '#owner']"
             )
 
     def check_item(self, value):
-        if not org.wayround.utils.type.struct_check(
+        if not org.wayround.utils.types.struct_check(
             value, {'t': list, '.': {'t': Item}}
             ):
             raise ValueError("`item' must be list of Item")
@@ -210,22 +209,23 @@ class Query:
         cl = cls()
         cl.set_xmlns(xmlns)
 
-        org.wayround.utils.factory_lxml.subelemsm_to_object_propsm(
+        org.wayround.utils.lxml.subelemsm_to_object_propsm(
             element, cl,
-            ('{{http://jabber.org/protocol/muc{}}}item'.format(xmlns),
+            [('{{http://jabber.org/protocol/muc{}}}item'.format(xmlns),
              Item,
-             'item')
+             'item'
+             )]
             )
 
-        org.wayround.utils.factory_lxml.subelems_to_object_props(
+        org.wayround.utils.lxml.subelems_to_object_props(
             element, cl,
-            ('{{http://jabber.org/protocol/muc{}}}destroy'.format(xmlns),
+            [('{{http://jabber.org/protocol/muc{}}}destroy'.format(xmlns),
              Destroy,
              'destroy'),
             ('{jabber:x:data}x',
              org.wayround.xmpp.xdata.XData,
              'xdata'
-             )
+             )]
             )
 
         cl.check()
@@ -237,12 +237,15 @@ class Query:
         self.check()
 
         el = lxml.etree.Element('query')
+        el.set(
+            'xmlns', 'http://jabber.org/protocol/muc{}'.format(self.get_xmlns())
+            )
 
-        org.wayround.utils.factory_lxml.object_propsm_to_subelemsm(
+        org.wayround.utils.lxml.object_propsm_to_subelemsm(
             self, el, ['item']
             )
 
-        org.wayround.utils.factory_lxml.object_props_to_subelems(
+        org.wayround.utils.lxml.object_props_to_subelems(
             self, el, ['destroy', 'xdata']
             )
 
@@ -293,7 +296,7 @@ class History:
         cl = cls()
         cl.set_xmlns(xmlns)
 
-        org.wayround.utils.factory_lxml.elem_props_to_object_props(
+        org.wayround.utils.lxml.elem_props_to_object_props(
             element, cl,
             [
              ('maxchars', 'maxchars'),
@@ -313,7 +316,7 @@ class History:
 
         el = lxml.etree.Element('history')
 
-        org.wayround.utils.factory_lxml.object_props_to_elem_props(
+        org.wayround.utils.lxml.object_props_to_elem_props(
             self, el,
             [
              ('maxchars', 'maxchars'),
@@ -367,7 +370,7 @@ class Decline:
         if reason_el != None:
             cl.set_reason(reason_el.text)
 
-        org.wayround.utils.factory_lxml.elem_props_to_object_props(
+        org.wayround.utils.lxml.elem_props_to_object_props(
             element, cl,
             [
              ('from', 'from_jid'),
@@ -385,7 +388,7 @@ class Decline:
 
         el = lxml.etree.Element('decline')
 
-        org.wayround.utils.factory_lxml.object_props_to_elem_props(
+        org.wayround.utils.lxml.object_props_to_elem_props(
             self, el,
             [
              ('from_jid', 'from'),
@@ -451,7 +454,7 @@ class Destroy:
         if password_el != None:
             cl.set_password(password_el.text)
 
-        org.wayround.utils.factory_lxml.elem_props_to_object_props(
+        org.wayround.utils.lxml.elem_props_to_object_props(
             element, cl,
             [
              ('jid', 'jid'),
@@ -469,7 +472,7 @@ class Destroy:
 
         el = lxml.etree.Element('destroy')
 
-        org.wayround.utils.factory_lxml.object_props_to_elem_props(
+        org.wayround.utils.lxml.object_props_to_elem_props(
             self, el,
             [
              ('jid', 'jid'),
@@ -532,7 +535,7 @@ class Invite:
         if reason_el != None:
             cl.set_reason(reason_el.text)
 
-        org.wayround.utils.factory_lxml.elem_props_to_object_props(
+        org.wayround.utils.lxml.elem_props_to_object_props(
             element, cl,
             [
              ('from', 'from_jid'),
@@ -550,7 +553,7 @@ class Invite:
 
         el = lxml.etree.Element('invite')
 
-        org.wayround.utils.factory_lxml.object_props_to_elem_props(
+        org.wayround.utils.lxml.object_props_to_elem_props(
             self, el,
             [
              ('from_jid', 'from'),
@@ -636,7 +639,7 @@ class Item:
             cl.set_reason(reason_el.text)
 
 
-        org.wayround.utils.factory_lxml.subelems_to_object_props(
+        org.wayround.utils.lxml.subelems_to_object_props(
             element, cl,
             [
              ('{{http://jabber.org/protocol/muc{}}}actor'.format(xmlns),
@@ -650,7 +653,7 @@ class Item:
             )
 
 
-        org.wayround.utils.factory_lxml.elem_props_to_object_props(
+        org.wayround.utils.lxml.elem_props_to_object_props(
             element, cl,
             [
              ('affiliation', 'affiliation'),
@@ -670,7 +673,7 @@ class Item:
 
         el = lxml.etree.Element('item')
 
-        org.wayround.utils.factory_lxml.object_props_to_subelems(
+        org.wayround.utils.lxml.object_props_to_subelems(
             self, el, ['actor', 'contin']
             )
 
@@ -681,7 +684,7 @@ class Item:
             el.append(reason_el)
 
 
-        org.wayround.utils.factory_lxml.object_props_to_elem_props(
+        org.wayround.utils.lxml.object_props_to_elem_props(
             self, el,
             [
              ('affiliation', 'affiliation'),
@@ -792,10 +795,6 @@ class Status:
 
     def __init__(self, code):
 
-        #        <xs:restriction base='xs:int'>
-        #        <xs:length value='3'/>
-        #        </xs:restriction>
-
         self.set_code(code)
 
     def check_code(self, value):
@@ -821,7 +820,11 @@ class Status:
 
         el = lxml.etree.Element('status')
 
-        el.set('code', self.get_code())
+        #        <xs:restriction base='xs:int'>
+        #        <xs:length value='3'/>
+        #        </xs:restriction>
+
+        el.set('code', '{:03d}'.format(self.get_code()))
 
         return el
 
@@ -896,44 +899,32 @@ def request_room_configuration(room_bare_jid, from_full_jid, stanza_processor):
 
     stanza = org.wayround.xmpp.core.Stanza('iq')
 
-    stanza.jid_from = from_full_jid
-    stanza.jid_to = room_bare_jid
+    stanza.from_jid = from_full_jid
+    stanza.to_jid = room_bare_jid
     stanza.typ = 'get'
 
-    query = lxml.etree.Element('query')
-    query.set('xmlns', 'http://jabber.org/protocol/muc#owner')
+    query = Query(
+        xmlns='#owner'
+        ).gen_element()
 
-    stanza.body.append(query)
+    stanza.body_objects.append(query)
 
     ret = stanza_processor.send(stanza, wait=None)
     return ret
 
 def submit_room_configuration(
-        room_bare_jid, from_full_jid, stanza_processor, form_element
+        room_bare_jid, from_full_jid, stanza_processor, x_data
         ):
-
-    if type(form_element) != lxml.etree._Element:
-        raise TypeError("`form_element' must be lxml.etree._Element")
-
-    if (form_element.tag != '{jabber:x:data}x'
-        and (
-            form_element.tag != 'x'
-            or form_element.get('xmlns') != 'jabber:x:data'
-            )):
-        raise ValueError("invalid form element: {}".format(form_element.tag))
 
     stanza = org.wayround.xmpp.core.Stanza('iq')
 
-    stanza.jid_from = from_full_jid
-    stanza.jid_to = room_bare_jid
+    stanza.from_jid = from_full_jid
+    stanza.to_jid = room_bare_jid
     stanza.typ = 'set'
 
-    query = lxml.etree.Element('query')
-    query.set('xmlns', 'http://jabber.org/protocol/muc#owner')
+    query = Query(xmlns='#owner', xdata=x_data)
 
-    query.append(form_element)
-
-    stanza.body.append(query)
+    stanza.body_objects.append(query.gen_element())
 
     ret = stanza_processor.send(stanza, wait=None)
     return ret
@@ -943,26 +934,21 @@ def destroy_room(
     reason=None, alternate_venue_jid=None
     ):
 
-    destroy_e = lxml.etree.Element('destroy')
-    if alternate_venue_jid:
-        destroy_e.set('jid', alternate_venue_jid)
-
-    if reason:
-        reason_e = lxml.etree.Element('reason')
-        reason_e.text = reason
-        destroy_e.append(reason_e)
-
-    query = lxml.etree.Element('query')
-    query.set('xmlns', 'http://jabber.org/protocol/muc#owner')
-    query.append(destroy_e)
+    query = Query(
+        xmlns='#owner',
+        destroy=Destroy(
+            jid=alternate_venue_jid,
+            reason=reason
+            )
+        )
 
     stanza = org.wayround.xmpp.core.Stanza('iq')
 
-    stanza.jid_from = from_full_jid
-    stanza.jid_to = room_bare_jid
+    stanza.from_jid = from_full_jid
+    stanza.to_jid = room_bare_jid
     stanza.typ = 'set'
 
-    stanza.body.append(query)
+    stanza.body_objects.append(query.gen_element())
 
     ret = stanza_processor.send(stanza, wait=None)
     return ret
