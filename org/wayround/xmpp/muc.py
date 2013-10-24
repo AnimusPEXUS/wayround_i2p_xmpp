@@ -10,6 +10,8 @@ import org.wayround.xmpp.core
 import org.wayround.xmpp.xdata
 
 NAMESPACE = 'http://jabber.org/protocol/muc'
+NAMESPACE_LENGTH = len(NAMESPACE)
+
 
 class X:
 
@@ -65,7 +67,7 @@ class X:
     def check_invite(self, value):
         if not org.wayround.utils.types.struct_check(
             value,
-            {'t':list, '.':{'t':Invite}}
+            {'t': list, '.': {'t': Invite}}
             ):
             raise ValueError("`invite' must be list of Invite")
 
@@ -76,7 +78,7 @@ class X:
     def check_status(self, value):
         if not org.wayround.utils.types.struct_check(
             value,
-            {'t':list, '.':{'t':Status}}
+            {'t': list, '.': {'t': Status}}
             ):
             raise ValueError("`value' must be list of Status")
 
@@ -165,10 +167,10 @@ org.wayround.utils.factory.class_generate_check(
      'item', 'password', 'status']
     )
 
+
 class Query:
 
     def __init__(self, xmlns='#owner', item=None, destroy=None, xdata=None):
-
 
         if item == None:
             item = []
@@ -238,7 +240,8 @@ class Query:
 
         el = lxml.etree.Element('query')
         el.set(
-            'xmlns', 'http://jabber.org/protocol/muc{}'.format(self.get_xmlns())
+            'xmlns',
+            'http://jabber.org/protocol/muc{}'.format(self.get_xmlns())
             )
 
         org.wayround.utils.lxml.object_propsm_to_subelemsm(
@@ -262,10 +265,51 @@ org.wayround.utils.factory.class_generate_check(
     )
 
 
+class Unique:
+
+    def __init__(self, text):
+
+        self.set_text(text)
+
+    def check_text(self, value):
+        if value is not None and not isinstance(value, str):
+            raise ValueError("`text' must be None or str")
+
+    @classmethod
+    def new_from_element(cls, element):
+
+        xmlns = check_element_and_namespace(element, 'unique')
+
+        if not xmlns == '#unique':
+            raise ValueError("`invalid' namespace")
+
+        return cls(element.text)
+
+    def gen_element(self):
+
+        self.check()
+
+        el = lxml.etree.Element('unique')
+        el.text = self.get_text()
+
+        return el
+
+org.wayround.utils.factory.class_generate_attributes(
+    Unique,
+    ['text']
+    )
+org.wayround.utils.factory.class_generate_check(
+    Unique,
+    ['text']
+    )
+
 
 class History:
 
-    def __init__(self, maxchars=None, maxstanzas=None, seconds=None, since=None):
+    def __init__(
+        self,
+        maxchars=None, maxstanzas=None, seconds=None, since=None
+        ):
 
         self.set_maxchars(maxchars)
         self.set_maxstanzas(maxstanzas)
@@ -365,7 +409,7 @@ class Decline:
         cl.set_xmlns(xmlns)
 
         reason_el = element.find(
-            '{{http://jabber.org/protocol/muc{ns}}}reason'.format(ns=xmlns)
+            '{{http://jabber.org/protocol/muc{}}}reason'.format(xmlns)
             )
         if reason_el != None:
             cl.set_reason(reason_el.text)
@@ -461,7 +505,6 @@ class Destroy:
              ]
             )
 
-
         cl.check()
 
         return cl
@@ -478,7 +521,6 @@ class Destroy:
              ('jid', 'jid'),
              ]
             )
-
 
         reason = self.get_reason()
         if reason != None:
@@ -504,7 +546,9 @@ org.wayround.utils.factory.class_generate_check(
     ['reason', 'jid', 'password']
     )
 
+
 class Invite:
+
     def __init__(self, reason=None, from_jid=None, to_jid=None):
 
         self.set_reason(reason)
@@ -531,7 +575,9 @@ class Invite:
         cl = cls()
         cl.set_xmlns(xmlns)
 
-        reason_el = element.find('{http://jabber.org/protocol/muc}reason')
+        reason_el = element.find(
+            '{{http://jabber.org/protocol/muc{}}}reason'.format(xmlns)
+            )
         if reason_el != None:
             cl.set_reason(reason_el.text)
 
@@ -609,7 +655,10 @@ class Item:
 
     def check_affiliation(self, value):
         if not value in [None, 'admin', 'member', 'none', 'outcast', 'owner']:
-            raise ValueError("`affiliation' must be None or one of keywords")
+            raise ValueError(
+                "`affiliation' must be None or one of "
+                "['admin', 'member', 'none', 'outcast', 'owner']"
+                )
 
     def check_jid(self, value):
         if value != None and not isinstance(value, str):
@@ -621,23 +670,23 @@ class Item:
 
     def check_role(self, value):
         if not value in [None, 'moderator', 'none', 'participant', 'visitor']:
-            raise ValueError("`role' must be None or one of keywords")
+            raise ValueError(
+                "`role' must be None or one of "
+                "['moderator', 'none', 'participant', 'visitor']"
+                )
 
     @classmethod
     def new_from_element(cls, element):
 
-        xmlns = check_element_and_namespace(element, 'invite')
+        xmlns = check_element_and_namespace(element, 'item')
 
         cl = cls()
 
-        cl.set_xmlns(xmlns)
-
         reason_el = element.find(
-            '{{http://jabber.org/protocol/muc{ns}}}reason'.format(xmlns)
+            '{{http://jabber.org/protocol/muc{}}}reason'.format(xmlns)
             )
         if reason_el != None:
             cl.set_reason(reason_el.text)
-
 
         org.wayround.utils.lxml.subelems_to_object_props(
             element, cl,
@@ -651,7 +700,6 @@ class Item:
               )
              ]
             )
-
 
         org.wayround.utils.lxml.elem_props_to_object_props(
             element, cl,
@@ -683,7 +731,6 @@ class Item:
             reason_el.text = reason
             el.append(reason_el)
 
-
         org.wayround.utils.lxml.object_props_to_elem_props(
             self, el,
             [
@@ -704,6 +751,7 @@ org.wayround.utils.factory.class_generate_check(
     Item,
     ['actor', 'reason', 'contin', 'affiliation', 'jid', 'nick', 'role']
     )
+
 
 class Actor:
 
@@ -837,6 +885,7 @@ org.wayround.utils.factory.class_generate_check(
     ['code']
     )
 
+
 # misc
 
 def check_element_and_namespace(element, tag_localname):
@@ -860,9 +909,15 @@ def check_element_and_namespace(element, tag_localname):
             raise ValueError("Invalid element namespace")
 
         else:
-            xmlns = xmlns[len(NAMESPACE):]
+            xmlns = xmlns[NAMESPACE_LENGTH:]
+
+    if not xmlns in [
+        '', '#owner', '#admin', '#user', '#unique'
+        ]:
+        raise ValueError("invalid namespace")
 
     return xmlns
+
 
 # mechanics
 
@@ -894,23 +949,58 @@ class Client:
         pass
 
 
+def create_room_instantly(room_bare_jid, from_full_jid, stanza_processor):
+
+    xdata = org.wayround.xmpp.xdata.XData(typ='submit')
+
+    stanza = org.wayround.xmpp.core.Stanza('iq')
+
+    stanza.set_from_jid(from_full_jid)
+    stanza.set_to_jid(room_bare_jid)
+    stanza.set_typ('set')
+
+    query = Query(xmlns='#owner', xdata=xdata)
+
+    stanza.get_objects().append(query)
+
+    ret = stanza_processor.send(stanza, wait=None)
+    return ret
+
+
+def discover_room_nickname(room_bare_jid, from_full_jid, stanza_processor):
+
+    stanza = org.wayround.xmpp.core.Stanza('iq')
+
+    stanza.set_from_jid(from_full_jid)
+    stanza.set_to_jid(room_bare_jid)
+    stanza.set_typ('get')
+
+    query = org.wayround.xmpp.disco.IQDisco(
+        mode='info', node='x-roomuser-item'
+        )
+
+    stanza.get_objects().append(query)
+
+    ret = stanza_processor.send(stanza, wait=None)
+
+    return ret
+
 
 def request_room_configuration(room_bare_jid, from_full_jid, stanza_processor):
 
     stanza = org.wayround.xmpp.core.Stanza('iq')
 
-    stanza.from_jid = from_full_jid
-    stanza.to_jid = room_bare_jid
-    stanza.typ = 'get'
+    stanza.set_from_jid(from_full_jid)
+    stanza.set_to_jid(room_bare_jid)
+    stanza.set_typ('get')
 
-    query = Query(
-        xmlns='#owner'
-        ).gen_element()
+    query = Query(xmlns='#owner')
 
-    stanza.body_objects.append(query)
+    stanza.get_objects().append(query)
 
     ret = stanza_processor.send(stanza, wait=None)
     return ret
+
 
 def submit_room_configuration(
         room_bare_jid, from_full_jid, stanza_processor, x_data
@@ -918,16 +1008,17 @@ def submit_room_configuration(
 
     stanza = org.wayround.xmpp.core.Stanza('iq')
 
-    stanza.from_jid = from_full_jid
-    stanza.to_jid = room_bare_jid
-    stanza.typ = 'set'
+    stanza.set_from_jid(from_full_jid)
+    stanza.set_to_jid(room_bare_jid)
+    stanza.set_typ('set')
 
     query = Query(xmlns='#owner', xdata=x_data)
 
-    stanza.body_objects.append(query.gen_element())
+    stanza.get_objects().append(query)
 
     ret = stanza_processor.send(stanza, wait=None)
     return ret
+
 
 def destroy_room(
     room_bare_jid, from_full_jid, stanza_processor,
@@ -944,11 +1035,55 @@ def destroy_room(
 
     stanza = org.wayround.xmpp.core.Stanza('iq')
 
-    stanza.from_jid = from_full_jid
-    stanza.to_jid = room_bare_jid
-    stanza.typ = 'set'
+    stanza.set_from_jid(from_full_jid)
+    stanza.set_to_jid(room_bare_jid)
+    stanza.set_typ('set')
 
-    stanza.body_objects.append(query.gen_element())
+    stanza.get_objects().append(query)
 
     ret = stanza_processor.send(stanza, wait=None)
+    return ret
+
+
+def get_room_identies(mode, room_bare_jid, from_full_jid, stanza_processor):
+
+    if not mode in [
+        'voice', 'ban', 'member', 'moderator', 'admin', 'owner'
+        ]:
+        raise ValueError("`mode' is invalid")
+
+    affiliation = None
+    role = None
+
+    if mode in ['owner', 'admin', 'member']:
+        affiliation = mode
+    elif mode == 'ban':
+        affiliation = 'outcast'
+    elif mode == 'moderator':
+        role = 'moderator'
+    elif mode == 'voice':
+        role = 'participant'
+    else:
+        raise Exception("DNA Error")
+
+    query = Query(
+        xmlns='#admin',
+        item=[
+            Item(
+                affiliation=affiliation,
+                role=role
+                )
+            ]
+        )
+
+    stanza = org.wayround.xmpp.core.Stanza('iq')
+
+    stanza.set_from_jid(from_full_jid)
+    stanza.set_to_jid(room_bare_jid)
+    stanza.set_typ('get')
+
+    stanza.get_objects().append(query)
+
+    ret = stanza_processor.send(stanza, wait=None)
+
     return ret

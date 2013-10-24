@@ -715,7 +715,7 @@ class XMPPInputStreamReader:
                     pass
                 else:
                     logging.debug(
-                        "{} :: got next feed of {}".format(
+                        "{}::\n--in---\n{}\n-------".format(
                             type(self).__name__, repr(bb)
                             )
                         )
@@ -930,7 +930,9 @@ class XMPPOutputStreamWriter:
         self._write_to.write(snd_obj)
 
         logging.debug(
-            "Feeding data to self._xml_parser.feed:\n{}".format(snd_obj)
+            "Feeding data to self._xml_parser.feed:\n--out--\n{}\n-------".format(
+                snd_obj
+                )
             )
 
         try:
@@ -1260,6 +1262,9 @@ class Stanza:
         if objects == None:
             objects = []
 
+        if status == None:
+            status = []
+
         self.set_element(None)
         self.set_objects(objects)
 
@@ -1357,8 +1362,11 @@ class Stanza:
             raise ValueError("`show' must be PresenceShow")
 
     def check_status(self, value):
-        if value != None and not isinstance(value, PresenceStatus):
-            raise ValueError("`show' must be PresenceStatus")
+        if not org.wayround.utils.types.struct_check(
+            value,
+            {'t': list, '.': {'t': PresenceStatus}}
+            ):
+            raise ValueError("`status' must be list of PresenceStatus")
 
     def check_priority(self, value):
         if (value != None
@@ -1387,13 +1395,13 @@ class Stanza:
             [
              ('{{{}}}thread'.format(ns), MessageThread, 'thread'),
              ('{{{}}}show'.format(ns), PresenceShow, 'show'),
-             ('{{{}}}status'.format(ns), PresenceStatus, 'status'),
              ]
             )
 
         org.wayround.utils.lxml.subelemsm_to_object_propsm(
             element, cl,
             [
+             ('{{{}}}status'.format(ns), PresenceStatus, 'status'),
              ('{{{}}}subject'.format(ns), MessageSubject, 'subject'),
              ('{{{}}}body'.format(ns), MessageBody, 'body')
              ]
@@ -1412,7 +1420,7 @@ class Stanza:
 
         priority_el = element.find('{{{}}}priority'.format(ns))
         if priority_el != None:
-            cl.set_priorirty(int(priority_el.text))
+            cl.set_priority(int(priority_el.text))
 
         cl.check()
 
@@ -1427,7 +1435,7 @@ class Stanza:
         org.wayround.utils.lxml.object_props_to_elem_props(
             self, el,
             [
-            ('xmlns', 'xmlns'),
+             # ('xmlns', 'xmlns'),
              ('ide', 'id'),
              ('from_jid', 'from'),
              ('to_jid', 'to'),
@@ -1441,13 +1449,13 @@ class Stanza:
             [
              ('thread'),
              ('show'),
-             ('status'),
              ]
             )
 
         org.wayround.utils.lxml.object_propsm_to_subelemsm(
             self, el,
             [
+             ('status'),
              ('subject'),
              ('body')
              ]
@@ -1456,6 +1464,12 @@ class Stanza:
         objects = self.get_objects()
         for i in objects:
             el.append(i.gen_element())
+
+        priority = self.get_priority()
+        if priority:
+            priority_el = lxml.etree.Element('priority')
+            priority_el.text = priority
+            el.append(priority_el)
 
         return el
 
@@ -1644,8 +1658,7 @@ class MessageThread:
         if tag == None:
             raise ValueError("invalid tag")
 
-        cl = cls()
-        cl.set_text(element.text)
+        cl = cls(thread=element.text)
         cl.set_parent(element.get('parent'))
 
         cl.check()
@@ -1658,9 +1671,9 @@ class MessageThread:
 
         el = lxml.etree.Element('thread')
 
-        text = self.get_text()
-        if text:
-            el.text = text
+        thread = self.get_thread()
+        if thread:
+            el.text = thread
 
         parent = self.get_parent()
         if parent:
@@ -1670,11 +1683,11 @@ class MessageThread:
 
 org.wayround.utils.factory.class_generate_attributes(
     MessageThread,
-    ['parent', 'text']
+    ['parent', 'thread']
     )
 org.wayround.utils.factory.class_generate_check(
     MessageThread,
-    ['parent', 'text']
+    ['parent', 'thread']
     )
 
 
@@ -1695,14 +1708,13 @@ class PresenceShow:
             raise ValueError("`element' must be lxml.etree.Element")
 
         tag, ns = org.wayround.utils.lxml.parse_element_tag(
-            element, 'thread', None
+            element, 'show', None
             )
 
         if tag == None:
             raise ValueError("invalid tag")
 
-        cl = cls()
-        cl.set_text(element.text)
+        cl = cls(text=element.text)
 
         cl.check()
 
@@ -1712,7 +1724,7 @@ class PresenceShow:
 
         self.check()
 
-        el = lxml.etree.Element('thread')
+        el = lxml.etree.Element('show')
 
         text = self.get_text()
         if text:
@@ -1732,18 +1744,18 @@ org.wayround.utils.factory.class_generate_check(
 
 class PresenceStatus:
 
-    def __init__(self, text, xmllang=None):
+    def __init__(self, text=None, xmllang=None):
 
         self.set_text(text)
         self.set_xmllang(xmllang)
 
     def check_text(self, value):
-        if not isinstance(value, str):
+        if value is not None and not isinstance(value, str):
             raise ValueError("`text' must be str")
 
-    def check_lang(self, value):
-        if value != None and not isinstance(value, str):
-            raise ValueError("`lang' must be str")
+    def check_xmllang(self, value):
+        if value is not None and not isinstance(value, str):
+            raise ValueError("`xmllang' must be str")
 
     @classmethod
     def new_from_element(cls, element):
@@ -1758,9 +1770,8 @@ class PresenceStatus:
         if tag == None:
             raise ValueError("invalid tag")
 
-        cl = cls()
-        cl.set_text(element.text)
-        cl.set_lang(element.get('xml:lang'))
+        cl = cls(text=element.text)
+        cl.set_xmllang(element.get('xml:lang'))
 
         cl.check()
 
@@ -1776,7 +1787,7 @@ class PresenceStatus:
         if text:
             el.text = text
 
-        lang = self.get_lang()
+        lang = self.get_xmllang()
         if lang:
             el.set('xml:lang', lang)
 

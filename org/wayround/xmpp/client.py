@@ -1125,10 +1125,10 @@ class Presence(org.wayround.utils.signal.Signal):
             stanza.set_typ(typ)
 
         if show:
-            stanza.set_show(show)
+            stanza.set_show(org.wayround.xmpp.core.PresenceShow(show))
 
         if status:
-            stanza.set_status(status)
+            stanza.set_status([org.wayround.xmpp.core.PresenceStatus(status)])
 
         ret = self.client.stanza_processor.send(stanza, wait=wait)
 

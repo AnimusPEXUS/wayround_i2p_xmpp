@@ -14,7 +14,7 @@ class XData:
 
     def __init__(
         self,
-        form_type='form', title=None, instructions=None, fields=None,
+        typ='form', title=None, instructions=None, fields=None,
         reported_fields=None, reported_items=None
         ):
 
@@ -30,14 +30,14 @@ class XData:
         if reported_items == None:
             reported_items = []
 
-        self.set_form_type(form_type)
+        self.set_typ(typ)
         self.set_title(title)
         self.set_instructions(instructions)
         self.set_fields(fields)
         self.set_reported_fields(reported_fields)
         self.set_reported_items(reported_items)
 
-    def check_form_type(self, value):
+    def check_typ(self, value):
         if not value in ['cancel', 'form', 'result', 'submit']:
             raise ValueError(
                 "Invalid form element type ({})".format(value)
@@ -88,9 +88,9 @@ class XData:
         if type(element) != lxml.etree._Element:
             raise TypeError("`element' must be lxml.etree.Element")
 
-        tag, ns = org.wayround.utils.lxml.parse_element_tag(
+        tag = org.wayround.utils.lxml.parse_element_tag(
             element, 'x', ['jabber:x:data']
-            )
+            )[0]
 
         if tag is None:
             raise ValueError("Invalid element")
@@ -100,7 +100,7 @@ class XData:
         ft = element.get('type')
         if ft == None:
             ft = 'form'
-        ret.set_form_type(ft)
+        ret.set_typ(ft)
 
         t = element.find('{jabber:x:data}title')
         if t != None:
@@ -146,13 +146,13 @@ class XData:
         e = lxml.etree.Element('x')
         e.set('xmlns', 'jabber:x:data')
 
-        t = self.get_form_type()
+        t = self.get_typ()
         if t:
             e.set('type', t)
 
         ti = self.get_title()
 
-        if t:
+        if ti:
             t = lxml.etree.Element('title')
             t.text = ti
             e.append(t)
@@ -235,12 +235,12 @@ class XData:
 
 org.wayround.utils.factory.class_generate_attributes(
     XData,
-    ['form_type', 'title', 'instructions', 'fields', 'reported_fields',
+    ['typ', 'title', 'instructions', 'fields', 'reported_fields',
      'reported_items']
     )
 org.wayround.utils.factory.class_generate_check(
     XData,
-    ['form_type', 'title', 'instructions', 'fields', 'reported_fields',
+    ['typ', 'title', 'instructions', 'fields', 'reported_fields',
      'reported_items']
     )
 
