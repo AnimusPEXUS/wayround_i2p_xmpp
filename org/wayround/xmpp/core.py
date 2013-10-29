@@ -930,7 +930,8 @@ class XMPPOutputStreamWriter:
         self._write_to.write(snd_obj)
 
         logging.debug(
-            "Feeding data to self._xml_parser.feed:\n--out--\n{}\n-------".format(
+            "Feeding data to self._xml_parser.feed:"
+            "\n--out--\n{}\n-------".format(
                 snd_obj
                 )
             )
@@ -1527,9 +1528,9 @@ class MessageBody:
         if type(element) != lxml.etree._Element:
             raise ValueError("`element' must be lxml.etree.Element")
 
-        tag, ns = org.wayround.utils.lxml.parse_element_tag(
+        tag = org.wayround.utils.lxml.parse_element_tag(
             element, 'body', None
-            )
+            )[0]
 
         if tag == None:
             raise ValueError("invalid tag")
@@ -1589,9 +1590,9 @@ class MessageSubject:
         if type(element) != lxml.etree._Element:
             raise ValueError("`element' must be lxml.etree.Element")
 
-        tag, ns = org.wayround.utils.lxml.parse_element_tag(
+        tag = org.wayround.utils.lxml.parse_element_tag(
             element, 'subject', None
-            )
+            )[0]
 
         if tag == None:
             raise ValueError("invalid tag")
@@ -1651,9 +1652,9 @@ class MessageThread:
         if type(element) != lxml.etree._Element:
             raise ValueError("`element' must be lxml.etree.Element")
 
-        tag, ns = org.wayround.utils.lxml.parse_element_tag(
+        tag = org.wayround.utils.lxml.parse_element_tag(
             element, 'thread', None
-            )
+            )[0]
 
         if tag == None:
             raise ValueError("invalid tag")
@@ -1707,9 +1708,9 @@ class PresenceShow:
         if type(element) != lxml.etree._Element:
             raise ValueError("`element' must be lxml.etree.Element")
 
-        tag, ns = org.wayround.utils.lxml.parse_element_tag(
+        tag = org.wayround.utils.lxml.parse_element_tag(
             element, 'show', None
-            )
+            )[0]
 
         if tag == None:
             raise ValueError("invalid tag")
@@ -1763,9 +1764,9 @@ class PresenceStatus:
         if type(element) != lxml.etree._Element:
             raise ValueError("`element' must be lxml.etree.Element")
 
-        tag, ns = org.wayround.utils.lxml.parse_element_tag(
+        tag = org.wayround.utils.lxml.parse_element_tag(
             element, 'status', None
-            )
+            )[0]
 
         if tag == None:
             raise ValueError("invalid tag")
@@ -1843,7 +1844,6 @@ class StanzaError:
     def check_code(self, value):
         if value is not None and not isinstance(value, str):
             raise ValueError("`code' must be None or str")
-
 
     @classmethod
     def new_from_element(cls, element):
@@ -2243,15 +2243,6 @@ class Monitor:
         return
 
 
-# TODO: make use or remove
-class WrongStanzaKind(Exception):
-    pass
-
-
-class WrongErrorStanzaStructure(Exception):
-    pass
-
-
 def start_stream_tpl(
     from_jid,
     to_jid,
@@ -2296,9 +2287,9 @@ class STARTTLS:
         if type(element) != lxml.etree._Element:
             raise ValueError("`element' must be lxml.etree.Element")
 
-        tag, ns = org.wayround.utils.lxml.parse_element_tag(
+        tag = org.wayround.utils.lxml.parse_element_tag(
             element, 'starttls', ['urn:ietf:params:xml:ns:xmpp-tls']
-            )
+            )[0]
 
         if tag is None:
             raise ValueError("Invalid element")
@@ -2376,9 +2367,9 @@ class Session:
         if type(element) != lxml.etree._Element:
             raise ValueError("`element' must be lxml.etree.Element")
 
-        tag, ns = org.wayround.utils.lxml.parse_element_tag(
+        tag = org.wayround.utils.lxml.parse_element_tag(
             element, 'session', ['urn:ietf:params:xml:ns:xmpp-session']
-            )
+            )[0]
 
         if tag is None:
             raise ValueError("Invalid element")
@@ -2389,6 +2380,7 @@ class Session:
         ret = lxml.etree.Element('session')
         ret.set('xmlns', 'urn:ietf:params:xml:ns:xmpp-session')
         return ret
+
 
 class IQRoster:
 
@@ -2422,11 +2414,11 @@ class IQRoster:
     @classmethod
     def new_from_element(cls, element):
 
-        tag, ns = org.wayround.utils.lxml.parse_element_tag(
+        tag = org.wayround.utils.lxml.parse_element_tag(
             element,
             'query',
             ['jabber:iq:roster']
-            )
+            )[0]
 
         if tag == None:
             raise ValueError("Invalid roster query `element'")
@@ -2535,11 +2527,11 @@ class IQRosterItem:
     @classmethod
     def new_from_element(cls, element):
 
-        tag, ns = org.wayround.utils.lxml.parse_element_tag(
+        tag = org.wayround.utils.lxml.parse_element_tag(
             element,
             'item',
             ['jabber:iq:roster']
-            )
+            )[0]
 
         if tag == None:
             raise ValueError("Invalid roster query `element'")
@@ -2602,9 +2594,6 @@ org.wayround.utils.factory.class_generate_check(
     IQRosterItem,
     ['group', 'approved', 'ask', 'jid', 'name', 'subscription']
     )
-
-
-
 
 
 def determine_stream_error(xml_element):

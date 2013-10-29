@@ -831,6 +831,7 @@ def session(client, to_jid, wait=True):
 
     return ret
 
+
 class Roster(org.wayround.utils.signal.Signal):
 
     """
