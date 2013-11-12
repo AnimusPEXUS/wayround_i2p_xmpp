@@ -1106,15 +1106,15 @@ class XMPPIOStreamRWMachine(org.wayround.utils.signal.Signal):
     """
     Signals:
 
-    'in_start'(self, attrs=attributes)
-    'in_error' (self, attrs=attributes)
-    'in_element_readed' (self, element)
-    'in_stop' (self, attrs=attributes)
+    'in_start'          (parser_target, attrs=attributes)
+    'in_error'          (parser_target, attrs=attributes)
+    'in_element_readed' (parser_target, element)
+    'in_stop'           (parser_target, attrs=attributes)
 
-    'out_start'(self, attrs=attributes)
-    'out_error' (self, attrs=attributes)
-    'out_element_readed' (self, element)
-    'out_stop' (self, attrs=attributes)
+    'out_start'          (parser_target, attrs=attributes)
+    'out_error'          (parser_target, attrs=attributes)
+    'out_element_readed' (parser_target, element)
+    'out_stop'           (parser_target, attrs=attributes)
     """
 
     def __init__(self):
@@ -1951,6 +1951,7 @@ org.wayround.utils.factory.class_generate_check(
     )
 
 
+# TODO: what is this? and what for?
 def element_add_object(element, obj):
 
     if type(element) != lxml.etree._Element:
@@ -2258,7 +2259,7 @@ def start_stream_tpl(
 
     ret = """\
 <?xml version="1.0"?>\
- <stream:stream from="{from_jid}" to="{to_jid}" version="{version}"\
+<stream:stream from="{from_jid}" to="{to_jid}" version="{version}"\
  xml:lang="{xmllang}" xmlns="{xmlns}"\
  xmlns:stream="{xmlns_stream}">""".format(
         from_jid=xml.sax.saxutils.escape(from_jid),

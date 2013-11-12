@@ -16,19 +16,19 @@ def get_commands_list(to_jid, from_jid, stanza_processor=None):
 
     ret = None
 
-    q, stanza = org.wayround.xmpp.disco.get_info(
+    q = org.wayround.xmpp.disco.get_info(
         to_jid, from_jid, None, stanza_processor
-        )
+        )[0]
 
     if q is not None:
 
         if q.has_feature('http://jabber.org/protocol/commands'):
-            q, stanza = org.wayround.xmpp.disco.get_items(
+            q = org.wayround.xmpp.disco.get_items(
                 to_jid,
                 from_jid,
                 'http://jabber.org/protocol/commands',
                 stanza_processor
-                )
+                )[0]
 
             if q is not None:
 
@@ -174,9 +174,9 @@ class Command:
     @classmethod
     def new_from_element(cls, element):
 
-        tag, ns = org.wayround.utils.lxml.parse_element_tag(
+        tag = org.wayround.utils.lxml.parse_element_tag(
             element, 'command', ['http://jabber.org/protocol/commands']
-            )
+            )[0]
 
         if tag is None:
             raise ValueError("Invalid element")
@@ -263,6 +263,7 @@ org.wayround.utils.factory.class_generate_check(
      'actions', 'execute', 'xdata']
     )
 
+
 class CommandNote:
 
     def __init__(self, text='', typ='info'):
@@ -281,9 +282,9 @@ class CommandNote:
     @classmethod
     def new_from_element(cls, element):
 
-        tag, ns = org.wayround.utils.lxml.parse_element_tag(
+        tag = org.wayround.utils.lxml.parse_element_tag(
             element, 'note', ['http://jabber.org/protocol/commands']
-            )
+            )[0]
 
         if tag is None:
             raise ValueError("Invalid element")

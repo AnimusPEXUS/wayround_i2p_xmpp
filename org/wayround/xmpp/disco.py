@@ -177,6 +177,7 @@ org.wayround.utils.factory.class_generate_check(
     ['mode', 'node', 'identity', 'feature', 'item', 'xdata']
     )
 
+
 class IQDiscoIdentity:
 
     def __init__(self, category=None, typ=None, name=None):
@@ -200,13 +201,13 @@ class IQDiscoIdentity:
     @classmethod
     def new_from_element(cls, element):
 
-        tag, ns = org.wayround.utils.lxml.parse_element_tag(
+        tag = org.wayround.utils.lxml.parse_element_tag(
             element,
             'identity',
             [
              'http://jabber.org/protocol/disco#info'
              ]
-            )
+            )[0]
 
         if tag == None:
             raise ValueError("invalid element")
@@ -250,6 +251,7 @@ org.wayround.utils.factory.class_generate_check(
     ['category', 'typ', 'name']
     )
 
+
 class IQDiscoItem:
 
     def __init__(self, jid=None, node=None, name=None):
@@ -275,11 +277,11 @@ class IQDiscoItem:
     @classmethod
     def new_from_element(cls, element):
 
-        tag, ns = org.wayround.utils.lxml.parse_element_tag(
+        tag = org.wayround.utils.lxml.parse_element_tag(
             element,
             'item',
             ['http://jabber.org/protocol/disco#items']
-            )
+            )[0]
 
         if tag == None:
             raise ValueError("invalid element")
@@ -377,6 +379,7 @@ def get_info(to_jid, from_jid, node=None, stanza_processor=None):
 
     return ret, res
 
+
 def get_items(to_jid, from_jid, node=None, stanza_processor=None):
 
     ret = None
@@ -394,6 +397,7 @@ def get_items(to_jid, from_jid, node=None, stanza_processor=None):
         ret = IQDisco.new_from_element(element)
 
     return ret, res
+
 
 def get(to_jid, from_jid, node=None, stanza_processor=None):
     return {

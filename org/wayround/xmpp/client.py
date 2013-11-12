@@ -48,6 +48,8 @@ class XMPPC2SClient(org.wayround.utils.signal.Signal):
 
     'stanza_processor_new_stanza' (self, stanza)
     'stanza_processor_response_stanza' (self, stanza)
+
+    'features' (self, element)
     """
 
     def __init__(self, socket):
@@ -69,9 +71,7 @@ class XMPPC2SClient(org.wayround.utils.signal.Signal):
             )
 
         self.io_machine = org.wayround.xmpp.core.XMPPIOStreamRWMachine()
-
         self.io_machine.set_objects(self.sock_streamer)
-
         self.io_machine.connect_signal(
             True,
             self._io_event_proxy
@@ -89,7 +89,8 @@ class XMPPC2SClient(org.wayround.utils.signal.Signal):
             self.io_machine.get_signal_names(add_prefix='io_') +
             self.stanza_processor.get_signal_names(
                 add_prefix='stanza_processor_'
-                )
+                ) +
+            ['features']
             )
 
         self._clear(init=True)
@@ -103,7 +104,10 @@ class XMPPC2SClient(org.wayround.utils.signal.Signal):
         self._starting = False
         self._stopping = False
         self._stream_stop_sent = False
-        self._input_stream_closed_event = threading.Event()
+        if init:
+            self._input_stream_closed_event = threading.Event()
+        else:
+            self._input_stream_closed_event.clear()
 
     def start(self):
 
@@ -288,14 +292,24 @@ self.io_machine.stat() == {}
         self._start_io_machine()
 
     def _input_stream_close_waiter(self, signal_name, io_machine, attrs):
-
         self._input_stream_closed_event.set()
 
     def _connection_event_proxy(self, event, streamer, sock):
         self.emit_signal('streamer_' + event, streamer, sock)
 
-    def _io_event_proxy(self, event, io_machine, attrs):
-        self.emit_signal('io_' + event, io_machine, attrs)
+    def _io_event_proxy(self, event, parser_target, attrs):
+        self.emit_signal('io_' + event, parser_target, attrs)
+
+        logging.debug(
+            "{}: {}, {}, args: {}".format(
+                self, event, parser_target, attrs
+                )
+            )
+
+        if event == 'in_element_readed':
+            el = attrs
+            if org.wayround.xmpp.core.is_features_element(el):
+                self.emit_signal('features', self, el)
 
     def _stanza_processor_proxy(self, event, stanza_processor, stanza):
         self.emit_signal('stanza_processor_' + event, stanza_processor, stanza)
@@ -328,16 +342,12 @@ def drive_starttls(
     ``{urn:ietf:params:xml:ns:xmpp-tls}starttls`` element, then:
 
     #. switch ``self.status`` to ``'requesting tls'``
-
     #. run :meth:`_start`
-
     #. start STARTTLS sequence sending starttls element
-
     #. wait while ``self._driving`` == True
-
     #. return ``self.result``
 
-    :rtype: ``str``
+    :rtype: ``str`` or ``features_object``
 
     controller_callback will be used in questionable situations, for
     instance: when certificate need to be checked, in which case user
@@ -348,8 +358,9 @@ def drive_starttls(
     =================== ============================================
     value               meaning
     =================== ============================================
-    'no tls'            TLS not proposed by server
     features_object     TLS layer engaged
+    'invalid features'  Features not advertised by peer
+    'no tls'            TLS not proposed by server
     'stream stopped'    stream was closed by server
     'stream error'      some stream error encountered
     'failure'           server returned
@@ -361,7 +372,7 @@ def drive_starttls(
 
     # TODO: update help
 
-    ret = None
+    ret = 'ok'
 
     if not isinstance(client, XMPPC2SClient):
         raise TypeError("`client' must be of type XMPPC2SClient")
@@ -381,7 +392,7 @@ def drive_starttls(
     if not can_drive_starttls(features_element):
         ret = 'invalid features'
 
-    if not isinstance(ret, str):
+    if ret == 'ok':
 
         logging.debug("STARTTLS routines beginning now")
 
@@ -419,26 +430,21 @@ def drive_starttls(
             ret = 'error'
             logging.debug("POP exited with error")
 
-    if not isinstance(ret, str):
+    if ret == 'ok':
         if c_r_w_result['event'] != 'io_in_element_readed':
             ret = 'invalid server action 1'
-            logging.debug(ret)
 
-    if not isinstance(ret, str):
-
+    if ret == 'ok':
         obj = c_r_w_result['args'][1]
 
         if not obj.tag.startswith('{urn:ietf:params:xml:ns:xmpp-tls}'):
             ret = 'invalid server action 2'
-            logging.debug(ret)
 
-    if not isinstance(ret, str):
+    if ret == 'ok':
         if not obj.tag == '{urn:ietf:params:xml:ns:xmpp-tls}proceed':
             ret = 'invalid server action 3'
-            logging.debug(ret)
 
-    if not isinstance(ret, str):
-
+    if ret == 'ok':
         logging.debug(
             "TLS request successful: proceed signal achieved"
             )
@@ -453,7 +459,7 @@ def drive_starttls(
         if not isinstance(c_r_w_result, dict):
             ret = 'error'
 
-    if not isinstance(ret, str):
+    if ret == 'ok':
         if c_r_w_result['event'] != 'streamer_ssl wrapped':
             ret = 'error'
             logging.debug(
@@ -461,7 +467,7 @@ def drive_starttls(
                 "`streamer_ssl wrapped': {}").format(c_r_w_result['event'])
                 )
 
-    if not isinstance(ret, str):
+    if ret == 'ok':
 
         logging.debug("Restarting IO Machine")
         client.io_machine.restart()
@@ -470,7 +476,7 @@ def drive_starttls(
             ret = 'error'
             logging.debug("IO Machine restart failed")
 
-    if not isinstance(ret, str):
+    if ret == 'ok':
 
         logging.debug("IO Machine restarted")
         logging.debug("Starting new stream")
@@ -490,12 +496,12 @@ def drive_starttls(
             ret = 'error'
             logging.debug("POP exited with error")
 
-    if not isinstance(ret, str):
+    if ret == 'ok':
+
         if c_r_w_result['event'] != 'io_in_start':
             ret = 'invalid server action 4'
-            logging.debug(ret)
 
-    if not isinstance(ret, str):
+    if ret == 'ok':
 
         logging.debug("IO Machine inbound stream start signal received")
         logging.debug("Waiting for features")
@@ -508,14 +514,13 @@ def drive_starttls(
             ret = 'error'
             logging.debug("POP exited with error")
 
-    if not isinstance(ret, str):
+    if ret == 'ok':
         if c_r_w_result['event'] != 'io_in_element_readed':
             ret = 'invalid server action 4'
-            logging.debug(ret)
 
-    if not isinstance(ret, str):
+    if ret == 'ok':
 
-        logging.debug("Received some element, analizing...")
+        logging.debug("Received some element, analyzing...")
 
         obj = c_r_w_result['args'][1]
 
@@ -525,13 +530,16 @@ def drive_starttls(
                 "Server must been give us an stream features, but it's not"
                 )
 
-    if not isinstance(ret, str):
+    if ret == 'ok':
         logging.debug(
             "Stream features recognized. Time success to driver caller"
             )
         ret = obj
 
     client_reactions_waiter.stop()
+
+    if isinstance(ret, str):
+        logging.debug("STARTTLS driver exited with error '{}'".format(ret))
 
     logging.debug("STARTTLS exit point reached")
 
@@ -604,7 +612,7 @@ def drive_sasl(
     if not callable(controller_callback):
         raise ValueError("`controller_callback' must be callable")
 
-    if not can_drive_starttls(features_element):
+    if not can_drive_sasl(features_element, controller_callback):
         ret = 'invalid features'
     else:
 
@@ -634,7 +642,7 @@ def drive_sasl(
 
         client.io_machine.send(
             ('<auth xmlns="urn:ietf:params:xml:ns:xmpp-sasl" '
-            'mechanism="{}"/>').format(
+             'mechanism="{}"/>').format(
                 mechanism_name
                 )
             )
