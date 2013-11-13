@@ -109,7 +109,13 @@ class XMPPC2SClient(org.wayround.utils.signal.Signal):
         else:
             self._input_stream_closed_event.clear()
 
-    def start(self):
+    def get_socket(self):
+        ret = None
+        if self.sock_streamer != None:
+            ret = self.sock_streamer.get_socket()
+        return ret
+
+    def start(self, from_jid, to_jid):
 
         if (not self._starting
             and not self._stopping
@@ -135,6 +141,21 @@ class XMPPC2SClient(org.wayround.utils.signal.Signal):
                 name="IO Machine Starting Thread"
                 ).start()
 
+            self.wait('working')
+
+            logging.debug(
+                "Ended waiting for client mechs start. Opening output stream"
+                )
+
+            self.io_machine.send(
+                org.wayround.xmpp.core.start_stream_tpl(
+                    from_jid=from_jid,
+                    to_jid=to_jid
+                    )
+                )
+
+            logging.debug("Stream opening tag was sent")
+
             self._starting = False
 
         return
@@ -147,82 +168,49 @@ class XMPPC2SClient(org.wayround.utils.signal.Signal):
             self._stopping = True
 
             logging.debug("Starting shutdown sequence")
-            self._shutdown(_forced=True)
-            self.stop_violent(_forced=True)
 
-        return
+            if (self.has_stream_in()
+                and self.has_stream_out()
+                and self.has_connection()):
 
-    def stop_violent(self, _forced=False):
-
-        if (not self._stopping and not self._starting) or _forced:
-            self._stopping = True
-
-            stop_list = [
-                self._stop_io_machine
-                ]
-
-            if self.sock_streamer:
-                stop_list.append(self.sock_streamer.stop)
-
-            for i in stop_list:
-                threading.Thread(
-                    target=i,
-                    name="Stopping Thread ({})".format(i)
-                    ).start()
-
-            self.wait('stopped')
-
-            logging.debug("Cleaning client instance")
-
-            self._clear()
-
-            self._stopping = False
-
-            logging.debug('sock is {}'.format(self.socket))
-
-        return
-
-    def _shutdown(self, timeout_sec=5.0, _forced=False):
-
-        time_waited = 0.0
-
-        if (not self._stopping and not self._starting) or _forced:
-
-            logging.debug("Stopping client correctly")
-
-            if not self._stream_stop_sent:
-
-                self.io_machine.connect_signal(
-                    'in_stop',
-                    self._input_stream_close_waiter
+                in_stop_waiter = org.wayround.utils.signal.SignalWaiter(
+                    self.io_machine,
+                    'in_stop'
                     )
+                in_stop_waiter.start()
 
-                logging.debug("Sending end of stream")
+                out_stop_waiter = org.wayround.utils.signal.SignalWaiter(
+                    self.io_machine,
+                    'out_stop'
+                    )
+                out_stop_waiter.start()
+
                 self.io_machine.send(
                     org.wayround.xmpp.core.stop_stream_tpl()
                     )
-                self._stream_stop_sent = True
 
-            while True:
-                if self.stat() == 'stopped':
-                    break
+                in_stop_waiter_r = in_stop_waiter.pop()
+                in_stop_waiter.stop()
 
-                if self._input_stream_closed_event.is_set():
-                    logging.debug(
-                        "Input stream closed - ending shutdown timout"
-                        )
-                    break
+                out_stop_waiter_r = out_stop_waiter.pop()
+                out_stop_waiter.stop()
 
-                logging.debug(
-                    "Timeout in {:3.2f} sec".format(timeout_sec - time_waited)
-                    )
-                if time_waited >= timeout_sec:
-                    break
+                if in_stop_waiter_r == None:
+                    logging.debug("Timedout waiting for input stream close")
 
-                time.sleep(1.0)
-                time_waited += 1.0
+                if out_stop_waiter_r == None:
+                    logging.debug("Timedout waiting for output stream close")
 
-            self.io_machine.disconnect_signal(self._input_stream_close_waiter)
+            logging.debug("Waiting IO Machine stop")
+            self._stop_io_machine()
+
+            logging.debug("Waiting Socket Streamer stop")
+            self.sock_streamer.stop()
+
+            self.wait('stopped')
+            logging.debug("Client considered stopped")
+
+            self._stopping = False
 
         return
 
@@ -279,6 +267,21 @@ self.io_machine.stat() == {}
             target=self.io_machine.send,
             args=(data,)
             ).start()
+
+    def has_connection(self):
+        return self.stat() == 'working'
+
+    def has_stream_in(self):
+        ret = False
+        if self.io_machine:
+            ret = self.io_machine.in_machine.xml_target.open
+        return ret
+
+    def has_stream_out(self):
+        ret = False
+        if self.io_machine:
+            ret = self.io_machine.out_machine.xml_target.open
+        return ret
 
     def _start_io_machine(self):
         self.io_machine.start()

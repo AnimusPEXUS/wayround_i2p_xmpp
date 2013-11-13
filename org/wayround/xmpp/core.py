@@ -393,6 +393,7 @@ class XMPPStreamParserTarget(org.wayround.utils.signal.Signal):
         self._stream_element = None
 
         self.target_closed = False
+        self.open = False
 
         return
 
@@ -421,10 +422,12 @@ class XMPPStreamParserTarget(org.wayround.utils.signal.Signal):
 
             if name == '{http://etherx.jabber.org/streams}stream':
 
+                self.open = True
                 self.emit_signal('start', self, attrs=attributes)
 
             else:
 
+                self.open = False
                 self.emit_signal('error', self, attrs=attributes)
 
         else:
@@ -533,6 +536,7 @@ class XMPPStreamParserTarget(org.wayround.utils.signal.Signal):
 
         self.target_closed = True
 
+        self.open = False
         self.emit_signal('stop', self, attrs=None)
 
         return
@@ -658,14 +662,14 @@ class XMPPInputStreamReader:
 
     def stat(self):
 
-        ret = None
+        ret = 'unknown'
 
-        if bool(self._stream_reader_thread):
+        if (self._stream_reader_thread is not None
+            or self._feed_pool_thread is not None):
             ret = 'working'
-
-        elif not bool(self._stream_reader_thread):
+        elif (self._stream_reader_thread is None
+              and self._feed_pool_thread is None):
             ret = 'stopped'
-
         else:
             ret = self._stat
 
@@ -707,7 +711,13 @@ class XMPPInputStreamReader:
 
         while True:
 
+            if self._termination_event.is_set():
+                break
+
             while not self._feed_pool.empty():
+
+                if self._termination_event.is_set():
+                    break
 
                 try:
                     bb = self._feed_pool.get()
@@ -836,12 +846,10 @@ class XMPPOutputStreamWriter:
 
         ret = 'unknown'
 
-        if bool(self._stream_writer_thread):
+        if self._stream_writer_thread is not None:
             ret = 'working'
-
-        elif not bool(self._stream_writer_thread):
+        elif self._stream_writer_thread is None:
             ret = 'stopped'
-
         else:
             ret = self._stat
 
@@ -977,7 +985,7 @@ class XMPPStreamMachine(org.wayround.utils.signal.Signal):
         self._stopping = False
         self._starting = False
 
-        self._xml_target = None
+        self.xml_target = None
         self._xml_parser = None
 
         self.stream_worker = None
@@ -1023,12 +1031,12 @@ class XMPPStreamMachine(org.wayround.utils.signal.Signal):
 
             self._starting = True
 
-            self._xml_target = XMPPStreamParserTarget()
+            self.xml_target = XMPPStreamParserTarget()
 
-            self._xml_target.connect_signal(True, self._signal_proxy)
+            self.xml_target.connect_signal(True, self._signal_proxy)
 
             self._xml_parser = lxml.etree.XMLParser(
-                target=self._xml_target,
+                target=self.xml_target,
                 huge_tree=True
 #                strip_cdata=False,
 #                resolve_entities=False
@@ -1069,7 +1077,7 @@ class XMPPStreamMachine(org.wayround.utils.signal.Signal):
 
             self.stream_worker.stop()
 
-            self._xml_target.disconnect_signal(self._signal_proxy)
+            self.xml_target.disconnect_signal(self._signal_proxy)
 
             self.wait('stopped')
             self._clear()
@@ -1198,7 +1206,7 @@ self.out_machine.stat() == {}
 
         return ret
 
-    def send(self, obj, response_callback=None, timeout=10):
+    def send(self, obj):
 
         threading.Thread(
             target=self.out_machine.send,
