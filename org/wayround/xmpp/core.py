@@ -142,6 +142,24 @@ class JID:
 
         return ret
 
+    def __eq__(self, other):
+
+        if isinstance(other, str):
+            other = JID.new_from_str(other)
+
+        if not isinstance(other, JID):
+            raise TypeError("must be compared to JID or str")
+
+        ret = False
+
+        if other.user == self.user and \
+            other.domain == self.domain and \
+            other.resource == self.resource:
+
+            ret = True
+
+        return ret
+
     @property
     def user(self):
         return self._get('user')
@@ -1493,6 +1511,30 @@ class Stanza:
     def gen_error(self):
         return StanzaError.new_from_stanza(self)
 
+    def get_subject_dict(self):
+        subject = self.get_subject()
+        subject_d = None
+        if subject is not None:
+            subject_d = {}
+            for i in subject:
+                lang = i.get_xmllang()
+                if lang == None:
+                    lang = ''
+                subject_d[lang] = i.get_text()
+        return subject_d
+
+    def get_body_dict(self):
+        body = self.get_body()
+        body_d = None
+        if body is not None:
+            body_d = {}
+            for i in body:
+                lang = i.get_xmllang()
+                if lang == None:
+                    lang = ''
+                body_d[lang] = i.get_text()
+        return body_d
+
     def is_error(self):
         """
         Is stanza of 'error' type
@@ -1526,9 +1568,9 @@ class MessageBody:
         if not isinstance(value, str):
             raise ValueError("`text' must be str")
 
-    def check_lang(self, value):
-        if value != None and not isinstance(value, str):
-            raise ValueError("`lang' must be str")
+    def check_xmllang(self, value):
+        if value is not None and not isinstance(value, str):
+            raise ValueError("`xmllang' must be str")
 
     @classmethod
     def new_from_element(cls, element):
@@ -1543,9 +1585,8 @@ class MessageBody:
         if tag == None:
             raise ValueError("invalid tag")
 
-        cl = cls()
-        cl.set_text(element.text)
-        cl.set_lang(element.get('xml:lang'))
+        cl = cls(element.text)
+        cl.set_xmllang(element.get('xml:lang'))
 
         cl.check()
 
@@ -1561,7 +1602,7 @@ class MessageBody:
         if text:
             el.text = text
 
-        lang = self.get_lang()
+        lang = self.get_xmllang()
         if lang:
             el.set('xml:lang', lang)
 
@@ -1588,9 +1629,9 @@ class MessageSubject:
         if not isinstance(value, str):
             raise ValueError("`text' must be str")
 
-    def check_lang(self, value):
-        if value != None and not isinstance(value, str):
-            raise ValueError("`lang' must be str")
+    def check_xmllang(self, value):
+        if value is not None and not isinstance(value, str):
+            raise ValueError("`xmllang' must be str")
 
     @classmethod
     def new_from_element(cls, element):
@@ -1605,9 +1646,8 @@ class MessageSubject:
         if tag == None:
             raise ValueError("invalid tag")
 
-        cl = cls()
-        cl.set_text(element.text)
-        cl.set_lang(element.get('xml:lang'))
+        cl = cls(element.text)
+        cl.set_xmllang(element.get('xml:lang'))
 
         cl.check()
 
@@ -1623,7 +1663,7 @@ class MessageSubject:
         if text:
             el.text = text
 
-        lang = self.get_lang()
+        lang = self.get_xmllang()
         if lang:
             el.set('xml:lang', lang)
 
@@ -1667,7 +1707,7 @@ class MessageThread:
         if tag == None:
             raise ValueError("invalid tag")
 
-        cl = cls(thread=element.text)
+        cl = cls(element.text)
         cl.set_parent(element.get('parent'))
 
         cl.check()

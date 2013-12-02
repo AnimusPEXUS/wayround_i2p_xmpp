@@ -1284,9 +1284,16 @@ class Message(org.wayround.utils.signal.Signal):
             typ=typ
             )
 
-        stanza.set_thread(org.wayround.xmpp.core.MessageThread(thread))
-        stanza.set_subject([org.wayround.xmpp.core.MessageSubject(subject)])
-        stanza.set_body([org.wayround.xmpp.core.MessageBody(body)])
+        if thread != None:
+            stanza.set_thread(org.wayround.xmpp.core.MessageThread(thread))
+
+        if subject != None:
+            stanza.set_subject(
+                [org.wayround.xmpp.core.MessageSubject(subject)]
+                )
+
+        if  body != None:
+            stanza.set_body([org.wayround.xmpp.core.MessageBody(body)])
 
         ret = self.client.stanza_processor.send(stanza, wait=wait)
 
