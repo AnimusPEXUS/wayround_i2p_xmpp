@@ -2528,17 +2528,17 @@ class IQRosterItem:
 
     def __init__(
         self,
-        group=None, approved=None, ask=None, jid=None,
+        jid=None, group=None, approved=None, ask=None,
         name=None, subscription=None
         ):
 
         if group is None:
             group = []
 
+        self.set_jid(jid)
         self.set_group(group)
         self.set_approved(approved)
         self.set_ask(ask)
-        self.set_jid(jid)
         self.set_name(name)
         self.set_subscription(subscription)
 
@@ -2627,7 +2627,7 @@ class IQRosterItem:
 
         element.set('approved', approved)
 
-        groups = self.get_groups()
+        groups = self.get_group()
         for i in groups:
             group_el = lxml.etree.Element('group')
             group_el.text = i

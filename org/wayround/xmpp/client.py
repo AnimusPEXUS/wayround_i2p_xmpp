@@ -963,9 +963,9 @@ class Roster(org.wayround.utils.signal.Signal):
 
     def set(
         self,
+        subject_jid,
         to_jid=False,
         from_jid=False,
-        subject_jid=None,
         groups=None,
         name=None,
         subscription=None,
@@ -984,12 +984,11 @@ class Roster(org.wayround.utils.signal.Signal):
 
         query = org.wayround.xmpp.core.IQRoster()
 
-        item = org.wayround.xmpp.core.IQRosterItem()
+        item = org.wayround.xmpp.core.IQRosterItem(subject_jid)
 
         item.set_subscription(subscription)
         item.set_name(name)
-        item.set_jid(subject_jid)
-        item.set_groups(groups)
+        item.set_group(groups)
 
         query.set_item([item])
 
