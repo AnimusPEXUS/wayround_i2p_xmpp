@@ -982,6 +982,9 @@ class Roster(org.wayround.utils.signal.Signal):
 
         ret = None
 
+        if groups == None:
+            groups = []
+
         query = org.wayround.xmpp.core.IQRoster()
 
         item = org.wayround.xmpp.core.IQRosterItem(subject_jid)

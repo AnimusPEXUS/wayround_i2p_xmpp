@@ -147,16 +147,15 @@ class JID:
         if isinstance(other, str):
             other = JID.new_from_str(other)
 
-        if not isinstance(other, JID):
-            raise TypeError("must be compared to JID or str")
-
         ret = False
 
-        if other.user == self.user and \
-            other.domain == self.domain and \
-            other.resource == self.resource:
+        if isinstance(other, JID):
 
-            ret = True
+            if other.user == self.user and \
+                other.domain == self.domain and \
+                other.resource == self.resource:
+
+                ret = True
 
         return ret
 
@@ -2547,7 +2546,7 @@ class IQRosterItem:
             value,
             {'t': list, '.': {'t': str}}
             ):
-            raise ValueError("`groups' must be list of str")
+            raise ValueError("`group' must be list of str")
 
     def check_approved(self, value):
         if value is not None and not isinstance(value, bool):
