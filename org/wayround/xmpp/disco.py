@@ -6,6 +6,8 @@ XMPP Disco protocol implementation
 import lxml.etree
 
 import org.wayround.xmpp.core
+import org.wayround.utils.timer
+
 
 class IQDisco:
 
@@ -410,3 +412,50 @@ def get(to_jid, from_jid, node=None, stanza_processor=None):
             stanza_processor=stanza_processor
             )
         }
+
+
+class DiscoService:
+
+    def __init__(self, stanza_processor, own_jid, info, items):
+
+        self._info = info
+        self._items = items
+        self._own_jid = own_jid
+
+        stanza_processor.connect_signal(
+            'new_stanza',
+            self._in_stanza
+            )
+
+    def _in_stanza(self, event, stanza_processor, stanza):
+
+        """
+        :param org.wayround.xmpp.core.Stanza stanza:
+        """
+
+        if event == 'new_stanza':
+
+            if stanza.get_tag() == 'iq' and stanza.get_typ() == 'get':
+
+                if not stanza.is_error():
+
+                    query = stanza.get_element().find(
+                        '{http://jabber.org/protocol/disco#info}query'
+                        )
+
+                    if query != None:
+
+                        if len(query) == 0:
+
+                            rstanza = org.wayround.xmpp.core.Stanza('iq')
+                            rstanza.set_ide(stanza.get_ide())
+                            rstanza.set_typ('result')
+                            rstanza.set_from_jid(self._own_jid.full())
+                            rstanza.set_to_jid(stanza.get_from_jid())
+
+                            rstanza.set_objects(
+                                [self._info]
+                                )
+                            stanza_processor.send(rstanza, wait=False)
+
+        return

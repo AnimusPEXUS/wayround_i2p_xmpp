@@ -933,6 +933,7 @@ class Server:
         pass
 
 
+# TODO: remove?
 class Client:
 
     def __init__(self, client, client_jid):

@@ -1978,8 +1978,7 @@ Error Type: {}
 Condition: {}
 Code: {}
 Text:
-{}
-""".format(
+{}""".format(
         self.get_error_type(),
         self.get_condition(),
         self.get_code(),
