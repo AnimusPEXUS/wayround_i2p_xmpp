@@ -12,6 +12,15 @@ import org.wayround.xmpp.xdata
 NAMESPACE = 'http://jabber.org/protocol/muc'
 NAMESPACE_LENGTH = len(NAMESPACE)
 
+X_XMLNS = ['', '#user']
+QUERY_XMLNS = ['#admin', '#owner']
+UNIQUE_XMLNS = ['#unique']
+
+NAMESPACES = []
+for i in X_XMLNS + QUERY_XMLNS + UNIQUE_XMLNS:
+    NAMESPACES.append(NAMESPACE + i)
+del i
+
 
 class X:
 
@@ -43,7 +52,7 @@ class X:
         return
 
     def check_xmlns(self, value):
-        if not value in ['', '#user']:
+        if not value in X_XMLNS:
             raise ValueError(
             "`xmlns' must be in ['', '#user']"
             )
@@ -78,7 +87,7 @@ class X:
     def check_status(self, value):
         if not org.wayround.utils.types.struct_check(
             value,
-            {'t': list, '.': {'t': Status}}
+            {'t': list, '.': {'t': int}}
             ):
             raise ValueError("`value' must be list of Status")
 
@@ -104,7 +113,7 @@ class X:
               'destroy'),
              ('{{http://jabber.org/protocol/muc{}}}item'.format(xmlns),
               Item,
-              'item'),
+              'item')
              ]
             )
 
@@ -113,12 +122,19 @@ class X:
             [
              ('{{http://jabber.org/protocol/muc{}}}invite'.format(xmlns),
               Invite,
-              'invite'),
-             ('{{http://jabber.org/protocol/muc{}}}status'.format(xmlns),
-              Status,
-              'status'),
+              'invite')
              ]
             )
+
+        status = []
+
+        for i in element:
+            if i.tag == '{{http://jabber.org/protocol/muc{}}}status'.format(
+                xmlns
+                ):
+                status.append(int(i.get('code')))
+
+        cl.set_status(status)
 
         password_el = element.find(
             '{{http://jabber.org/protocol/muc{}}}password'.format(xmlns)
@@ -151,8 +167,14 @@ class X:
             el.append(password_el)
 
         org.wayround.utils.lxml.object_propsm_to_subelemsm(
-            self, el, ['invite', 'status']
+            self, el, ['invite']
             )
+
+        for i in self.get_status():
+
+            e = lxml.etree.Element('status')
+            e.set('code', '{:03d}'.format(i.get_code()))
+            el.append(e)
 
         return el
 
@@ -181,7 +203,7 @@ class Query:
         self.set_xdata(xdata)
 
     def check_xmlns(self, value):
-        if not value in ['#admin', '#owner']:
+        if not value in QUERY_XMLNS:
             raise ValueError(
             "`xmlns' must be in ['#admin', '#owner']"
             )
@@ -839,51 +861,51 @@ org.wayround.utils.factory.class_generate_check(
     )
 
 
-class Status:
-
-    def __init__(self, code):
-
-        self.set_code(code)
-
-    def check_code(self, value):
-        if not isinstance(value, int):
-            raise ValueError("`code' must be int")
-
-    @classmethod
-    def new_from_element(cls, element):
-
-        check_element_and_namespace(element, 'status')
-
-        cl = cls()
-
-        cl.set_code(element.get('code'))
-
-        cl.check()
-
-        return cl
-
-    def gen_element(self):
-
-        self.check()
-
-        el = lxml.etree.Element('status')
-
-        #        <xs:restriction base='xs:int'>
-        #        <xs:length value='3'/>
-        #        </xs:restriction>
-
-        el.set('code', '{:03d}'.format(self.get_code()))
-
-        return el
-
-org.wayround.utils.factory.class_generate_attributes(
-    Status,
-    ['code']
-    )
-org.wayround.utils.factory.class_generate_check(
-    Status,
-    ['code']
-    )
+#class Status:
+#
+#    def __init__(self, code):
+#
+#        self.set_code(code)
+#
+#    def check_code(self, value):
+#        if not isinstance(value, int):
+#            raise ValueError("`code' must be int")
+#
+#    @classmethod
+#    def new_from_element(cls, element):
+#
+#        check_element_and_namespace(element, 'status')
+#
+#        cl = cls()
+#
+#        cl.set_code(element.get('code'))
+#
+#        cl.check()
+#
+#        return cl
+#
+#    def gen_element(self):
+#
+#        self.check()
+#
+#        el = lxml.etree.Element('status')
+#
+#        #        <xs:restriction base='xs:int'>
+#        #        <xs:length value='3'/>
+#        #        </xs:restriction>
+#
+#        el.set('code', '{:03d}'.format(self.get_code()))
+#
+#        return el
+#
+#org.wayround.utils.factory.class_generate_attributes(
+#    Status,
+#    ['code']
+#    )
+#org.wayround.utils.factory.class_generate_check(
+#    Status,
+#    ['code']
+#    )
 
 
 # misc
@@ -1088,3 +1110,19 @@ def get_room_identies(mode, room_bare_jid, from_full_jid, stanza_processor):
     ret = stanza_processor.send(stanza, wait=None)
 
     return ret
+
+
+def get_muc_elements(element):
+
+    ret = []
+
+    for i in NAMESPACES:
+        ret += element.findall('{{}}x'.format(i))
+        ret += element.findall('{{}}query'.format(i))
+        ret += element.findall('{{}}unique'.format(i))
+
+    return ret
+
+
+def has_muc_elements(element):
+    return len(get_muc_elements(element)) != 0
