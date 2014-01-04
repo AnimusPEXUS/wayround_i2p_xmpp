@@ -259,8 +259,8 @@ class JID:
 
         elif (self.user == None
               and self.domain != None
-              and self.resource == None):
-            ret = 'domain_res'
+              and self.resource != None):
+            ret = 'resource'
 
         elif (self.user != None
               and self.domain != None
@@ -286,8 +286,8 @@ class JID:
     def is_domain(self):
         return self.get_type() == 'domain'
 
-    def is_domain_res(self):
-        return self.get_type() == 'domain_res'
+    def is_resource(self):
+        return self.get_type() == 'resource'
 
     def is_unknown(self):
         return self.get_type() == 'unknown'
