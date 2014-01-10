@@ -1625,12 +1625,12 @@ class MessageSubject:
         self.set_xmllang(xmllang)
 
     def check_text(self, value):
-        if not isinstance(value, str):
-            raise ValueError("`text' must be str")
+        if value is not None and not isinstance(value, str):
+            raise ValueError("`text' must be None or str")
 
     def check_xmllang(self, value):
         if value is not None and not isinstance(value, str):
-            raise ValueError("`xmllang' must be str")
+            raise ValueError("`xmllang' must be None or str")
 
     @classmethod
     def new_from_element(cls, element):

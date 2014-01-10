@@ -377,7 +377,8 @@ def get_info(to_jid, from_jid, node=None, stanza_processor=None):
             '{http://jabber.org/protocol/disco#info}query'
             )
 
-        ret = IQDisco.new_from_element(element)
+        if element != None:
+            ret = IQDisco.new_from_element(element)
 
     return ret, res
 
@@ -396,7 +397,8 @@ def get_items(to_jid, from_jid, node=None, stanza_processor=None):
             '{http://jabber.org/protocol/disco#items}query'
             )
 
-        ret = IQDisco.new_from_element(element)
+        if element != None:
+            ret = IQDisco.new_from_element(element)
 
     return ret, res
 
