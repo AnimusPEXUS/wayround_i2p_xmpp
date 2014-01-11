@@ -1512,9 +1512,8 @@ class Stanza:
 
     def get_subject_dict(self):
         subject = self.get_subject()
-        subject_d = None
+        subject_d = {}
         if subject is not None:
-            subject_d = {}
             for i in subject:
                 lang = i.get_xmllang()
                 if lang == None:
@@ -1524,9 +1523,8 @@ class Stanza:
 
     def get_body_dict(self):
         body = self.get_body()
-        body_d = None
+        body_d = {}
         if body is not None:
-            body_d = {}
             for i in body:
                 lang = i.get_xmllang()
                 if lang == None:
@@ -2072,7 +2070,8 @@ class StanzaProcessor(org.wayround.utils.signal.Signal):
         self._io_machine = None
 
     def send(
-        self, stanza_obj, ide_mode='generate', ide=None, cb=None, wait=False
+        self, stanza_obj, ide_mode='generate', ide=None, cb=None, wait=False,
+        pass_new_stanza_anyway=False
         ):
         """
         Sends pointed stanza object to connected peer
@@ -2081,7 +2080,7 @@ class StanzaProcessor(org.wayround.utils.signal.Signal):
 
         if wait < 0, wait = None
 
-        if wait == True, wait = 10000
+        if wait == True, wait = 10
 
         if wait == False, wait = 0
 
@@ -2171,7 +2170,10 @@ class StanzaProcessor(org.wayround.utils.signal.Signal):
             if not new_stanza_ide:
                 raise ValueError("callback provided but stanza has no id")
 
-            self.response_cbs[new_stanza_ide] = cb
+            self.response_cbs[new_stanza_ide] = {
+                'cb': cb,
+                'pass_new_stanza_anyway': pass_new_stanza_anyway
+                }
 
         if wait == 0:
             ret = new_stanza_ide
@@ -2241,9 +2243,12 @@ class StanzaProcessor(org.wayround.utils.signal.Signal):
 
                 if ide in self.response_cbs:
 
-                    self.response_cbs[ide](stanza)
-
+                    t = self.response_cbs[ide]
                     del self.response_cbs[ide]
+
+                    t['cb'](stanza)
+                    if t['pass_new_stanza_anyway']:
+                        self.emit_signal('new_stanza', self, stanza)
 
                     self.emit_signal('response_stanza', self, stanza)
 
