@@ -15,6 +15,7 @@ import org.wayround.utils.signal
 import org.wayround.utils.types
 
 import org.wayround.xmpp.core
+import org.wayround.xmpp.muc
 
 
 class XMPPC2SClient(org.wayround.utils.signal.Signal):
@@ -588,7 +589,8 @@ class Presence(org.wayround.utils.signal.Signal):
         typ=None,
         show=None,
         status=None,
-        wait=False
+        wait=False,
+        options=None
         ):
 
         if to_full_or_bare_jid and not isinstance(to_full_or_bare_jid, str):
@@ -604,11 +606,20 @@ class Presence(org.wayround.utils.signal.Signal):
         if status and not isinstance(status, str):
             raise ValueError("`status' must be str or None")
 
+        if options == None:
+            options = []
+
         stanza = org.wayround.xmpp.core.Stanza(
             tag='presence',
             from_jid=self.client_jid.bare(),
             to_jid=to_full_or_bare_jid
             )
+
+        stanza_objects = stanza.get_objects()
+        if 'muc' in options:
+            stanza_objects.append(
+                org.wayround.xmpp.muc.X()
+                )
 
         if typ:
             stanza.set_typ(typ)
@@ -741,7 +752,7 @@ class Message(org.wayround.utils.signal.Signal):
     def message(
         self,
         to_jid=None, from_jid=None, typ=None, thread=None, subject=None,
-        body=None, wait=False
+        body=None, xhtml=None, wait=False
         ):
 
         if not typ in [
@@ -765,12 +776,23 @@ class Message(org.wayround.utils.signal.Signal):
             stanza.set_thread(org.wayround.xmpp.core.MessageThread(thread))
 
         if subject != None:
-            stanza.set_subject(
-                [org.wayround.xmpp.core.MessageSubject(subject)]
-                )
+            subjects = []
+            for i in subject.keys():
+                subjects.append(
+                    org.wayround.xmpp.core.MessageSubject(
+                        subject[i], xmllang=i
+                        )
+                    )
+
+            stanza.set_subject(subjects)
 
         if  body != None:
-            stanza.set_body([org.wayround.xmpp.core.MessageBody(body)])
+            bodies = []
+            for i in body.keys():
+                bodies.append(
+                    org.wayround.xmpp.core.MessageBody(body[i], xmllang=i)
+                    )
+            stanza.set_body(bodies)
 
         ret = self.client.stanza_processor.send(stanza, wait=wait)
 

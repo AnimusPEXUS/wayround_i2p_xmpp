@@ -1,19 +1,22 @@
 
 import logging
-import threading
 import queue
-import time
 import re
+import threading
+import time
 import uuid
-
 import xml.sax.saxutils
-import lxml.etree
 
+import lxml.etree
 import org.wayround.utils.error
-import org.wayround.utils.stream
-import org.wayround.utils.signal
 import org.wayround.utils.factory
 import org.wayround.utils.lxml
+import org.wayround.utils.signal
+import org.wayround.utils.stream
+
+
+# TODO: figure out how to take it from lxml
+XML_NAMESPACE = 'http://www.w3.org/XML/1998/namespace'
 
 
 STREAM_ERROR_NAMES = [
@@ -1440,7 +1443,7 @@ class Stanza:
              ('from', 'from_jid'),
              ('to', 'to_jid'),
              ('type', 'typ'),
-             ('xml:lang', 'xmllang')
+             ('{{{}}}lang'.format(XML_NAMESPACE), 'xmllang')
              ]
             )
 
@@ -1465,7 +1468,7 @@ class Stanza:
              ('ide', 'id'),
              ('from_jid', 'from'),
              ('to_jid', 'to'),
-             ('xmllang', 'xml:lang'),
+             ('xmllang', '{{{}}}lang'.format(XML_NAMESPACE)),
              ('typ', 'type')
              ]
             )
@@ -1582,8 +1585,16 @@ class MessageBody:
         if tag == None:
             raise ValueError("invalid tag")
 
-        cl = cls(element.text)
-        cl.set_xmllang(element.get('xml:lang'))
+        txt = element.text
+        if txt == None:
+            txt = ''
+
+        cl = cls(txt)
+
+        xmllang = element.get('{{{}}}lang'.format(XML_NAMESPACE))
+        if xmllang == '':
+            xmllang = None
+        cl.set_xmllang(xmllang)
 
         cl.check()
 
@@ -1600,8 +1611,8 @@ class MessageBody:
             el.text = text
 
         lang = self.get_xmllang()
-        if lang:
-            el.set('xml:lang', lang)
+        if not lang in [None, '']:
+            el.set('{{{}}}lang'.format(XML_NAMESPACE), lang)
 
         return el
 
@@ -1643,8 +1654,16 @@ class MessageSubject:
         if tag == None:
             raise ValueError("invalid tag")
 
-        cl = cls(element.text)
-        cl.set_xmllang(element.get('xml:lang'))
+        txt = element.text
+        if txt == None:
+            txt = ''
+
+        cl = cls(txt)
+
+        xmllang = element.get('{{{}}}lang'.format(XML_NAMESPACE))
+        if xmllang == '':
+            xmllang = None
+        cl.set_xmllang(xmllang)
 
         cl.check()
 
@@ -1661,8 +1680,8 @@ class MessageSubject:
             el.text = text
 
         lang = self.get_xmllang()
-        if lang:
-            el.set('xml:lang', lang)
+        if not lang in [None, '']:
+            el.set('{{{}}}lang'.format(XML_NAMESPACE), lang)
 
         return el
 
@@ -1817,7 +1836,9 @@ class PresenceStatus:
             raise ValueError("invalid tag")
 
         cl = cls(text=element.text)
-        cl.set_xmllang(element.get('xml:lang'))
+        cl.set_xmllang(
+            element.get('{{{}}}lang'.format(XML_NAMESPACE))
+            )
 
         cl.check()
 
@@ -1835,7 +1856,7 @@ class PresenceStatus:
 
         lang = self.get_xmllang()
         if lang:
-            el.set('xml:lang', lang)
+            el.set('{{{}}}lang'.format(XML_NAMESPACE), lang)
 
         return el
 

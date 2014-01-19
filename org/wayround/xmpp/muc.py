@@ -18,7 +18,7 @@ UNIQUE_XMLNS = ['#unique']
 
 NAMESPACES = []
 for i in X_XMLNS + QUERY_XMLNS + UNIQUE_XMLNS:
-    NAMESPACES.append(NAMESPACE + i)
+    NAMESPACES.append('{}{}'.format(NAMESPACE, i))
 del i
 
 
@@ -676,7 +676,7 @@ class Item:
             raise ValueError("`contin' must be None or Continue")
 
     def check_affiliation(self, value):
-        if not value in [None, 'admin', 'member', 'none', 'outcast', 'owner']:
+        if not value in [None, 'owner', 'admin', 'member', 'none', 'outcast']:
             raise ValueError(
                 "`affiliation' must be None or one of "
                 "['admin', 'member', 'none', 'outcast', 'owner']"
@@ -1117,9 +1117,9 @@ def get_muc_elements(element):
     ret = []
 
     for i in NAMESPACES:
-        ret += element.findall('{{}}x'.format(i))
-        ret += element.findall('{{}}query'.format(i))
-        ret += element.findall('{{}}unique'.format(i))
+        ret += element.findall('{{{}}}x'.format(i))
+        ret += element.findall('{{{}}}query'.format(i))
+        ret += element.findall('{{{}}}unique'.format(i))
 
     return ret
 
