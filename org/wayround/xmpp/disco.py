@@ -4,9 +4,8 @@ XMPP Disco protocol implementation
 """
 
 import lxml.etree
-
-import org.wayround.xmpp.core
 import org.wayround.utils.timer
+import org.wayround.xmpp.core
 
 
 class IQDisco:

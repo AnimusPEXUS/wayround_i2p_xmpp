@@ -13,6 +13,7 @@ import org.wayround.utils.factory
 import org.wayround.utils.lxml
 import org.wayround.utils.signal
 import org.wayround.utils.stream
+import org.wayround.utils.types
 
 
 # TODO: figure out how to take it from lxml
@@ -1405,16 +1406,18 @@ class Stanza:
     @classmethod
     def new_from_element(cls, element):
 
-        if type(element) != lxml.etree._Element:
-            raise TypeError("`element' must be lxml.etree.Element")
+        tag, ns = org.wayround.utils.lxml.parse_element_tag(
+            element,
+            ['message', 'presence', 'iq'],
+            ['jabber:client', 'jabber:server']
+            )
 
-        qname = lxml.etree.QName(element)
-
-        ns = qname.namespace
+        if tag == None:
+            raise ValueError("invalid element")
 
         cl = cls(
-            tag=qname.localname,
-            xmlns=qname.namespace
+            tag=tag,
+            xmlns=ns
             )
 
         cl.set_element(element)
@@ -1422,10 +1425,19 @@ class Stanza:
         org.wayround.utils.lxml.subelems_to_object_props(
             element, cl,
             [
-             ('{{{}}}thread'.format(ns), MessageThread, 'thread'),
-             ('{{{}}}show'.format(ns), PresenceShow, 'show'),
+             ('{{{}}}thread'.format(ns), MessageThread, 'thread')
              ]
             )
+
+        show = element.find('{{{}}}show'.format(ns))
+        if show != None:
+            show = show.text
+            if not show in ['away', 'chat', 'dnd', 'xa']:
+                show = None
+            else:
+                show = PresenceShow(show)
+            cl.set_show(show)
+        del show
 
         org.wayround.utils.lxml.subelemsm_to_object_propsm(
             element, cl,
@@ -1477,7 +1489,7 @@ class Stanza:
             self, el,
             [
              ('thread'),
-             ('show'),
+             ('show')
              ]
             )
 
@@ -1534,6 +1546,40 @@ class Stanza:
                     lang = ''
                 body_d[lang] = i.get_text()
         return body_d
+
+    def set_subject_dict(self, value):
+
+        subjects = []
+
+        for i in list(value.keys()):
+
+            xmllang = None
+
+            if i != '':
+                xmllang = i
+
+            subjects.append(MessageSubject(value[i], xmllang))
+
+        self.set_subject(subjects)
+
+        return
+
+    def set_body_dict(self, value):
+
+        bodys = []
+
+        for i in list(value.keys()):
+
+            xmllang = None
+
+            if i != '':
+                xmllang = i
+
+            bodys.append(MessageBody(value[i], xmllang))
+
+        self.set_body(bodys)
+
+        return
 
     def is_error(self):
         """
@@ -1764,7 +1810,11 @@ class PresenceShow:
 
     def check_text(self, value):
         if not value in ['away', 'chat', 'dnd', 'xa']:
-            raise ValueError("`show' must be in ['away', 'chat', 'dnd', 'xa']")
+            raise ValueError(
+"`show' must be in ['away', 'chat', 'dnd', 'xa'], but '{}' is supplied".format(
+                    value
+                    )
+                )
 
     @classmethod
     def new_from_element(cls, element):
@@ -2062,7 +2112,7 @@ class StanzaProcessor(org.wayround.utils.signal.Signal):
 
     def __init__(self):
 
-        super().__init__(['new_stanza', 'response_stanza'])
+        super().__init__(['new_stanza', 'response_stanza', 'defective_stanza'])
 
         self._io_machine = None
 
@@ -2256,31 +2306,45 @@ class StanzaProcessor(org.wayround.utils.signal.Signal):
 
         if is_stanza_element(obj):
 
-            stanza = Stanza.new_from_element(obj)
+            stanza = None
 
-            if isinstance(stanza, Stanza):
+            try:
+                stanza = Stanza.new_from_element(obj)
+            except:
+                logging.exception(
+                "Error generating stanza object sent from from `{}'".format(
+                    obj.get('from')
+                    )
+                    )
+                self.emit_signal('defective_stanza', self, obj)
+            else:
 
-                ide = stanza.get_ide()
+                if isinstance(stanza, Stanza):
 
-                if ide in self.response_cbs:
+                    ide = stanza.get_ide()
 
-                    t = self.response_cbs[ide]
-                    del self.response_cbs[ide]
+                    if ide in self.response_cbs:
 
-                    t['cb'](stanza)
-                    if t['pass_new_stanza_anyway']:
+                        t = self.response_cbs[ide]
+                        del self.response_cbs[ide]
+
+                        t['cb'](stanza)
+                        if t['pass_new_stanza_anyway']:
+                            self.emit_signal('new_stanza', self, stanza)
+
+                        self.emit_signal('response_stanza', self, stanza)
+
+                    else:
+
                         self.emit_signal('new_stanza', self, stanza)
 
-                    self.emit_signal('response_stanza', self, stanza)
-
                 else:
-
-                    self.emit_signal('new_stanza', self, stanza)
-
-            else:
-                logging.error(
-                    "proposed object not a stanza({}):\n{}".format(stanza, obj)
-                    )
+                    logging.error(
+                        "supplyed object not a stanza({}):\n{}".format(
+                            stanza,
+                            obj
+                            )
+                        )
 
         return
 

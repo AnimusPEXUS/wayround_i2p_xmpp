@@ -5,6 +5,8 @@ import org.wayround.utils.types
 import org.wayround.utils.factory
 import org.wayround.utils.lxml
 
+import org.wayround.xmpp.xdata_media_element
+
 
 class InvalidForm(Exception):
     pass
@@ -250,7 +252,7 @@ class XDataField:
     def __init__(
         self,
         var=None, label=None, typ='fixed', desc=None,
-        required=False, values=None, options=None
+        required=False, values=None, options=None, media=None
         ):
 
         if options == None:
@@ -266,6 +268,53 @@ class XDataField:
         self.set_required(required)
         self.set_values(values)
         self.set_options(options)
+        self.set_media(media)
+
+        return
+
+    def check_options(self, value):
+        if not org.wayround.utils.types.struct_check(
+            value, {'t': list, '.': {'t': XDataOption}}
+            ):
+            raise ValueError("`options' must be list of XDataOption")
+
+    def check_values(self, value):
+        if not org.wayround.utils.types.struct_check(
+            value, {'t': list, '.': {'t': XDataValue}}
+            ):
+            raise ValueError("`values' must be list of XDataValue")
+
+    def check_required(self, value):
+        if not isinstance(value, bool):
+            raise TypeError("`required' must be bool")
+
+    def check_desc(self, value):
+        if value != None and not isinstance(value, str):
+            raise TypeError("`desc' must be None or str")
+
+    def check_type(self, value):
+        if not value in [
+            'boolean', 'fixed', 'hidden', 'jid-multi',
+            'jid-single', 'list-multi', 'list-single',
+            'text-multi', 'text-private', 'text-single'
+            ]:
+            raise InvalidForm("Invalid field `type' value")
+
+    def check_var(self, value):
+        if value != None and not isinstance(value, str):
+            raise TypeError("`var' must be None or str")
+
+    def check_label(self, value):
+        if value != None and not isinstance(value, str):
+            raise TypeError("`label' must be None or str")
+
+    def check_media(self, value):
+        if (value != None
+            and
+            not isinstance(
+                value, org.wayround.xmpp.xdata_media_element.Media)
+            ):
+            raise TypeError("`media' must be None or str")
 
     @classmethod
     def new_from_element(cls, element):
@@ -290,6 +339,12 @@ class XDataField:
         if d != None:
             ret.set_desc(d.text)
 
+        d = element.find('{urn:xmpp:media-element}media')
+        if d != None:
+            ret.set_media(
+                org.wayround.xmpp.xdata_media_element.Media.new_from_element(d)
+                )
+
         ret.set_required(element.find('{jabber:x:data}required') != None)
 
         o = element.findall('{jabber:x:data}option')
@@ -306,45 +361,6 @@ class XDataField:
         ret.check()
 
         return ret
-
-    def check_options(self, value):
-        if not org.wayround.utils.types.struct_check(
-            value, {'t': list, '.': {'t': XDataOption}}
-            ):
-            raise ValueError("must be list of XDataOption")
-
-    def check_values(self, value):
-        if not org.wayround.utils.types.struct_check(
-            value, {'t': list, '.': {'t': XDataValue}}
-            ):
-            raise ValueError("must be list of XDataValue")
-
-    def check_required(self, value):
-        if not isinstance(value, bool):
-            raise TypeError("`value' must be bool")
-
-    def check_desc(self, value):
-        if value != None and not isinstance(value, str):
-            raise TypeError("`value' must be None or str")
-
-    def check_type(self, value):
-        if not value in [
-            'boolean', 'fixed', 'hidden', 'jid-multi',
-            'jid-single', 'list-multi', 'list-single',
-            'text-multi', 'text-private', 'text-single'
-            ]:
-            raise InvalidForm("Invalid field type value")
-
-    def check_var(self, value):
-        if value != None and not isinstance(value, str):
-            raise TypeError("`value' must be None or str")
-
-    def check_label(self, value):
-        if value != None and not isinstance(value, str):
-            raise TypeError("`value' must be None or str")
-
-    def logical_structure_check(self):
-        pass
 
     def gen_element(self):
 
@@ -386,15 +402,19 @@ class XDataField:
             for i in options:
                 e.append(i.gen_element())
 
+        media = self.get_media()
+        if media:
+            e.append(media.gen_element())
+
         return e
 
 org.wayround.utils.factory.class_generate_attributes(
     XDataField,
-    ['var', 'label', 'type', 'desc', 'required', 'values', 'options']
+    ['var', 'label', 'type', 'desc', 'required', 'values', 'options', 'media']
     )
 org.wayround.utils.factory.class_generate_check(
     XDataField,
-    ['var', 'label', 'type', 'desc', 'required', 'values', 'options']
+    ['var', 'label', 'type', 'desc', 'required', 'values', 'options', 'media']
     )
 
 
@@ -433,9 +453,6 @@ class XDataOption:
     def check_value(self, value):
         if value != None and not isinstance(value, XDataValue):
             raise TypeError("`value' must be None or XDataValue")
-
-    def logical_structure_check(self):
-        pass
 
     def gen_element(self):
 
@@ -489,9 +506,6 @@ class XDataValue:
     def check_value(self, value):
         if not isinstance(value, str):
             raise ValueError("`value' must be str, not {}".format(type(value)))
-
-    def logical_structure_check(self):
-        pass
 
     def gen_element(self):
         self.check()

@@ -917,7 +917,7 @@ def drive_starttls(
                        # NOTE: 'io_out_error' not needed here
                        ])
                 ),
-            debug=True
+            debug=False
             )
 
         client_reactions_waiter.start()
@@ -1141,7 +1141,7 @@ def drive_sasl(
                        # NOTE: 'io_out_error' not needed here
                        ])
                 ),
-            debug=True
+            debug=False
             )
 
         client_reactions_waiter.start()
