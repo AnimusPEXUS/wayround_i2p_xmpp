@@ -11,7 +11,7 @@ import lxml.etree
 import org.wayround.utils.error
 import org.wayround.utils.factory
 import org.wayround.utils.lxml
-import org.wayround.utils.signal
+import org.wayround.utils.threading
 import org.wayround.utils.stream
 import org.wayround.utils.types
 
@@ -178,6 +178,13 @@ class JID:
     def domain(self):
         return self._get('domain')
 
+    @property
+    def domain_obj(self):
+        cpy = self.copy()
+        cpy.user = None
+        cpy.resource = None
+        return cpy
+
     @domain.setter
     def domain(self, value):
         if value == '':
@@ -240,6 +247,11 @@ class JID:
             at=at
             )
 
+    def bare_obj(self):
+        cpy = self.copy()
+        cpy.resource = None
+        return cpy
+
     def full(self):
 
         user, domain, at = self._bare_part(self.user, self.domain)
@@ -251,6 +263,9 @@ class JID:
             resource=resource,
             at=at
             )
+
+    def full_obj(self):
+        return self.copy()
 
     def get_type(self):
 
@@ -375,7 +390,7 @@ class XMPPStreamParserTargetClosed(Exception):
     """
 
 
-class XMPPStreamParserTarget(org.wayround.utils.signal.Signal):
+class XMPPStreamParserTarget:
 
     """
     Target for lxml to build XML objects, which then sent to element hubs or
@@ -399,7 +414,9 @@ class XMPPStreamParserTarget(org.wayround.utils.signal.Signal):
             read complete
         """
 
-        super().__init__(['start', 'stop', 'error', 'element_readed'])
+        self.signal = org.wayround.utils.threading.Signal(
+            ['start', 'stop', 'error', 'element_readed']
+            )
 
         self.clear(init=True)
 
@@ -444,12 +461,12 @@ class XMPPStreamParserTarget(org.wayround.utils.signal.Signal):
             if name == '{http://etherx.jabber.org/streams}stream':
 
                 self.open = True
-                self.emit_signal('start', self, attrs=attributes)
+                self.signal.emit('start', self, attrs=attributes)
 
             else:
 
                 self.open = False
-                self.emit_signal('error', self, attrs=attributes)
+                self.signal.emit('error', self, attrs=attributes)
 
         else:
 
@@ -497,7 +514,7 @@ class XMPPStreamParserTarget(org.wayround.utils.signal.Signal):
 
             self._tree_builder = None
 
-            self.emit_signal('element_readed', self, element)
+            self.signal.emit('element_readed', self, element)
 
         if len(self._depth_tracker) == 0:
 
@@ -558,7 +575,7 @@ class XMPPStreamParserTarget(org.wayround.utils.signal.Signal):
         self.target_closed = True
 
         self.open = False
-        self.emit_signal('stop', self, attrs=None)
+        self.signal.emit('stop', self, attrs=None)
 
         return
 
@@ -759,6 +776,7 @@ class XMPPInputStreamReader:
                                 type(self).__name__, str(bb, encoding='utf-8')
                                 )
                             )
+                    self._feed_pool.task_done()
 
             time.sleep(0.2)
 
@@ -976,7 +994,7 @@ class XMPPOutputStreamWriter:
         return
 
 
-class XMPPStreamMachine(org.wayround.utils.signal.Signal):
+class XMPPStreamMachine:
 
     """
     Signals:
@@ -993,7 +1011,9 @@ class XMPPStreamMachine(org.wayround.utils.signal.Signal):
 
         self.mode = mode
 
-        super().__init__(['start', 'stop', 'error', 'element_readed'])
+        self.signal = org.wayround.utils.threading.Signal(
+            ['start', 'stop', 'error', 'element_readed']
+            )
 
         self._clear(init=True)
 
@@ -1017,7 +1037,7 @@ class XMPPStreamMachine(org.wayround.utils.signal.Signal):
 
     def _signal_proxy(self, signal_name, *args, **kwargs):
 
-        self.emit_signal(signal_name, *args, **kwargs)
+        self.signal.emit(signal_name, *args, **kwargs)
 
     def send(self, obj):
 
@@ -1054,7 +1074,7 @@ class XMPPStreamMachine(org.wayround.utils.signal.Signal):
 
             self.xml_target = XMPPStreamParserTarget()
 
-            self.xml_target.connect_signal(True, self._signal_proxy)
+            self.xml_target.signal.connect(True, self._signal_proxy)
 
             self._xml_parser = lxml.etree.XMLParser(
                 target=self.xml_target,
@@ -1098,7 +1118,7 @@ class XMPPStreamMachine(org.wayround.utils.signal.Signal):
 
             self.stream_worker.stop()
 
-            self.xml_target.disconnect_signal(self._signal_proxy)
+            self.xml_target.signal.disconnect(self._signal_proxy)
 
             self.wait('stopped')
             self._clear()
@@ -1131,7 +1151,7 @@ class XMPPStreamMachine(org.wayround.utils.signal.Signal):
         return
 
 
-class XMPPIOStreamRWMachine(org.wayround.utils.signal.Signal):
+class XMPPIOStreamRWMachine:
     """
     Signals:
 
@@ -1152,13 +1172,13 @@ class XMPPIOStreamRWMachine(org.wayround.utils.signal.Signal):
         self.out_machine = XMPPStreamMachine(mode='writer')
 
         logging.debug("XMPPIOStreamRWMachine __init__()")
-        super().__init__(
-            self.in_machine.get_signal_names(add_prefix='in_')
-            + self.in_machine.get_signal_names(add_prefix='out_')
+        self.signal = org.wayround.utils.threading.Signal(
+            self.in_machine.signal.get_names(add_prefix='in_')
+            + self.in_machine.signal.get_names(add_prefix='out_')
             )
 
-        self.in_machine.connect_signal(True, self._in_stream_signal_proxy)
-        self.out_machine.connect_signal(True, self._out_stream_signal_proxy)
+        self.in_machine.signal.connect(True, self._in_stream_signal_proxy)
+        self.out_machine.signal.connect(True, self._out_stream_signal_proxy)
 
         return
 
@@ -1168,10 +1188,10 @@ class XMPPIOStreamRWMachine(org.wayround.utils.signal.Signal):
         return
 
     def _in_stream_signal_proxy(self, signal_name, *args, **kwargs):
-        self.emit_signal('in_' + signal_name, *args, **kwargs)
+        self.signal.emit('in_' + signal_name, *args, **kwargs)
 
     def _out_stream_signal_proxy(self, signal_name, *args, **kwargs):
-        self.emit_signal('out_' + signal_name, *args, **kwargs)
+        self.signal.emit('out_' + signal_name, *args, **kwargs)
 
     def start(self):
         """
@@ -2101,7 +2121,7 @@ def element_add_object(element, obj):
     return
 
 
-class StanzaProcessor(org.wayround.utils.signal.Signal):
+class StanzaProcessor:
 
     """
     Signals:
@@ -2112,11 +2132,11 @@ class StanzaProcessor(org.wayround.utils.signal.Signal):
 
     def __init__(self):
 
-        super().__init__(['new_stanza', 'response_stanza', 'defective_stanza'])
+        self.signal = org.wayround.utils.threading.Signal(
+            ['new_stanza', 'defective_stanza']
+            )
 
         self._io_machine = None
-
-        self.response_cbs = {}
 
         self._stanza_id_generation_unifire = uuid.uuid4().hex
         self._stanza_id_generation_counter = 0
@@ -2128,7 +2148,7 @@ class StanzaProcessor(org.wayround.utils.signal.Signal):
         :param XMPPIOStreamRWMachine io_machine:
         """
         self._io_machine = io_machine
-        self._io_machine.connect_signal(
+        self._io_machine.signal.connect(
             'in_element_readed',
             self._on_input_object
             )
@@ -2137,13 +2157,16 @@ class StanzaProcessor(org.wayround.utils.signal.Signal):
         """
         :param XMPPIOStreamRWMachine io_machine:
         """
-        self._io_machine.disconnect_signal(self._on_input_object)
+        self._io_machine.signal.disconnect(self._on_input_object)
         self._io_machine = None
 
     def send(
-        self, stanza_obj, ide_mode='generate', ide=None, cb=None, wait=False,
+        self, stanza_obj, ide_mode='generate', ide=None, wait=False,
         pass_new_stanza_anyway=False
         ):
+        # TODO: documentation rework required
+        # NOTE: cb parameter is removed: newly received stanza either signalled,
+        #       either returned by this method
         """
         Sends pointed stanza object to connected peer
 
@@ -2186,12 +2209,14 @@ class StanzaProcessor(org.wayround.utils.signal.Signal):
         object is returned in case of success
         """
 
-        ret = None
+        # ===== default ret is None
 
-        new_stanza_ide = stanza_obj.get_ide()
+        ret = None
 
         self._stanza_id_generation_unifire = uuid.uuid4().hex
         self._stanza_id_generation_counter += 1
+
+        # ===== parameters checks
 
         if wait != None and not isinstance(wait, (bool, int,)):
             raise TypeError("`wait' must be None, bool or int")
@@ -2211,8 +2236,9 @@ class StanzaProcessor(org.wayround.utils.signal.Signal):
             ]:
             raise ValueError("wrong value for ide_mode parameter")
 
-        if isinstance(wait, int) and wait > 0 and cb != None:
-            raise ValueError("`cb' must be None if `wait' > 0")
+        # ===== stanza ID generation routines
+
+        new_stanza_ide = stanza_obj.get_ide()
 
         if ide_mode == 'from_stanza':
             new_stanza_ide = stanza_obj.get_ide()
@@ -2227,37 +2253,38 @@ class StanzaProcessor(org.wayround.utils.signal.Signal):
                     )
 
         elif ide_mode == 'implicit':
-
             new_stanza_ide = ide
+
         else:
             raise Exception("Programming error")
 
+        # ===== final stanza ID application
+
         stanza_obj.set_ide(new_stanza_ide)
 
-        if wait == None or (isinstance(wait, int) and wait > 0):
-            cb = self._wait_callback
-
-        if cb:
-            if not new_stanza_ide:
-                raise ValueError("callback provided but stanza has no id")
-
-            self.response_cbs[new_stanza_ide] = {
-                'cb': cb,
-                'pass_new_stanza_anyway': pass_new_stanza_anyway
-                }
+        # ===== callback routines
 
         if wait == 0:
             ret = new_stanza_ide
 
-        if wait == None or (isinstance(wait, int) and wait > 0):
+        if self._is_wait_in_sand(wait, pass_new_stanza_anyway):
+            logging.debug(
+                "{} :: send :: adding {} to wait_callbacks".format(
+                    self,
+                    new_stanza_ide
+                    )
+                )
             self._wait_callbacks[new_stanza_ide] = {
                 'event': threading.Event(),
-                'response': None
+                'response': None,
+                'pass_new_stanza_anyway': pass_new_stanza_anyway
                 }
+
+        # ===== finally send stanza and wait for response if needed
 
         self._io_machine.send(stanza_obj.to_str())
 
-        if wait == None or (isinstance(wait, int) and wait > 0):
+        if self._is_wait_in_sand(wait, pass_new_stanza_anyway):
             wait_res = self._wait_callbacks[new_stanza_ide]['event'].wait(wait)
 
             if wait_res == False:
@@ -2265,25 +2292,20 @@ class StanzaProcessor(org.wayround.utils.signal.Signal):
             else:
                 ret = self._wait_callbacks[new_stanza_ide]['response']
 
+            logging.debug(
+                "{} :: send :: removing {} from wait_callbacks".format(
+                    self,
+                    new_stanza_ide
+                    )
+                )
             del self._wait_callbacks[new_stanza_ide]
-            self.delete_callback(new_stanza_ide)
 
         return ret
 
-    def delete_callback(self, ide):
-
-        while ide in self.response_cbs:
-            del self.response_cbs[ide]
-
-        return
-
-    def _wait_callback(self, obj):
-
-        ide = obj.get_ide()
-        self._wait_callbacks[ide]['response'] = obj
-        self._wait_callbacks[ide]['event'].set()
-
-        return
+    def _is_wait_in_sand(self, wait, pass_new_stanza_anyway):
+        return (wait == None
+                or (isinstance(wait, int) and wait > 0)
+                or pass_new_stanza_anyway == True)
 
     def _on_input_object(self, signal_name, io_machine, obj):
 
@@ -2298,10 +2320,11 @@ class StanzaProcessor(org.wayround.utils.signal.Signal):
     def _process_input_object(self, obj):
 
         logging.debug(
-            "_process_input_object :: received element `{}' :: `{}'".format(
-                obj,
-                obj.tag
-                )
+    "{} :: _process_input_object :: received element `{}' :: `{}'".format(
+        self,
+        obj,
+        obj.tag
+        )
             )
 
         if is_stanza_element(obj):
@@ -2312,31 +2335,47 @@ class StanzaProcessor(org.wayround.utils.signal.Signal):
                 stanza = Stanza.new_from_element(obj)
             except:
                 logging.exception(
-                "Error generating stanza object sent from from `{}'".format(
+                "Error generating stanza object sent from `{}'".format(
                     obj.get('from')
                     )
                     )
-                self.emit_signal('defective_stanza', self, obj)
+                self.signal.emit('defective_stanza', self, obj)
             else:
 
                 if isinstance(stanza, Stanza):
 
                     ide = stanza.get_ide()
 
-                    if ide in self.response_cbs:
+                    logging.debug(
+    "{} :: _process_input_object :: processing {} with wait_callbacks".format(
+        self,
+        ide
+        )
+                        )
 
-                        t = self.response_cbs[ide]
-                        del self.response_cbs[ide]
+                    if (not ide in self._wait_callbacks
+                        or (ide in self._wait_callbacks
+                            and self._wait_callbacks[ide][
+                                'pass_new_stanza_anyway'
+                                ] == True)
+                        ):
+                        logging.debug(
+                    "{} :: _process_input_object :: emiting stanza {}".format(
+                        self,
+                        ide
+                        )
+                            )
+                        self.signal.emit('new_stanza', self, stanza)
 
-                        t['cb'](stanza)
-                        if t['pass_new_stanza_anyway']:
-                            self.emit_signal('new_stanza', self, stanza)
-
-                        self.emit_signal('response_stanza', self, stanza)
-
-                    else:
-
-                        self.emit_signal('new_stanza', self, stanza)
+                    if ide in self._wait_callbacks:
+                        logging.debug(
+"{} :: _process_input_object :: triggering wait callback for stanza {}".format(
+    self,
+    ide
+    )
+                            )
+                        self._wait_callbacks[ide]['response'] = stanza
+                        self._wait_callbacks[ide]['event'].set()
 
                 else:
                     logging.error(
@@ -2457,7 +2496,7 @@ class Bind:
     @classmethod
     def new_from_element(cls, element):
         # TODO: to do
-        pass
+        raise Exception("Not implemented")
 
     def gen_element(self):
 
@@ -2908,7 +2947,7 @@ def is_features_element(obj):
 def is_stanza_element(obj):
 
     """
-    Determine is obj is stanza
+    Determine is obj is stanza element
     """
     ret = True
 

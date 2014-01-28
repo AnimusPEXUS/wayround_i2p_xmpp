@@ -419,18 +419,18 @@ org.wayround.utils.factory.class_generate_check(
     )
 
 
-class PrivacyClient(org.wayround.utils.signal.Signal):
+class PrivacyClient:
 
     def __init__(self, client, jid):
 
         self._from_jid = jid
         self._client = client
 
-        super().__init__([
-            'push',
+        self.signal = org.wayround.utils.threading.Signal([
+            'push'
             ])
 
-        self._client.connect_signal(
+        self._client.signal.connect(
             'stanza_processor_new_stanza',
             self._push
             )
@@ -463,7 +463,7 @@ class PrivacyClient(org.wayround.utils.signal.Signal):
                             }
                         ).start()
 
-                    self.emit_signal('push', i)
+                    self.signal.emit('push', i)
 
         return
 

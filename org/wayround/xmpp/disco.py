@@ -35,6 +35,8 @@ class IQDisco:
         self.set_item(item)
         self.set_xdata(xdata)
 
+        return
+
     def check_mode(self, value):
         if not value in ['info', 'items']:
             raise ValueError("`mode' must be in ['info', 'items']")
@@ -72,6 +74,30 @@ class IQDisco:
             raise ValueError(
                 "`xdata' must be list of org.wayround.xmpp.xdata.XData"
                 )
+
+    def has_identity(self, category, typ):
+        ret = False
+        for i in self.get_identity():
+            if i.get_category() == category and i.get_typ() == typ:
+                ret = True
+                break
+        return ret
+
+    def gen_identity_dict(self):
+
+        ret = {}
+
+        for i in self.get_identity():
+            category = i.get_category()
+            typ = i.get_typ()
+
+            if not category in ret:
+                ret[category] = []
+
+            if not typ in ret[category]:
+                ret[category].append(typ)
+
+        return ret
 
     def has_feature(self, name):
         return name in self.get_feature()
@@ -423,7 +449,7 @@ class DiscoService:
         self._items = items
         self._own_jid = own_jid
 
-        stanza_processor.connect_signal(
+        stanza_processor.signal.connect(
             'new_stanza',
             self._in_stanza
             )

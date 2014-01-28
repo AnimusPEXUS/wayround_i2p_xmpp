@@ -5,7 +5,7 @@ Implementation of XMPP Ad-Hoc commands protocol
 
 import lxml.etree
 
-import org.wayround.utils.signal
+import org.wayround.utils.threading
 import org.wayround.utils.lxml
 
 import org.wayround.xmpp.core

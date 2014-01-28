@@ -486,6 +486,10 @@ class XDataValue:
 
         self.set_value(value)
 
+    def check_value(self, value):
+        if not isinstance(value, str):
+            raise ValueError("`value' must be str, not {}".format(type(value)))
+
     @classmethod
     def new_from_element(cls, element):
 
@@ -502,10 +506,6 @@ class XDataValue:
         ret = cls(t)
 
         return ret
-
-    def check_value(self, value):
-        if not isinstance(value, str):
-            raise ValueError("`value' must be str, not {}".format(type(value)))
 
     def gen_element(self):
         self.check()

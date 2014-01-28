@@ -11,14 +11,14 @@ import time
 import lxml.etree
 
 import org.wayround.utils.stream
-import org.wayround.utils.signal
+import org.wayround.utils.threading
 import org.wayround.utils.types
 
 import org.wayround.xmpp.core
 import org.wayround.xmpp.muc
 
 
-class XMPPC2SClient(org.wayround.utils.signal.Signal):
+class XMPPC2SClient:
     """
     General XMPP Client Class
 
@@ -66,29 +66,29 @@ class XMPPC2SClient(org.wayround.utils.signal.Signal):
             debug=False
             )
 
-        self.sock_streamer.connect_signal(
+        self.sock_streamer.signal.connect(
             True,
             self._connection_event_proxy
             )
 
         self.io_machine = org.wayround.xmpp.core.XMPPIOStreamRWMachine()
         self.io_machine.set_objects(self.sock_streamer)
-        self.io_machine.connect_signal(
+        self.io_machine.signal.connect(
             True,
             self._io_event_proxy
             )
 
         self.stanza_processor = org.wayround.xmpp.core.StanzaProcessor()
         self.stanza_processor.connect_io_machine(self.io_machine)
-        self.stanza_processor.connect_signal(
+        self.stanza_processor.signal.connect(
             True,
             self._stanza_processor_proxy
             )
 
-        super().__init__(
-            self.sock_streamer.get_signal_names(add_prefix='streamer_') +
-            self.io_machine.get_signal_names(add_prefix='io_') +
-            self.stanza_processor.get_signal_names(
+        self.signal = org.wayround.utils.threading.Signal(
+            self.sock_streamer.signal.get_names(add_prefix='streamer_') +
+            self.io_machine.signal.get_names(add_prefix='io_') +
+            self.stanza_processor.signal.get_names(
                 add_prefix='stanza_processor_'
                 ) +
             ['features']
@@ -174,13 +174,13 @@ class XMPPC2SClient(org.wayround.utils.signal.Signal):
                 and self.has_stream_out()
                 and self.has_connection()):
 
-                in_stop_waiter = org.wayround.utils.signal.SignalWaiter(
+                in_stop_waiter = org.wayround.utils.threading.SignalWaiter(
                     self.io_machine,
                     'in_stop'
                     )
                 in_stop_waiter.start()
 
-                out_stop_waiter = org.wayround.utils.signal.SignalWaiter(
+                out_stop_waiter = org.wayround.utils.threading.SignalWaiter(
                     self.io_machine,
                     'out_stop'
                     )
@@ -299,10 +299,10 @@ self.io_machine.stat() == {}
         self._input_stream_closed_event.set()
 
     def _connection_event_proxy(self, event, streamer, sock):
-        self.emit_signal('streamer_' + event, streamer, sock)
+        self.signal.emit('streamer_' + event, streamer, sock)
 
     def _io_event_proxy(self, event, parser_target, attrs):
-        self.emit_signal('io_' + event, parser_target, attrs)
+        self.signal.emit('io_' + event, parser_target, attrs)
 
         logging.debug(
             "{}: {}, {}, args: {}".format(
@@ -313,13 +313,13 @@ self.io_machine.stat() == {}
         if event == 'in_element_readed':
             el = attrs
             if org.wayround.xmpp.core.is_features_element(el):
-                self.emit_signal('features', self, el)
+                self.signal.emit('features', self, el)
 
     def _stanza_processor_proxy(self, event, stanza_processor, stanza):
-        self.emit_signal('stanza_processor_' + event, stanza_processor, stanza)
+        self.signal.emit('stanza_processor_' + event, stanza_processor, stanza)
 
 
-class Roster(org.wayround.utils.signal.Signal):
+class Roster:
 
     """
     Signals:
@@ -375,9 +375,11 @@ class Roster(org.wayround.utils.signal.Signal):
         self.client = client
         self.client_jid = client_jid
 
-        super().__init__(['push', 'push_invalid', 'push_invalid_from'])
+        self.signal = org.wayround.utils.threading.Signal(
+            ['push', 'push_invalid', 'push_invalid_from']
+            )
 
-        self.client.connect_signal('stanza_processor_new_stanza', self._push)
+        self.client.signal.connect('stanza_processor_new_stanza', self._push)
 
     def _item_element_to_dict(self, element):
 
@@ -532,18 +534,18 @@ class Roster(org.wayround.utils.signal.Signal):
                 roster_data = roster.get_item_dict()
 
         if error:
-            self.emit_signal('push_invalid', self, stanza)
+            self.signal.emit('push_invalid', self, stanza)
         else:
 
             if wrong_from:
-                self.emit_signal('push_invalid_from', self, roster_data)
+                self.signal.emit('push_invalid_from', self, roster_data)
             else:
-                self.emit_signal('push', self, roster_data)
+                self.signal.emit('push', self, roster_data)
 
         return
 
 
-class Presence(org.wayround.utils.signal.Signal):
+class Presence:
 
     """
     Presence and subscription manipulations
@@ -573,12 +575,12 @@ class Presence(org.wayround.utils.signal.Signal):
         self.client = client
         self.client_jid = client_jid
 
-        super().__init__([
-            'presence', 'error',
-            'subscription',
+        self.signal = org.wayround.utils.threading.Signal([
+            'presence',
+            'subscription'
             ])
 
-        self.client.connect_signal(
+        self.client.signal.connect(
             'stanza_processor_new_stanza',
             self._in_stanza
             )
@@ -708,24 +710,19 @@ class Presence(org.wayround.utils.signal.Signal):
 
             if stanza.get_tag() == 'presence':
 
-                if stanza.is_error():
-
-                    self.emit_signal('error', self, stanza)
-
-                else:
-
-                    self.emit_signal(
-                        'presence',
-                        self,
-                        stanza.get_from_jid(),
-                        stanza.get_to_jid(),
-                        stanza
-                        )
+                self.signal.emit(
+                    'presence',
+                    self,
+                    stanza.get_from_jid(),
+                    stanza.get_to_jid(),
+                    stanza
+                    )
 
         return
 
 
-class Message(org.wayround.utils.signal.Signal):
+# TODO: do we really need message client?
+class Message:
 
     def __init__(self, client, client_jid):
 
@@ -740,11 +737,11 @@ class Message(org.wayround.utils.signal.Signal):
         self.client = client
         self.client_jid = client_jid
 
-        super().__init__([
-            'message', 'error'
+        self.signal = org.wayround.utils.threading.Signal([
+            'message'
             ])
 
-        self.client.connect_signal(
+        self.client.signal.connect(
             'stanza_processor_new_stanza',
             self._in_stanza
             )
@@ -808,17 +805,11 @@ class Message(org.wayround.utils.signal.Signal):
 
             if stanza.get_tag() == 'message':
 
-                if stanza.is_error():
-
-                    self.emit_signal('error', self, stanza)
-
-                else:
-
-                    self.emit_signal(
-                        'message',
-                        self,
-                        stanza
-                        )
+                self.signal.emit(
+                    'message',
+                    self,
+                    stanza
+                    )
 
         return
 
@@ -906,10 +897,10 @@ def drive_starttls(
 
         logging.debug("Connecting SignalWaiter")
 
-        client_reactions_waiter = org.wayround.utils.signal.SignalWaiter(
+        client_reactions_waiter = org.wayround.utils.threading.SignalWaiter(
             client,
             list(
-                set(client.get_signal_names())
+                set(client.signal.get_names())
                 - set(
                       ['io_out_element_readed',
                        'io_out_start',
@@ -1130,10 +1121,10 @@ def drive_sasl(
 
         logging.debug("Connecting SignalWaiter")
 
-        client_reactions_waiter = org.wayround.utils.signal.SignalWaiter(
+        client_reactions_waiter = org.wayround.utils.threading.SignalWaiter(
             client,
             list(
-                set(client.get_signal_names())
+                set(client.signal.get_names())
                 - set(
                       ['io_out_element_readed',
                        'io_out_start',

@@ -6,6 +6,7 @@ import org.wayround.utils.factory
 import org.wayround.utils.lxml
 import org.wayround.utils.types
 
+import org.wayround.xmpp.disco
 import org.wayround.xmpp.core
 import org.wayround.xmpp.xdata
 
@@ -20,6 +21,13 @@ NAMESPACES = []
 for i in X_XMLNS + QUERY_XMLNS + UNIQUE_XMLNS:
     NAMESPACES.append('{}{}'.format(NAMESPACE, i))
 del i
+
+
+ROLES = ['moderator', 'none', 'participant', 'visitor']
+ROLES_WITH_NONE = ROLES + [None]
+
+AFFILIATIONS = ['owner', 'admin', 'member', 'none', 'outcast']
+AFFILIATIONS_WITH_NONE = AFFILIATIONS + [None]
 
 
 class X:
@@ -676,10 +684,10 @@ class Item:
             raise ValueError("`contin' must be None or Continue")
 
     def check_affiliation(self, value):
-        if not value in [None, 'owner', 'admin', 'member', 'none', 'outcast']:
+        if not value in AFFILIATIONS_WITH_NONE:
             raise ValueError(
                 "`affiliation' must be None or one of "
-                "['admin', 'member', 'none', 'outcast', 'owner']"
+                "{}".format(AFFILIATIONS)
                 )
 
     def check_jid(self, value):
@@ -691,10 +699,10 @@ class Item:
             raise ValueError("`nick' must be None or str")
 
     def check_role(self, value):
-        if not value in [None, 'moderator', 'none', 'participant', 'visitor']:
+        if not value in ROLES_WITH_NONE:
             raise ValueError(
                 "`role' must be None or one of "
-                "['moderator', 'none', 'participant', 'visitor']"
+                "{}".format(ROLES)
                 )
 
     @classmethod
@@ -1125,4 +1133,33 @@ def get_muc_elements(element):
 
 
 def has_muc_elements(element):
-    return len(get_muc_elements(element)) != 0
+    ret = False
+    for i in NAMESPACES:
+        ret = element.find('{{{}}}x'.format(i)) != None
+        if ret == True:
+            break
+        ret = element.find('{{{}}}query'.format(i)) != None
+        if ret == True:
+            break
+        ret = element.find('{{{}}}unique'.format(i)) != None
+        if ret == True:
+            break
+    return ret
+
+
+def is_groupchat(bare_jid, from_jid, stanza_processor, wait=True):
+
+    ret = False
+
+    res = org.wayround.xmpp.disco.get_info(
+        bare_jid,
+        from_jid,
+        None,
+        stanza_processor
+        )
+    if res != None:
+        if (res.has_identity('conference', 'text')
+            and res.has_feature('http://jabber.org/protocol/muc')):
+            ret = True
+
+    return ret
