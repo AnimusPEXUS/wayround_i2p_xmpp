@@ -175,13 +175,13 @@ class XMPPC2SClient:
                 and self.has_connection()):
 
                 in_stop_waiter = org.wayround.utils.threading.SignalWaiter(
-                    self.io_machine,
+                    self.io_machine.signal,
                     'in_stop'
                     )
                 in_stop_waiter.start()
 
                 out_stop_waiter = org.wayround.utils.threading.SignalWaiter(
-                    self.io_machine,
+                    self.io_machine.signal,
                     'out_stop'
                     )
                 out_stop_waiter.start()
@@ -898,7 +898,7 @@ def drive_starttls(
         logging.debug("Connecting SignalWaiter")
 
         client_reactions_waiter = org.wayround.utils.threading.SignalWaiter(
-            client,
+            client.signal,
             list(
                 set(client.signal.get_names())
                 - set(
@@ -1122,7 +1122,7 @@ def drive_sasl(
         logging.debug("Connecting SignalWaiter")
 
         client_reactions_waiter = org.wayround.utils.threading.SignalWaiter(
-            client,
+            client.signal,
             list(
                 set(client.signal.get_names())
                 - set(
