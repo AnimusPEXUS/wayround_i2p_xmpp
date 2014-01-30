@@ -426,9 +426,9 @@ class PrivacyClient:
         self._from_jid = jid
         self._client = client
 
-        self.signal = org.wayround.utils.threading.Signal([
-            'push'
-            ])
+        self.signal = org.wayround.utils.threading.Signal(
+            self, ['push']
+            )
 
         self._client.signal.connect(
             'stanza_processor_new_stanza',

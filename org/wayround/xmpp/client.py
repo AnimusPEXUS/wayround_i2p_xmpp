@@ -86,6 +86,7 @@ class XMPPC2SClient:
             )
 
         self.signal = org.wayround.utils.threading.Signal(
+            self,
             self.sock_streamer.signal.get_names(add_prefix='streamer_') +
             self.io_machine.signal.get_names(add_prefix='io_') +
             self.stanza_processor.signal.get_names(
@@ -376,6 +377,7 @@ class Roster:
         self.client_jid = client_jid
 
         self.signal = org.wayround.utils.threading.Signal(
+            self,
             ['push', 'push_invalid', 'push_invalid_from']
             )
 
@@ -575,10 +577,13 @@ class Presence:
         self.client = client
         self.client_jid = client_jid
 
-        self.signal = org.wayround.utils.threading.Signal([
+        self.signal = org.wayround.utils.threading.Signal(
+            self,
+            [
             'presence',
             'subscription'
-            ])
+            ]
+            )
 
         self.client.signal.connect(
             'stanza_processor_new_stanza',
@@ -737,9 +742,12 @@ class Message:
         self.client = client
         self.client_jid = client_jid
 
-        self.signal = org.wayround.utils.threading.Signal([
+        self.signal = org.wayround.utils.threading.Signal(
+            self,
+            [
             'message'
-            ])
+            ]
+            )
 
         self.client.signal.connect(
             'stanza_processor_new_stanza',

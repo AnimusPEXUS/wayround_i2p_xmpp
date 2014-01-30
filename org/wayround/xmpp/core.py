@@ -415,6 +415,7 @@ class XMPPStreamParserTarget:
         """
 
         self.signal = org.wayround.utils.threading.Signal(
+            self,
             ['start', 'stop', 'error', 'element_readed']
             )
 
@@ -1012,6 +1013,7 @@ class XMPPStreamMachine:
         self.mode = mode
 
         self.signal = org.wayround.utils.threading.Signal(
+            self,
             ['start', 'stop', 'error', 'element_readed']
             )
 
@@ -1173,6 +1175,7 @@ class XMPPIOStreamRWMachine:
 
         logging.debug("XMPPIOStreamRWMachine __init__()")
         self.signal = org.wayround.utils.threading.Signal(
+            self,
             self.in_machine.signal.get_names(add_prefix='in_')
             + self.in_machine.signal.get_names(add_prefix='out_')
             )
@@ -2133,6 +2136,7 @@ class StanzaProcessor:
     def __init__(self):
 
         self.signal = org.wayround.utils.threading.Signal(
+            self,
             ['new_stanza', 'defective_stanza']
             )
 
