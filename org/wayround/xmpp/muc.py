@@ -514,7 +514,6 @@ class Destroy:
         xmlns = check_element_and_namespace(element, 'destroy')
 
         cl = cls()
-        cl.set_xmlns(xmlns)
 
         reason_el = element.find(
             '{{http://jabber.org/protocol/muc{}}}reason'.format(xmlns)

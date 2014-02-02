@@ -639,7 +639,7 @@ class XMPPInputStreamReader:
                         bs=(2 * 1024 ** 2),
                         threaded=True,
                         thread_name=thread_name_in,
-                        verbose=True,
+                        verbose=False,
                         convert_to_str=False,
                         read_method_name='read',
                         write_method_name='_feed',
@@ -1424,7 +1424,9 @@ class Stanza:
     def check_priority(self, value):
         if (value != None
             and (not isinstance(value, int) or not value in range(255))):
-            raise ValueError("`priority' must be byte")
+            raise ValueError(
+                "`priority' must be byte and 0 <= `priority' 255"
+                )
 
     @classmethod
     def new_from_element(cls, element):
@@ -1484,7 +1486,26 @@ class Stanza:
 
         priority_el = element.find('{{{}}}priority'.format(ns))
         if priority_el != None:
-            cl.set_priority(int(priority_el.text))
+            prio = 255
+            prio_error = False
+            try:
+                prio = int(priority_el.text)
+            except:
+                prio = 255
+                prio_error = True
+            else:
+                if not (0 <= prio <= 255):
+                    prio = 255
+                    prio_error = True
+
+            if prio_error:
+                logging.warning(
+                    "Received invalid priority value `{}'".format(
+                        priority_el.text
+                        )
+                    )
+
+            cl.set_priority(prio)
 
         cl.check()
 

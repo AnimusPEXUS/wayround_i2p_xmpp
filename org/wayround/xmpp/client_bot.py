@@ -4,15 +4,12 @@ XMPP bot
 """
 
 import logging
-import lxml.etree
 import socket
 import threading
-import xml.sax.saxutils
 
 import org.wayround.gsasl.gsasl
 
 import org.wayround.xmpp.core
-import org.wayround.xmpp.stanza_elements
 import org.wayround.xmpp.client
 
 import org.wayround.utils.getopt
@@ -96,7 +93,6 @@ class AuthLocalDriver:
 
         self.result = 'failure'
         self._result_ready.set()
-
 
     def text(self):
         pass
@@ -184,8 +180,8 @@ class AuthLocalDriver:
             logging.error("Requested SASL property not available")
             ret = 1
 
-
         return ret
+
 
 class Bot:
 
@@ -218,7 +214,6 @@ class Bot:
 
         self._commands = commands
 
-
     def start(self, jid, connection_info, auth_info):
 
         if not self._stopping and not self._starting:
@@ -237,7 +232,6 @@ class Bot:
                  self.connection_info.port
                  )
                 )
-
 
             logging.debug("Starting socket watcher")
 
@@ -335,7 +329,6 @@ class Bot:
                                     self.stanza_processor
                                     )
 
-
                                 if res != 'success':
                                     self._stop_flag = True
                                 else:
@@ -350,7 +343,6 @@ class Bot:
                                             self.stanza_processor
                                             )
 
-
                                         if res != 'success':
                                             self._stop_flag = True
                                         else:
@@ -363,58 +355,6 @@ class Bot:
                                                 'tasktracker_bot',
                                                 self._inbound_stanzas
                                                 )
-
-#                                            self.stanza_processor.send(
-#                                                org.wayround.xmpp.core.Stanza(
-#                                                    kind='presence',
-#                                                    from_jid=self.jid.full(),
-#                                                    body='<show>online</show><status>online</status>'
-#                                                    )
-#                                                )
-
-#                                            self.stanza_processor.send(
-#                                                org.wayround.xmpp.core.Stanza(
-#                                                    kind='message',
-#                                                    typ='chat',
-#                                                    from_jid=self.jid.full(),
-#                                                    to_jid='animus@wayround.org',
-#                                                    body='<body>TaskTracker bot is now online</body><subject>WOW!</subject>'
-#                                                    )
-#                                                )
-
-# TODO: move to self.stop()
-#                                            try:
-#                                                exit_event.wait()
-#                                            except KeyboardInterrupt:
-#                                                logging.info("Stroke. exiting")
-#                                            except:
-#                                                logging.exception("Error")
-#
-#            self._driven = False
-#
-#
-#            if self.sock:
-#                try:
-#                    self.sock.shutdown(socket.SHUT_RDWR)
-#                except:
-#                    print("Socket shutdown error. maybe it's closed already")
-#
-#                try:
-#                    self.sock.close()
-#                except:
-#                    print("Socket close error")
-#
-#            logging.debug(
-#                "Reached the end. socket is {} {}".format(
-#                    self.client.socket,
-#                    self.client.socket._closed
-#                    )
-#                )
-#
-#            print("Threads alive:")
-#            for i in threading.enumerate():
-#                print("    {}".format(repr(i)))
-#
 
             self._driven = False
 
@@ -438,7 +378,8 @@ class Bot:
             self.client.stop()
 
             self._stopping = False
-
+            
+        return
 
     def _reset_hubs(self):
 
@@ -508,10 +449,10 @@ class Bot:
                     commands=self._commands,
                     opts_and_args_list=cmd_line,
                     additional_data={
-                        'asker_jid':asker_jid,
-                        'stanza':obj,
-                        'messages':messages,
-                        'ret_stanza':ret_stanza
+                        'asker_jid': asker_jid,
+                        'stanza': obj,
+                        'messages': messages,
+                        'ret_stanza': ret_stanza
                         }
                     )
 
@@ -549,7 +490,9 @@ class Bot:
 
         if not self._driven:
 
-            logging.debug("_on_connection_event `{}', `{}'".format(event, sock))
+            logging.debug(
+                "_on_connection_event `{}', `{}'".format(event, sock)
+                )
 
             if event == 'start':
                 print("Connection started")
@@ -558,8 +501,9 @@ class Bot:
 
                 self.client.wait('working')
 
-                logging.debug("Ended waiting for connection. Opening output stream")
-
+                logging.debug(
+                    "Ended waiting for connection. Opening output stream"
+                    )
 
                 self.client.io_machine.send(
                     org.wayround.xmpp.core.start_stream(
@@ -580,6 +524,7 @@ class Bot:
                 self.connection = False
                 self.stop()
 
+        return
 
     def _on_stream_in_event(self, event, attrs=None):
 
@@ -599,6 +544,8 @@ class Bot:
                 self._stream_in = False
                 self.stop()
 
+        return
+
     def _on_stream_out_event(self, event, attrs=None):
 
         if not self._driven:
@@ -617,9 +564,15 @@ class Bot:
                 self._stream_out = False
                 self.stop()
 
+        return
+
     def _on_stream_object(self, obj):
 
-        logging.debug("_on_stream_object (first 255 bytes):`{}'".format(repr(lxml.etree.tostring(obj)[:255])))
+        logging.debug(
+            "_on_stream_object (first 255 bytes):`{}'".format(
+                repr(lxml.etree.tostring(obj)[:255])
+                )
+            )
 
         if obj.tag == '{http://etherx.jabber.org/streams}features':
 
@@ -627,4 +580,4 @@ class Bot:
 
             self._features_recieved.set()
 
-
+        return
