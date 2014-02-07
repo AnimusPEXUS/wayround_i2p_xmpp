@@ -1,4 +1,6 @@
 
+raise Exception("This must be integrated with datetime_iso8601.py in utils")
+
 import datetime
 import logging
 import re
@@ -17,7 +19,9 @@ RE = \
 RE_COMPILED = re.compile(RE)
 
 
-def str_to_datetime(value, _debug=False):
+def str_to_datetime(value):
+
+    _debug = False
 
     ret = None
 
