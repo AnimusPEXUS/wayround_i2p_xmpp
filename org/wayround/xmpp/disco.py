@@ -355,7 +355,11 @@ org.wayround.utils.factory.class_generate_check(
     )
 
 
-def _x(to_jid, from_jid, node=None, stanza_processor=None, mode='info'):
+def _x(
+    to_jid, from_jid,
+    node=None, stanza_processor=None,
+    mode='info', wait=True
+    ):
     """
     :param org.wayround.xmpp.core.StanzaProcessor stanza_processor:
     """
@@ -384,18 +388,19 @@ def _x(to_jid, from_jid, node=None, stanza_processor=None, mode='info'):
             ]
         )
 
-    ret = stanza_processor.send(stanza, wait=None)
+    ret = stanza_processor.send(stanza, wait=wait)
 
     return ret
 
 
-def get_info(to_jid, from_jid, node=None, stanza_processor=None):
+def get_info(to_jid, from_jid, node=None, stanza_processor=None, wait=True):
 
     ret = None
 
     res = _x(
         to_jid, from_jid=from_jid, node=node,
-        stanza_processor=stanza_processor, mode='info'
+        stanza_processor=stanza_processor, mode='info',
+        wait=wait
         )
 
     if isinstance(res, org.wayround.xmpp.core.Stanza):
@@ -409,13 +414,14 @@ def get_info(to_jid, from_jid, node=None, stanza_processor=None):
     return ret, res
 
 
-def get_items(to_jid, from_jid, node=None, stanza_processor=None):
+def get_items(to_jid, from_jid, node=None, stanza_processor=None, wait=True):
 
     ret = None
 
     res = _x(
         to_jid, from_jid=from_jid, node=node,
-        stanza_processor=stanza_processor, mode='items'
+        stanza_processor=stanza_processor, mode='items',
+        wait=wait
         )
 
     if isinstance(res, org.wayround.xmpp.core.Stanza):
@@ -429,15 +435,17 @@ def get_items(to_jid, from_jid, node=None, stanza_processor=None):
     return ret, res
 
 
-def get(to_jid, from_jid, node=None, stanza_processor=None):
+def get(to_jid, from_jid, node=None, stanza_processor=None, wait=True):
     return {
         'info': get_info(
             to_jid, from_jid=from_jid, node=node,
-            stanza_processor=stanza_processor
+            stanza_processor=stanza_processor,
+            wait=wait
             ),
         'items': get_items(
             to_jid, from_jid=from_jid, node=node,
-            stanza_processor=stanza_processor
+            stanza_processor=stanza_processor,
+            wait=wait
             )
         }
 

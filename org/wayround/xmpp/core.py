@@ -2187,7 +2187,8 @@ class StanzaProcessor:
 
     def send(
         self, stanza_obj, ide_mode='generate', ide=None, wait=False,
-        pass_new_stanza_anyway=False
+        emit_reply_anyway=False,
+        emit_reply_message=True
         ):
         # TODO: documentation rework required
         # NOTE: cb parameter is removed: newly received stanza either signalled,
@@ -2292,7 +2293,7 @@ class StanzaProcessor:
         if wait == 0:
             ret = new_stanza_ide
 
-        if self._is_wait_in_sand(wait, pass_new_stanza_anyway):
+        if self._is_wait_in_sand(wait, emit_reply_anyway, emit_reply_message):
             logging.debug(
                 "{} :: send :: adding {} to wait_callbacks".format(
                     self,
@@ -2302,14 +2303,15 @@ class StanzaProcessor:
             self._wait_callbacks[new_stanza_ide] = {
                 'event': threading.Event(),
                 'response': None,
-                'pass_new_stanza_anyway': pass_new_stanza_anyway
+                'emit_reply_anyway': emit_reply_anyway,
+                'emit_reply_message': emit_reply_message
                 }
 
         # ===== finally send stanza and wait for response if needed
 
         self._io_machine.send(stanza_obj.to_str())
 
-        if self._is_wait_in_sand(wait, pass_new_stanza_anyway):
+        if self._is_wait_in_sand(wait, emit_reply_anyway, emit_reply_message):
             wait_res = self._wait_callbacks[new_stanza_ide]['event'].wait(wait)
 
             if wait_res == False:
@@ -2327,10 +2329,14 @@ class StanzaProcessor:
 
         return ret
 
-    def _is_wait_in_sand(self, wait, pass_new_stanza_anyway):
+    def _is_wait_in_sand(
+            self, wait, emit_reply_anyway, emit_reply_message
+            ):
         return (wait == None
                 or (isinstance(wait, int) and wait > 0)
-                or pass_new_stanza_anyway == True)
+                or emit_reply_anyway == True
+                or emit_reply_message == True
+                )
 
     def _on_input_object(self, signal_name, io_machine, obj):
 
@@ -2381,8 +2387,14 @@ class StanzaProcessor:
                     if (not ide in self._wait_callbacks
                         or (ide in self._wait_callbacks
                             and self._wait_callbacks[ide][
-                                'pass_new_stanza_anyway'
+                                'emit_reply_anyway'
                                 ] == True)
+                        or (ide in self._wait_callbacks
+                            and self._wait_callbacks[ide][
+                                'emit_reply_message'
+                                ] == True
+                            and stanza.get_tag() == 'message'
+                            )
                         ):
                         logging.debug(
                     "{} :: _process_input_object :: emiting stanza {}".format(

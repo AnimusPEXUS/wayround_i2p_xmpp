@@ -1,4 +1,5 @@
 
+import logging
 import collections
 
 import lxml.etree
@@ -220,19 +221,21 @@ def get_query_from_element(element):
 
     ret = None
 
+    found = None
+
     for i in element:
 
         if i.tag == '{jabber:iq:register}query':
-            ret = i
+            found = i
             break
 
-    if ret != None:
-        ret = Query.new_from_element(ret)
+    if found != None:
+        ret = Query.new_from_element(found)
 
     return ret
 
 
-def get_form(from_jid, to_jid, stanza_processor, wait=True):
+def get_query(from_jid, to_jid, stanza_processor, wait=True):
 
     s = org.wayround.xmpp.core.Stanza('iq')
     s.set_typ('get')
@@ -244,18 +247,27 @@ def get_form(from_jid, to_jid, stanza_processor, wait=True):
          ]
         )
 
+    ret = None, None
+
     res = stanza_processor.send(s, wait=wait)
 
     if res != None:
         if not res.is_error():
-            ret = get_query_from_element(res.get_element())
+            ret = get_query_from_element(res.get_element()), res
         else:
-            ret = res
+            ret = None, res
 
     return ret
 
 
-def set_form(from_jid, to_jid, form, stanza_processor, wait=True):
+def set_query(
+    from_jid,
+    to_jid,
+    form,
+    stanza_processor,
+    wait=True,
+    emit_reply_anyway=False
+    ):
 
     s = org.wayround.xmpp.core.Stanza('iq')
     s.set_typ('set')
@@ -267,7 +279,11 @@ def set_form(from_jid, to_jid, form, stanza_processor, wait=True):
          ]
         )
 
-    res = stanza_processor.send(s, wait=wait)
+    res = stanza_processor.send(
+        s,
+        wait=wait,
+        emit_reply_anyway=emit_reply_anyway
+        )
 
     if res != None:
         if not res.is_error():
@@ -280,4 +296,4 @@ def set_form(from_jid, to_jid, form, stanza_processor, wait=True):
 
 def unregister(from_jid, to_jid, stanza_processor, wait=True):
     form = org.wayround.xmpp.registration.Query(remove=True)
-    return set_form(from_jid, to_jid, form, stanza_processor, wait)
+    return set_query(from_jid, to_jid, form, stanza_processor, wait)

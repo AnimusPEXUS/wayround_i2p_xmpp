@@ -2,10 +2,8 @@
 import datetime
 
 import lxml.etree
-
-
-import org.wayround.xmpp.datetime
 import org.wayround.utils.factory
+import org.wayround.xmpp.datetime
 
 
 class Delay:

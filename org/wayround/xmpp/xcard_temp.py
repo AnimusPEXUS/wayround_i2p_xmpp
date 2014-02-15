@@ -86,10 +86,10 @@ org.wayround.utils.factory.class_generate_attributes_and_check(Empty, ['tag'])
 
 
 N_ELEMENTS = [
-    ('FAMILY?', PCData, 'family')
-    ('GIVEN?', PCData, 'given')
-    ('MIDDLE?', PCData, 'middle')
-    ('PREFIX?', PCData, 'prefix')
+    ('FAMILY?', PCData, 'family'),
+    ('GIVEN?', PCData, 'given'),
+    ('MIDDLE?', PCData, 'middle'),
+    ('PREFIX?', PCData, 'prefix'),
     ('SUFFIX?', PCData, 'suffix')
     ]
 
@@ -180,7 +180,7 @@ def check_{i}(self, value):
 
         org.wayround.utils.lxml.subelems_to_object_props2(
             element, cl,
-            N_ELEMENTS
+            PHOTO_ELEMENTS
             )
 
         return cl
@@ -193,7 +193,7 @@ def check_{i}(self, value):
 
         org.wayround.utils.lxml.object_props_to_subelems2(
             self, el,
-            N_ELEMENTS
+            PHOTO_ELEMENTS
             )
 
         return el
@@ -267,7 +267,7 @@ def check_{i}(self, value):
 
         self.check()
 
-        el = lxml.etree.Element('PHOTO')
+        el = lxml.etree.Element('ADR')
 
         org.wayround.utils.lxml.object_props_to_subelems2(
             self, el,
@@ -947,7 +947,6 @@ org.wayround.utils.factory.class_generate_attributes_and_check(
     Key,
     KEY_CLASS_PROPS
     )
-
 
 
 class XCardTemp:
