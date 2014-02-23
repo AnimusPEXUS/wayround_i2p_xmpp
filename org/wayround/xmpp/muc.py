@@ -112,16 +112,24 @@ class X:
             [
              ('{{http://jabber.org/protocol/muc{}}}history'.format(xmlns),
               History,
-              'history'),
+              'history',
+              '*'
+              ),
              ('{{http://jabber.org/protocol/muc{}}}decline'.format(xmlns),
               Decline,
-              'decline'),
+              'decline',
+              '*'
+              ),
              ('{{http://jabber.org/protocol/muc{}}}destroy'.format(xmlns),
               Destroy,
-              'destroy'),
+              'destroy',
+              '*'
+              ),
              ('{{http://jabber.org/protocol/muc{}}}item'.format(xmlns),
               Item,
-              'item')
+              'item',
+              '*'
+              )
              ]
             )
 
@@ -130,7 +138,7 @@ class X:
             [
              ('{{http://jabber.org/protocol/muc{}}}invite'.format(xmlns),
               Invite,
-              'invite')
+              'invite', '*')
              ]
             )
 
@@ -245,7 +253,7 @@ class Query:
             element, cl,
             [('{{http://jabber.org/protocol/muc{}}}item'.format(xmlns),
              Item,
-             'item'
+             'item', '*'
              )]
             )
 
@@ -253,10 +261,14 @@ class Query:
             element, cl,
             [('{{http://jabber.org/protocol/muc{}}}destroy'.format(xmlns),
              Destroy,
-             'destroy'),
+             'destroy',
+              '*'
+              ),
             ('{jabber:x:data}x',
              org.wayround.xmpp.xdata.XData,
-             'xdata'
+             'xdata',
+              '*'
+              
              )]
             )
 
@@ -722,10 +734,13 @@ class Item:
             [
              ('{{http://jabber.org/protocol/muc{}}}actor'.format(xmlns),
               Actor,
-              'actor'),
+              'actor',
+              '*'
+              ),
              ('{{http://jabber.org/protocol/muc{}}}continue'.format(xmlns),
               Continue,
-              'contin'
+              'contin',
+              '*'
               )
              ]
             )

@@ -1450,7 +1450,7 @@ class Stanza:
         org.wayround.utils.lxml.subelems_to_object_props(
             element, cl,
             [
-             ('{{{}}}thread'.format(ns), MessageThread, 'thread')
+             ('{{{}}}thread'.format(ns), MessageThread, 'thread', '*')
              ]
             )
 
@@ -1467,9 +1467,9 @@ class Stanza:
         org.wayround.utils.lxml.subelemsm_to_object_propsm(
             element, cl,
             [
-             ('{{{}}}status'.format(ns), PresenceStatus, 'status'),
-             ('{{{}}}subject'.format(ns), MessageSubject, 'subject'),
-             ('{{{}}}body'.format(ns), MessageBody, 'body')
+             ('{{{}}}status'.format(ns), PresenceStatus, 'status', '*'),
+             ('{{{}}}subject'.format(ns), MessageSubject, 'subject', '*'),
+             ('{{{}}}body'.format(ns), MessageBody, 'body', '*')
              ]
             )
 
@@ -2648,7 +2648,7 @@ class IQRoster:
         org.wayround.utils.lxml.subelemsm_to_object_propsm(
             element, cl,
             [
-             ('{jabber:iq:roster}item', IQRosterItem, 'item')
+             ('{jabber:iq:roster}item', IQRosterItem, 'item', '*')
              ]
             )
 

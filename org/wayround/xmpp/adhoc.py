@@ -200,11 +200,14 @@ class Command:
             [
              ('{http://jabber.org/protocol/commands}note',
               CommandNote,
-              'note'
+              'note', 
+              '*'
               ),
              ('{jabber:x:data}x',
               org.wayround.xmpp.xdata.XData,
-              'xdata')
+              'xdata', 
+              '*'
+              )
              ]
             )
 

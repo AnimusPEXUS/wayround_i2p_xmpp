@@ -127,13 +127,13 @@ class IQDisco:
             [
              ('{http://jabber.org/protocol/disco#info}identity',
               IQDiscoIdentity,
-              'identity'),
+              'identity', '*'),
              ('{http://jabber.org/protocol/disco#items}item',
               IQDiscoItem,
-              'item'),
+              'item', '*'),
              ('{jabber:x:data}x',
               org.wayround.xmpp.xdata.XData,
-              'xdata')
+              'xdata', '*')
              ]
             )
 

@@ -58,6 +58,7 @@ class X:
 
         obj.set_desc(desc)
 
+        # FIXME: error?
         org.wayround.utils.lxml.subelems_to_object_props(
             element
             )

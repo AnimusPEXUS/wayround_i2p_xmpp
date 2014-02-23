@@ -70,15 +70,15 @@ class Query:
         org.wayround.utils.lxml.subelems_to_object_props(
             element, cl,
             [
-             ('{jabber:iq:privacy}active', Active, 'active'),
-             ('{jabber:iq:privacy}default', Default, 'default')
+             ('{jabber:iq:privacy}active', Active, 'active', '*'),
+             ('{jabber:iq:privacy}default', Default, 'default', '*')
              ]
             )
 
         org.wayround.utils.lxml.subelemsm_to_object_propsm(
             element, cl,
             [
-             ('{jabber:iq:privacy}list', List, 'lst')
+             ('{jabber:iq:privacy}list', List, 'lst', '*')
              ]
             )
 
@@ -255,7 +255,7 @@ class List:
         org.wayround.utils.lxml.subelemsm_to_object_propsm(
             element, cl,
             [
-             ('{jabber:iq:privacy}item', Item, 'item')
+             ('{jabber:iq:privacy}item', Item, 'item', '*')
              ]
             )
 

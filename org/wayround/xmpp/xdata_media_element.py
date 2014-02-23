@@ -57,7 +57,7 @@ class Media:
         org.wayround.utils.lxml.subelemsm_to_object_propsm(
             element, cl,
             [
-             ('{urn:xmpp:media-element}uri', URI, 'uri')
+             ('{urn:xmpp:media-element}uri', URI, 'uri', '*')
              ]
             )
 

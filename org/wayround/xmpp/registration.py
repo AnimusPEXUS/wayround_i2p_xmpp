@@ -132,8 +132,8 @@ def check_{i}(self, value):
         org.wayround.utils.lxml.subelems_to_object_props(
             element, ins,
             [
-             ('{jabber:x:data}x', org.wayround.xmpp.xdata.XData, 'xdata'),
-             ('{jabber:x:oob}x', org.wayround.xmpp.oob.X, 'oob')
+             ('{jabber:x:data}x', org.wayround.xmpp.xdata.XData, 'xdata', '*'),
+             ('{jabber:x:oob}x', org.wayround.xmpp.oob.X, 'oob', '*')
              ]
             )
 
