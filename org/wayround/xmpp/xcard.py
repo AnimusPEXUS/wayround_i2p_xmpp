@@ -5,6 +5,7 @@ XEP-0292 implementation
 One of this module purposes is to ensure pickling possibility
 """
 
+import re
 import lxml.etree
 import org.wayround.utils.factory
 import org.wayround.utils.lxml
@@ -14,34 +15,11 @@ import org.wayround.utils.types
 NAMESPACE = 'urn:ietf:params:xml:ns:vcard-4.0'
 
 
-class ValueUri:
-    pass
-
-
 class ValueText:
 
     def check_value(self, value):
         if not isinstance(value, str):
             raise ValueError("`value' must be str")
-
-org.wayround.utils.lxml.simple_exchange_class_factory(
-    ValueText,
-    'text',
-    NAMESPACE,
-    [],
-    ['value'],
-    value_name='value'
-    )
-
-org.wayround.utils.factory.class_generate_attributes_and_check(
-    ValueText,
-    ['value']
-    )
-
-org.wayround.utils.lxml.checker_factory(
-    ValueText,
-    []
-    )
 
 
 VALUETEXTLIST_ELEMENTS = [
@@ -55,71 +33,129 @@ class ValueTextList:
     pass
 
 
-class Sex:
+class ValueUri(ValueText):
+    pass
+
+
+VALUE_DATE_RE = re.compile(r'\d{8}|\d{4}-\d\d|--\d\d(\d\d)?|---\d\d')
+
+
+class ValueDate(ValueText):
 
     def check_value(self, value):
-        if not value in ['', 'M', 'F', 'O', 'N', 'U']:
-            raise ValueError("invalid Sex value")
+        if not VALUE_DATE_RE.match(value):
+            raise ValueError("invalid date text format")
 
-org.wayround.utils.lxml.simple_exchange_class_factory(
-    Sex,
-    'sex',
-    NAMESPACE,
-    [],
-    ['value'],
-    value_name='value'
-    )
 
-org.wayround.utils.factory.class_generate_attributes_and_check(
-    Sex,
-    ['value']
+VALUE_TIME_RE = re.compile(
+    r'(\d\d(\d\d(\d\d)?)?|-\d\d(\d\d?)|--\d\d)'
+    r'(Z|[+\-]\d\d(\d\d)?)?'
     )
 
 
-class LanguageTag:
+class ValueTime(ValueText):
 
-    def __init__(self, text=None):
+    def check_value(self, value):
+        if not VALUE_TIME_RE.match(value):
+            raise ValueError("invalid time text format")
 
-        self.set_text(text)
 
-        return
-
-    def check_text(self, value):
-        if value != None and not isinstance(value, str):
-            raise ValueError("`text' must be None or str")
-
-    @classmethod
-    def new_from_element(cls, element):
-
-        tag = org.wayround.utils.lxml.parse_element_tag(
-            element,
-            'language-tag',
-            NAMESPACE
-            )[0]
-
-        if tag is None:
-            raise ValueError("invalid element tag or namespace")
-
-        cl = cls(element.text)
-
-        return cl
-
-    def gen_element(self):
-
-        self.check()
-
-        el = lxml.etree.Element('language-tag')
-        el.text = self.get_text()
-
-        return el
-
-org.wayround.utils.factory.class_generate_attributes_and_check(
-    LanguageTag,
-    ['text']
+VALUE_DATE_TIME_RE = re.compile(
+    r'(\d{8}|--\d{4}|---\d\d)T\d\d(\d\d(\d\d)?)?'
+    r'(Z|[+\-]\d\d(\d\d)?)?'
     )
 
 
-class ParamPrefInteger:
+class ValueDateTime(ValueText):
+
+    def check_value(self, value):
+        if not VALUE_DATE_TIME_RE.match(value):
+            raise ValueError("invalid date-time text format")
+
+
+#class ValueDateAndOrTime(ValueText):
+#
+#    def check_value(self, value):
+#        if not VALUE_DATE_TIME_RE.match(value):
+#            raise ValueError("invalid date-time text format")
+#
+
+
+VALUE_TIMESTAMP_RE = re.compile(
+    r'\d{8}T\d{6}(Z|[+\-]\d\d(\d\d)?)?'
+    )
+
+
+class ValueTimestamp(ValueText):
+
+    def check_value(self, value):
+        if not VALUE_TIMESTAMP_RE.match(value):
+            raise ValueError("invalid timestamp text format")
+
+
+class ValueBoolean(ValueText):
+
+    # TODO: maybe own check needed
+    #
+    #    def check_value(self, value):
+    #        if not value in ['+', '-', 'yes', 'no', 'on', 'off', '0', '1']:
+    #            raise ValueError("invalid boolean text format")
+    pass
+
+
+class ValueInteger(ValueText):
+
+    # TODO: maybe own check needed
+    #
+    #    def check_value(self, value):
+    #        int(value)
+    pass
+
+
+class ValueFloat(ValueText):
+
+    # TODO: maybe own check needed
+    #
+    #    def check_value(self, value):
+    #        float(value)
+    pass
+
+
+UTCOFFSET_RE = re.compile(r'[+\-]\d\d(\d\d)?')
+
+
+class ValueUtcOffset(ValueText):
+
+    def check_value(self, value):
+        if not UTCOFFSET_RE.match(value):
+            raise ValueError("invalid utc-offset text format")
+
+
+LANGUAGETAG_RE = re.compile(
+    r'([a-z]{2,3}((-[a-z]{3}){0,3})?|[a-z]{4,8})'
+    r'(-[a-z]{4})?(-([a-z]{2}|\d{3}))?'
+    r'(-([0-9a-z]{5,8}|\d[0-9a-z]{3}))*'
+    r'(-[0-9a-wyz](-[0-9a-z]{2,8})+)*'
+    r'(-x(-[0-9a-z]{1,8})+)?|x(-[0-9a-z]{1,8})+|'
+    r'[a-z]{1,3}(-[0-9a-z]{2,8}){1,2}'
+    )
+
+
+class ValueLanguageTag(ValueText):
+
+    def check_value(self, value):
+        if not LANGUAGETAG_RE.match(value):
+            raise ValueError("invalid language-tag text format")
+
+
+class ParamLanguage:
+
+    def check_value(self, value):
+        if not isinstance(value, ValueLanguageTag):
+            raise ValueError("language value must be ParamLanguage")
+
+
+class ParamPrefValueInteger:
 
     def check_value(self, value):
         if value != None and not isinstance(value, int):
@@ -133,73 +169,118 @@ class ParamPrefInteger:
 
         return
 
-org.wayround.utils.lxml.simple_exchange_class_factory(
-    ParamPrefInteger,
-    'integer',
-    NAMESPACE,
-    [],
-    ['value']
-    )
-
-
-org.wayround.utils.factory.class_generate_attributes_and_check(
-    ParamPrefInteger,
-    ['value']
-    )
-
 
 PARAM_PREF_ELEMENTS = [
-    ('integer', ParamPrefInteger, 'integer', '?')
+    ('integer', ParamPrefValueInteger, 'integer', '?')
     ]
+
+PARAM_PREF_CLASS_PROPS = list(i[2] for i in PARAM_PREF_ELEMENTS)
 
 
 class ParamPref:
-
-    def __init__(self, **kwargs):
-
-        for i in PROPERTY_PARAMETERS_CLASS_PROPS:
-            set_func = getattr(self, 'set_{}'.format(i))
-            set_func(kwargs.get(i))
-
-        return
-
-PARAM_LANGUAGE_ELEMENTS = [
-    ('language-tag', LanguageTag, 'language_tag', '?')
-    ]
-
-PARAM_LANGUAGE_CLASS_PROPS = list(i[2] for i in PARAM_LANGUAGE_ELEMENTS)
-
-
-class ParamLanguage:
     pass
 
 
 class ParamAltID:
-    pass
+
+    def check_value(self, value):
+        if value != None and not isinstance(value, ValueText):
+            raise ValueError("altid must be None or ValueText")
+
+
+PARAMPIDTEXT_RE = re.compile(r'\d+(\.\d+)?')
+
+
+class ParamPidText:
+
+    def check_value(self, value):
+        if not PARAMPIDTEXT_RE.match(value):
+            raise ValueError("pid text invalid")
+
+
+PARAMPID_ELEMENTS = [
+    ('text', ParamPidText, 'text', '+')
+    ]
+
+PARAMPID_CLASS_PROPS = list(i[2] for i in PARAMPID_ELEMENTS)
 
 
 class ParamPid:
-    pass
+
+    def check_value(self, value):
+        if value != None:
+            raise ValueError("`value' must be None")
+
+
+class ParamTypeText:
+
+    def check_value(self, value):
+        if not value in ['work', 'home']:
+            raise ValueError("invalid ParamTypeText value")
+
+
+PARAMTYPE_ELEMENTS = [
+    ('text', ParamTypeText, 'text', '+')
+    ]
+
+PARAMTYPE_CLASS_PROPS = list(i[2] for i in PARAMTYPE_ELEMENTS)
 
 
 class ParamType:
-    pass
+
+    def check_value(self, value):
+        if value != None:
+            raise ValueError("`value' must be None")
 
 
 class ParamMediaType:
-    pass
+
+    def check_value(self, value):
+        if value != None and not isinstance(value, ValueText):
+            raise ValueError("`value' must be None or ValueText")
+
+
+class ParamCalScaleText:
+
+    def check_value(self, value):
+        if value != 'gregorian':
+            raise ValueError("invalid ParamCalScaleText value")
+
+
+PARAMCALSCALE_ELEMENTS = [
+    ('text', ParamCalScaleText, 'text', '?')
+    ]
+
+PARAMCALSCALE_CLASS_PROPS = list(i[2] for i in PARAMCALSCALE_ELEMENTS)
 
 
 class ParamCalScale:
-    pass
+
+    def check_value(self, value):
+        if value != None:
+            raise ValueError("`value' must be None")
 
 
 class ParamSortAs:
-    pass
+
+    def check_value(self, value):
+        if not org.wayround.utils.types.struct_check(
+            value,
+            {'t': list,
+             '.': {'t': ValueText},
+             '<': 1, '>': None
+             }
+            ):
+            raise TypeError(
+                "ParamCalScale must be list of 1 or more ValueText"
+                )
 
 
 class ParamGeo:
-    pass
+
+    def check_value(self, value):
+        if value != None and not isinstance(value, ValueUri):
+            raise ValueError("ParamGeo value must be None or ValueUri")
 
 
 class ParamTZ:
@@ -233,6 +314,13 @@ class PropertyParameters:
     def check_value(self, value):
         if value != None:
             raise ValueError("`value' must be None")
+
+
+class GenderSex:
+
+    def check_value(self, value):
+        if not value in ['', 'M', 'F', 'O', 'N', 'U']:
+            raise ValueError("invalid GenderSex value")
 
 
 ADR_ELEMENTS = [
@@ -416,19 +504,16 @@ class TelTypeText:
                          'video', 'pager', 'textphone']:
             raise ValueError("invalid TelTypeText value")
 
-org.wayround.utils.lxml.simple_exchange_class_factory(
-    TelTypeText,
-    'text',
-    NAMESPACE,
-    [],
-    ['value'],
-    value_name='value'
-    )
 
-org.wayround.utils.factory.class_generate_attributes_and_check(
-    TelTypeText,
-    ['value']
-    )
+PARAMTELTYPE_ELEMENTS = [
+    ('text', TelTypeText, 'text', '+')
+    ]
+
+PARAMTELTYPE_CLASS_PROPS = list(i[2] for i in PARAMTELTYPE_ELEMENTS)
+
+
+class ParamTelType:
+    pass
 
 
 TEL_ELEMENTS = [
@@ -446,26 +531,92 @@ class Tel:
 
 
 SKELETON = [
+    # 0. Class;
+    # 1. tag;
+    # 2. namespace;
+    # 3. elements struct;
+    # 4. object properties list;
+    # 5. element text parameter name
     (ValueTextList, 'text', NAMESPACE, VALUETEXTLIST_ELEMENTS,
      VALUETEXTLIST_CLASS_PROPS, 'value'),
-    (ParamLanguage, 'language', NAMESPACE, PARAM_LANGUAGE_ELEMENTS,
-     PARAM_LANGUAGE_CLASS_PROPS, None),
+
     (PropertyParameters, 'parameters', NAMESPACE, PROPERTY_PARAMETERS_ELEMENTS,
      PROPERTY_PARAMETERS_CLASS_PROPS, None),
+
     (Adr, 'adr', NAMESPACE, ADR_ELEMENTS, ADR_CLASS_PROPS, None),
+
     (Categories, 'categories', NAMESPACE, CATEGORIES_ELEMENTS,
      CATEGORIES_CLASS_PROPS, None),
+
     (Email, 'email', NAMESPACE, EMAIL_ELEMENTS, EMAIL_CLASS_PROPS, None),
+
     (Fn, 'fn', NAMESPACE, FN_ELEMENTS, FN_CLASS_PROPS, None),
+
     (Geo, 'geo', NAMESPACE, GEO_ELEMENTS, GEO_CLASS_PROPS, None),
+
     (Key, 'key', NAMESPACE, KEY_ELEMENTS, KEY_CLASS_PROPS, None),
+
     (Logo, 'logo', NAMESPACE, LOGO_ELEMENTS, LOGO_CLASS_PROPS, None),
+
     (N, 'n', NAMESPACE, N_ELEMENTS, N_CLASS_PROPS, None),
+
     (Org, 'org', NAMESPACE, ORG_ELEMENTS, ORG_CLASS_PROPS, None),
+
     (Photo, 'photo', NAMESPACE, PHOTO_ELEMENTS, PHOTO_CLASS_PROPS, None),
+
     (Sound, 'sound', NAMESPACE, SOUND_ELEMENTS, SOUND_CLASS_PROPS, None),
-    (Tel, 'tel', NAMESPACE, TEL_ELEMENTS, TEL_CLASS_PROPS, None)
+
+    (ParamTelType, 'tel', NAMESPACE, TEL_ELEMENTS, TEL_CLASS_PROPS, None),
+
+    (ParamPref, 'pref', NAMESPACE, PARAM_PREF_ELEMENTS, PARAM_PREF_CLASS_PROPS,
+     None),
+
+    (Tel, 'tel', NAMESPACE, TEL_ELEMENTS, TEL_CLASS_PROPS, None),
+
+    (ParamPid, 'pid', NAMESPACE, PARAMPID_ELEMENTS, PARAMPID_CLASS_PROPS,
+     None),
+
+    (ParamType, 'type', NAMESPACE, PARAMTYPE_ELEMENTS, PARAMTYPE_CLASS_PROPS,
+     None),
+
+    (ParamCalScale, 'calscale', NAMESPACE, PARAMCALSCALE_ELEMENTS,
+     PARAMCALSCALE_CLASS_PROPS, None),
+
+
     ]
+
+CHILDLESS_BONES = [
+    (ValueText, 'text', 'value'),
+    (ValueUri, 'uri', 'value'),
+    (ValueDate, 'date', 'value'),
+    (ValueTime, 'time', 'value'),
+    (ValueDateTime, 'date-time', 'value'),
+    #    (ValueDateAndOrTime, 'text', 'value'),
+    (ValueTimestamp, 'timestamp', 'value'),
+    (ValueBoolean, 'boolean', 'value'),
+    (ValueInteger, 'integer', 'value'),
+    (ValueFloat, 'float', 'value'),
+    (ValueUtcOffset, 'utc-offset', 'value'),
+    (ValueLanguageTag, 'language-tag', 'value'),
+    (ParamLanguage, 'language', 'value'),
+    (ParamPrefValueInteger, 'integer', 'value'),
+    (ParamAltID, 'altid', 'value'),
+    (ParamPidText, 'text', 'value'),
+    (ParamTypeText, 'text', 'value'),
+    (GenderSex, 'sex', 'value'),
+    (TelTypeText, 'text', 'value'),
+    (ParamMediaType, 'mediatype', 'value'),
+    (ParamCalScaleText, 'text', 'value'),
+    (ParamSortAs, 'sort-as', 'value'),
+    (ParamGeo, 'geo', 'value'),
+    #    (111111, 'text', 'value'),
+    ]
+
+for i in CHILDLESS_BONES:
+    SKELETON.append((i[0], i[1], NAMESPACE, [], [i[2]], i[2]))
+
+del CHILDLESS_BONES
+
 
 for i in SKELETON:
 
