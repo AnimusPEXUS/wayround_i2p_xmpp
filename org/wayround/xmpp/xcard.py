@@ -22,17 +22,6 @@ class ValueText:
             raise ValueError("`value' must be str")
 
 
-VALUETEXTLIST_ELEMENTS = [
-    ('text', ValueText, 'text', '+'),
-    ]
-
-VALUETEXTLIST_CLASS_PROPS = list(i[2] for i in VALUETEXTLIST_ELEMENTS)
-
-
-class ValueTextList:
-    pass
-
-
 class ValueUri(ValueText):
     pass
 
@@ -105,20 +94,14 @@ class ValueBoolean(ValueText):
 
 class ValueInteger(ValueText):
 
-    # TODO: maybe own check needed
-    #
-    #    def check_value(self, value):
-    #        int(value)
-    pass
+    def check_value(self, value):
+        int(value)
 
 
 class ValueFloat(ValueText):
 
-    # TODO: maybe own check needed
-    #
-    #    def check_value(self, value):
-    #        float(value)
-    pass
+    def check_value(self, value):
+        float(value)
 
 
 UTCOFFSET_RE = re.compile(r'[+\-]\d\d(\d\d)?')
@@ -287,7 +270,34 @@ class ParamTZ:
     pass
 
 
-class ParamLabel:
+SOURCE_PROPERTY_PARAMETERS_ELEMENTS = [
+    ('pref', ParamPref, 'pref', '?'),
+    ('altid', ParamAltID, 'altid', '?'),
+    ('pid', ParamPid, 'pid', '?'),
+    ('mediatype', ParamMediaType, 'mediatype', '?')
+    ]
+
+SOURCE_PROPERTY_PARAMETERS_CLASS_PROPS = \
+    list(i[2] for i in SOURCE_PROPERTY_PARAMETERS_ELEMENTS)
+
+
+class SourcePropertyParameters:
+    pass
+
+
+SOURCE_ELEMENTS = [
+    ('parameters', SourcePropertyParameters, 'parameters', '?'),
+    ('text', ValueText, 'text')
+    ]
+
+SOURCE_CLASS_PROPS = list(i[2] for i in SOURCE_ELEMENTS)
+
+
+class Source:
+    pass
+
+
+class Kind:
     pass
 
 
@@ -296,148 +306,75 @@ PROPERTY_PARAMETERS_ELEMENTS = [
     ('pref', ParamPref, 'pref', '?'),
     ('altid', ParamAltID, 'altid', '?'),
     ('pid', ParamPid, 'pid', '?'),
-    ('type', ParamType, 'type_', '?'),
-    ('mediatype', ParamMediaType, 'mediatype', '?'),
-    ('calscale', ParamCalScale, 'calscale', '?'),
-    ('sort-as', ParamSortAs, 'sort_as', '?'),
-    ('geo?', ParamGeo, 'geo', '?'),
-    ('tz', ParamTZ, 'tz', '?'),
-    ('label', ParamLabel, 'label', '?')
+    ('type', ParamType, 'type_', '?')
     ]
 
 PROPERTY_PARAMETERS_CLASS_PROPS = \
-    list(i[2] for i in PROPERTY_PARAMETERS_ELEMENTS) + ['value']
+    list(i[2] for i in PROPERTY_PARAMETERS_ELEMENTS)
 
 
-class PropertyParameters:
-
-    def check_value(self, value):
-        if value != None:
-            raise ValueError("`value' must be None")
-
-
-class GenderSex:
-
-    def check_value(self, value):
-        if not value in ['', 'M', 'F', 'O', 'N', 'U']:
-            raise ValueError("invalid GenderSex value")
-
-
-ADR_ELEMENTS = [
-    ('properties', PropertyParameters, 'properties', '?'),
-    ('pobox', ValueText, 'pobox', '?'),
-    ('extadd', ValueText, 'extadd', '?'),
-    ('street', ValueText, 'street', '?'),
-    ('locality', ValueText, 'locality', '?'),
-    ('region', ValueText, 'region', '?'),
-    ('pcode', ValueText, 'pcode', '?'),
-    ('ctry', ValueText, 'ctry', '?')
-    ]
-
-ADR_CLASS_PROPS = list(i[2] for i in ADR_ELEMENTS) + ['value']
-
-
-class Adr:
-
-    def check_value(self, value):
-        if value != None:
-            raise ValueError("`value' must be None")
-
-
-CATEGORIES_ELEMENTS = [
-    ('KEYWORD', ValueText, 'keyword', '*')
-    ]
-
-CATEGORIES_CLASS_PROPS = list(i[2] for i in CATEGORIES_ELEMENTS) + ['value']
-
-
-class Categories:
-
-    def check_value(self, value):
-        if value != None:
-            raise ValueError("`value' must be None")
-
-
-EMAIL_ELEMENTS = [
-    ('parameters', PropertyParameters, 'parameters', '?')
-    ]
-
-EMAIL_CLASS_PROPS = list(i[2] for i in EMAIL_ELEMENTS) + ['value']
-
-
-class Email:
-
-    def check_value(self, value):
-        if not isinstance(value, ValueText):
-            raise ValueError("`value' must be ValueText")
+class FnPropertyParameters:
+    pass
 
 
 FN_ELEMENTS = [
-    ('parameters', PropertyParameters, 'parameters', '?')
+    ('parameters', FnPropertyParameters, 'parameters', '?'),
+    ('text', ValueText, 'text')
     ]
 
-FN_CLASS_PROPS = list(i[2] for i in FN_ELEMENTS) + ['value']
+FN_CLASS_PROPS = list(i[2] for i in FN_ELEMENTS)
 
 
 class Fn:
-
-    def check_value(self, value):
-        if value != None:
-            raise ValueError("`value' must be None")
+    pass
 
 
-GEO_ELEMENTS = [
-    ('parameters', PropertyParameters, 'parameters', '?'),
-    ('lat', ValueText, 'lat', ''),
-    ('lon', ValueText, 'lon', '')
+N_PROPERTY_PARAMETERS_ELEMENTS = [
+    ('language', ParamLanguage, 'language', '?'),
+    ('altid', ParamAltID, 'altid', '?'),
+    ('sort-as', ParamSortAs, 'sort_as', '?')
     ]
 
-GEO_CLASS_PROPS = list(i[2] for i in GEO_ELEMENTS) + ['value']
+N_PROPERTY_PARAMETERS_CLASS_PROPS = \
+    list(i[2] for i in N_PROPERTY_PARAMETERS_ELEMENTS)
 
 
-class Geo:
-
-    def check_value(self, value):
-        if value != None and not isinstance(value, ValueUri):
-            raise ValueError("`value' must be None or ValueUri")
+class NPropertyParameters:
+    pass
 
 
-KEY_ELEMENTS = [
-    ('parameters', PropertyParameters, 'parameters', '?')
-    ]
-
-KEY_CLASS_PROPS = list(i[2] for i in KEY_ELEMENTS)
-
-
-class Key:
+class NSurname:
 
     def check_value(self, value):
-        if not isinstance(value, (ValueUri, ValueText)):
-            raise ValueError("`value' must be (ValueUri, ValueText)")
+        if not isinstance(value, str):
+            raise ValueError(
+                "{} value must be str".format(self.__class__.__name__)
+                )
 
 
-LOGO_ELEMENTS = [
-    ('TYPE', ValueText, 'type', '?'),
-    ('BINVAL', ValueText, 'binval', '?'),
-    ('EXTVAL', ValueText, 'extval', '?')
-    ]
-
-LOGO_CLASS_PROPS = list(i[2] for i in LOGO_ELEMENTS)
+class NGiven(NSurname):
+    pass
 
 
-class Logo:
+class NAdditional(NSurname):
+    pass
 
-    def check_value(self, value):
-        if value != None:
-            raise ValueError("`value' must be None")
+
+class NPrefix(NSurname):
+    pass
+
+
+class NSuffix(NSurname):
+    pass
 
 
 N_ELEMENTS = [
-    ('FAMILY', ValueText, 'family', '?'),
-    ('GIVEN', ValueText, 'given', '?'),
-    ('MIDDLE', ValueText, 'middle', '?'),
-    ('PREFIX', ValueText, 'prefix', '?'),
-    ('SUFFIX', ValueText, 'suffix', '?')
+    ('parameters', NPropertyParameters, 'parameters', '?'),
+    ('surname', NSurname, 'surname', '+'),
+    ('given', NGiven, 'given', '+'),
+    ('additional', NAdditional, 'additional', '+'),
+    ('prefix', NPrefix, 'prefix', '+'),
+    ('suffix', NSuffix, 'suffix', '+')
     ]
 
 N_CLASS_PROPS = list(i[2] for i in N_ELEMENTS)
@@ -450,41 +387,708 @@ class N:
             raise ValueError("`value' must be None")
 
 
-ORG_ELEMENTS = [
-    ('ORGNAME', ValueText, 'orgname', ''),
-    ('ORGUNIT', ValueText, 'orgunit', '')
+NICKNAME_PROPERTY_PARAMETERS_ELEMENTS = [
+    ('language', ParamLanguage, 'language', '?'),
+    ('pref', ParamPref, 'pref', '?'),
+    ('altid', ParamAltID, 'altid', '?'),
+    ('pid', ParamPid, 'pid', '?'),
+    ('type', ParamType, 'type_', '?')
     ]
 
-ORG_CLASS_PROPS = list(i[2] for i in ORG_ELEMENTS)
+NICKNAME_PROPERTY_PARAMETERS_CLASS_PROPS = \
+    list(i[2] for i in NICKNAME_PROPERTY_PARAMETERS_ELEMENTS)
 
 
-class Org:
+class NicknamePropertyParameters:
+    pass
 
-    def check_value(self, value):
-        if value != None:
-            raise ValueError("`value' must be None")
+
+NICKNAME_ELEMENTS = [
+    ('parameters', NicknamePropertyParameters, 'parameters', '?'),
+    ('text', ValueText, 'text', '+')
+    ]
+
+NICKNAME_CLASS_PROPS = list(i[2] for i in NICKNAME_ELEMENTS)
+
+
+class Nickname:
+    pass
+
+
+PHOTO_PROPERTY_PARAMETERS_ELEMENTS = [
+    ('pref', ParamPref, 'pref', '?'),
+    ('altid', ParamAltID, 'altid', '?'),
+    ('pid', ParamPid, 'pid', '?'),
+    ('type', ParamType, 'type_', '?'),
+    ('mediatype', ParamMediaType, 'mediatype', '?')
+    ]
+
+PHOTO_PROPERTY_PARAMETERS_CLASS_PROPS = \
+    list(i[2] for i in PHOTO_PROPERTY_PARAMETERS_ELEMENTS)
+
+
+class PhotoPropertyParameters:
+    pass
 
 
 PHOTO_ELEMENTS = [
-    ('TYPE', ValueText, 'type', '?'),
-    ('BINVAL', ValueText, 'binval', '?'),
-    ('EXTVAL', ValueText, 'extval', '?')
+    ('parameters', PhotoPropertyParameters, 'parameters', '?'),
+    ('uri', ValueUri, 'uri', '')
     ]
 
 PHOTO_CLASS_PROPS = list(i[2] for i in PHOTO_ELEMENTS)
 
 
 class Photo:
+    pass
+
+
+BDAY_PROPERTY_PARAMETERS_ELEMENTS = [
+    ('altid', ParamAltID, 'altid', '?'),
+    ('calscale', ParamCalScale, 'calscale', '?')
+    ]
+
+BDAY_PROPERTY_PARAMETERS_CLASS_PROPS = \
+    list(i[2] for i in BDAY_PROPERTY_PARAMETERS_ELEMENTS)
+
+
+class BDayPropertyParameters:
+    pass
+
+
+BDAY_ELEMENTS = [
+    ('properties', BDayPropertyParameters, 'properties', '?'),
+    ('text', ValueText, 'text', '?'),
+    ('date', ValueDate, 'date', '?'),
+    ('date-time', ValueDateTime, 'date_time', '?'),
+    ('time', ValueTime, 'time', '?')
+    ]
+
+BDAY_CLASS_PROPS = list(i[2] for i in BDAY_ELEMENTS)
+
+
+class BDay:
+    pass
+
+
+ANNIVERSARY_PROPERTY_PARAMETERS_ELEMENTS = [
+    ('altid', ParamAltID, 'altid', '?'),
+    ('calscale', ParamCalScale, 'calscale', '?')
+    ]
+
+ANNIVERSARY_PROPERTY_PARAMETERS_CLASS_PROPS = \
+    list(i[2] for i in ANNIVERSARY_PROPERTY_PARAMETERS_ELEMENTS)
+
+
+class AnniversaryPropertyParameters:
+    pass
+
+
+ANNIVERSARY_ELEMENTS = [
+    ('properties', AnniversaryPropertyParameters, 'properties', '?'),
+    ('text', ValueText, 'text', '?'),
+    ('date', ValueDate, 'date', '?'),
+    ('date-time', ValueDateTime, 'date_time', '?'),
+    ('time', ValueTime, 'time', '?')
+    ]
+
+ANNIVERSARY_CLASS_PROPS = list(i[2] for i in ANNIVERSARY_ELEMENTS)
+
+
+class Anniversary:
+    pass
+
+
+class GenderSex:
+
+    def check_value(self, value):
+        if not value in ['', 'M', 'F', 'O', 'N', 'U']:
+            raise ValueError("invalid GenderSex value")
+
+
+class GenderIdentity:
+
+    def check_value(self, value):
+        if not isinstance(value, str):
+            raise ValueError("GenderIdentity value must be str")
+
+
+ADRPARAMLABEL_ELEMENTS = [
+    ('sex', GenderSex, 'sex', ''),
+    ('identity', GenderIdentity, 'identity', '?'),
+    ]
+
+ADRPARAMLABEL_CLASS_PROPS = list(i[2] for i in ADRPARAMLABEL_ELEMENTS)
+
+
+class Gender:
+    pass
+
+
+ADRPARAMLABEL_ELEMENTS = [
+    ('text', ValueText, 'text', '')
+    ]
+
+ADRPARAMLABEL_CLASS_PROPS = list(i[2] for i in ADRPARAMLABEL_ELEMENTS)
+
+
+class AdrParamLabel:
+    pass
+
+
+ADR_PROPERTY_PARAMETERS_ELEMENTS = [
+    ('language', ParamLanguage, 'language', '?'),
+    ('pref', ParamPref, 'pref', '?'),
+    ('altid', ParamAltID, 'altid', '?'),
+    ('pid', ParamPid, 'pid', '?'),
+    ('type', ParamType, 'type_', '?'),
+    ('geo', ParamGeo, 'geo', '?'),
+    ('tz', ParamTZ, 'tz', '?'),
+    ('label', AdrParamLabel, 'label', '?')
+    ]
+
+ADR_PROPERTY_PARAMETERS_CLASS_PROPS = \
+    list(i[2] for i in ADR_PROPERTY_PARAMETERS_ELEMENTS)
+
+
+class AdrPropertyParameters:
+    pass
+
+
+class AdrPobox:
+
+    def check_value(self, value):
+        if not isinstance(value, str):
+            raise ValueError(
+                "{} value must be str".format(self.__class__.__name__)
+                )
+
+
+class AdrExt(AdrPobox):
+    pass
+
+
+class AdrStreet(AdrPobox):
+    pass
+
+
+class AdrLocality(AdrPobox):
+    pass
+
+
+class AdrRegion(AdrPobox):
+    pass
+
+
+class AdrCode(AdrPobox):
+    pass
+
+
+class AdrCountry(AdrPobox):
+    pass
+
+
+ADR_ELEMENTS = [
+    ('properties', AdrPropertyParameters, 'properties', '?'),
+    ('pobox', AdrPobox, 'pobox', '+'),
+    ('ext', AdrExt, 'ext', '+'),
+    ('street', AdrStreet, 'street', '+'),
+    ('locality', AdrLocality, 'locality', '+'),
+    ('region', AdrRegion, 'region', '+'),
+    ('code', AdrCode, 'code', '+'),
+    ('country', AdrCountry, 'country', '+')
+    ]
+
+ADR_CLASS_PROPS = list(i[2] for i in ADR_ELEMENTS) + ['value']
+
+
+class Adr:
 
     def check_value(self, value):
         if value != None:
             raise ValueError("`value' must be None")
 
 
+class TelParamTypeText:
+
+    def check_value(self, value):
+        if not value in [
+            'work', 'home', 'text', 'voice', 'fax', 'cell',
+            'video', 'pager', 'textphone'
+            ]:
+            raise ValueError("invalid TelParamTypeText value")
+
+
+TELPARAMTYPE_ELEMENTS = [
+    ('text', TelParamTypeText, 'text', '+')
+    ]
+
+TELPARAMTYPE_CLASS_PROPS = list(i[2] for i in TELPARAMTYPE_ELEMENTS)
+
+
+class TelParamType:
+    pass
+
+
+TEL_PROPERTY_PARAMETERS_ELEMENTS = [
+    ('pref', ParamPref, 'pref', '?'),
+    ('altid', ParamAltID, 'altid', '?'),
+    ('pid', ParamPid, 'pid', '?'),
+    ('type', TelParamType, 'type_', '?'),
+    ('mediatype', ParamMediaType, 'mediatype', '?')
+    ]
+
+TEL_PROPERTY_PARAMETERS_CLASS_PROPS = \
+    list(i[2] for i in TEL_PROPERTY_PARAMETERS_ELEMENTS)
+
+
+class TelPropertyParameters:
+    pass
+
+
+TEL_ELEMENTS = [
+    ('parameters', TelPropertyParameters, 'parameters', '?'),
+    ('uri', ValueUri, 'uri', '?'),
+    ('text', ValueText, 'text', '?'),
+    ]
+
+TEL_CLASS_PROPS = list(i[2] for i in TEL_ELEMENTS)
+
+
+class Tel:
+    pass
+
+
+EMAIL_PROPERTY_PARAMETERS_ELEMENTS = [
+    ('pref', ParamPref, 'pref', '?'),
+    ('altid', ParamAltID, 'altid', '?'),
+    ('pid', ParamPid, 'pid', '?'),
+    ('type', ParamType, 'type_', '?')
+    ]
+
+EMAIL_PROPERTY_PARAMETERS_CLASS_PROPS = \
+    list(i[2] for i in EMAIL_PROPERTY_PARAMETERS_ELEMENTS)
+
+
+class EmailPropertyParameters:
+    pass
+
+
+EMAIL_ELEMENTS = [
+    ('parameters', EmailPropertyParameters, 'parameters', '?'),
+    ('text', ValueText, 'text', '')
+    ]
+
+EMAIL_CLASS_PROPS = list(i[2] for i in EMAIL_ELEMENTS)
+
+
+class Email:
+    pass
+
+
+IMPP_PROPERTY_PARAMETERS_ELEMENTS = [
+    ('pref', ParamPref, 'pref', '?'),
+    ('altid', ParamAltID, 'altid', '?'),
+    ('pid', ParamPid, 'pid', '?'),
+    ('type', ParamType, 'type_', '?'),
+    ('mediatype', ParamMediaType, 'mediatype', '?')
+    ]
+
+IMPP_PROPERTY_PARAMETERS_CLASS_PROPS = \
+    list(i[2] for i in IMPP_PROPERTY_PARAMETERS_ELEMENTS)
+
+
+class ImppPropertyParameters:
+    pass
+
+
+IMPP_ELEMENTS = [
+    ('parameters', ImppPropertyParameters, 'parameters', '?'),
+    ('uri', ValueUri, 'uri', '')
+    ]
+
+IMPP_CLASS_PROPS = list(i[2] for i in IMPP_ELEMENTS) + ['value']
+
+
+class Impp:
+    pass
+
+
+LANG_PROPERTY_PARAMETERS_ELEMENTS = [
+    ('pref', ParamPref, 'pref', '?'),
+    ('altid', ParamAltID, 'altid', '?'),
+    ('pid', ParamPid, 'pid', '?'),
+    ('type', ParamType, 'type_', '?')
+    ]
+
+LANG_PROPERTY_PARAMETERS_CLASS_PROPS = \
+    list(i[2] for i in LANG_PROPERTY_PARAMETERS_ELEMENTS)
+
+
+class LangPropertyParameters:
+    pass
+
+
+LANG_ELEMENTS = [
+    ('parameters', LangPropertyParameters, 'parameters', '?'),
+    ('language-tag', ValueLanguageTag, 'language_tag', '')
+    ]
+
+LANG_CLASS_PROPS = list(i[2] for i in LANG_ELEMENTS)
+
+
+class Lang:
+    pass
+
+
+TZ_PROPERTY_PARAMETERS_ELEMENTS = [
+    ('pref', ParamPref, 'pref', '?'),
+    ('altid', ParamAltID, 'altid', '?'),
+    ('pid', ParamPid, 'pid', '?'),
+    ('type', ParamType, 'type_', '?'),
+    ('mediatype', ParamMediaType, 'mediatype', '?')
+    ]
+
+TZ_PROPERTY_PARAMETERS_CLASS_PROPS = \
+    list(i[2] for i in TZ_PROPERTY_PARAMETERS_ELEMENTS)
+
+
+class TZPropertyParameters:
+    pass
+
+
+TZ_ELEMENTS = [
+    ('parameters', TZPropertyParameters, 'parameters', '?'),
+    ('uri', ValueUri, 'uri', '?'),
+    ('text', ValueText, 'text', '?'),
+    ('utc-offset', ValueUtcOffset, 'utc_offset', '?')
+    ]
+
+TZ_CLASS_PROPS = list(i[2] for i in TZ_ELEMENTS)
+
+
+class TZ:
+    pass
+
+
+GEO_PROPERTY_PARAMETERS_ELEMENTS = [
+    ('pref', ParamPref, 'pref', '?'),
+    ('altid', ParamAltID, 'altid', '?'),
+    ('pid', ParamPid, 'pid', '?'),
+    ('type', ParamType, 'type_', '?'),
+    ('mediatype', ParamMediaType, 'mediatype', '?')
+    ]
+
+GEO_PROPERTY_PARAMETERS_CLASS_PROPS = \
+    list(i[2] for i in GEO_PROPERTY_PARAMETERS_ELEMENTS)
+
+
+class GeoPropertyParameters:
+    pass
+
+
+GEO_ELEMENTS = [
+    ('parameters', GeoPropertyParameters, 'parameters', '?'),
+    ('uri', ValueUri, 'uri', '')
+    ]
+
+GEO_CLASS_PROPS = list(i[2] for i in GEO_ELEMENTS)
+
+
+class Geo:
+    pass
+
+
+TITLE_PROPERTY_PARAMETERS_ELEMENTS = [
+    ('language', ParamLanguage, 'language', '?'),
+    ('pref', ParamPref, 'pref', '?'),
+    ('altid', ParamAltID, 'altid', '?'),
+    ('pid', ParamPid, 'pid', '?'),
+    ('type', ParamType, 'type_', '?')
+    ]
+
+TITLE_PROPERTY_PARAMETERS_CLASS_PROPS = \
+    list(i[2] for i in TITLE_PROPERTY_PARAMETERS_ELEMENTS)
+
+
+class TitlePropertyParameters:
+    pass
+
+
+TITLE_ELEMENTS = [
+    ('parameters', TitlePropertyParameters, 'parameters', '?'),
+    ('text', ValueText, 'text', '')
+    ]
+
+TITLE_CLASS_PROPS = list(i[2] for i in TITLE_ELEMENTS)
+
+
+class Title:
+    pass
+
+
+ROLE_PROPERTY_PARAMETERS_ELEMENTS = [
+    ('language', ParamLanguage, 'language', '?'),
+    ('pref', ParamPref, 'pref', '?'),
+    ('altid', ParamAltID, 'altid', '?'),
+    ('pid', ParamPid, 'pid', '?'),
+    ('type', ParamType, 'type_', '?')
+    ]
+
+ROLE_PROPERTY_PARAMETERS_CLASS_PROPS = \
+    list(i[2] for i in ROLE_PROPERTY_PARAMETERS_ELEMENTS)
+
+
+class RolePropertyParameters:
+    pass
+
+
+ROLE_ELEMENTS = [
+    ('parameters', RolePropertyParameters, 'parameters', '?'),
+    ('text', ValueText, 'text', '')
+    ]
+
+ROLE_CLASS_PROPS = list(i[2] for i in ROLE_ELEMENTS)
+
+
+class Role:
+    pass
+
+
+LOGO_PROPERTY_PARAMETERS_ELEMENTS = [
+    ('language', ParamLanguage, 'language', '?'),
+    ('pref', ParamPref, 'pref', '?'),
+    ('altid', ParamAltID, 'altid', '?'),
+    ('pid', ParamPid, 'pid', '?'),
+    ('type', ParamType, 'type_', '?'),
+    ('mediatype', ParamMediaType, 'mediatype', '?')
+    ]
+
+LOGO_PROPERTY_PARAMETERS_CLASS_PROPS = \
+    list(i[2] for i in LOGO_PROPERTY_PARAMETERS_ELEMENTS)
+
+
+class LogoPropertyParameters:
+    pass
+
+
+LOGO_ELEMENTS = [
+    ('parameters', LogoPropertyParameters, 'parameters', '?'),
+    ('uri', ValueUri, 'uri', '')
+    ]
+
+LOGO_CLASS_PROPS = list(i[2] for i in LOGO_ELEMENTS)
+
+
+class Logo:
+    pass
+
+
+ORG_PROPERTY_PARAMETERS_ELEMENTS = [
+    ('language', ParamLanguage, 'language', '?'),
+    ('altid', ParamAltID, 'altid', '?'),
+    ('pid', ParamPid, 'pid', '?'),
+    ('pref', ParamPref, 'pref', '?'),
+    ('type', ParamType, 'type_', '?'),
+    ('sort-as', ParamSortAs, 'sort_as', '?')
+    ]
+
+ORG_PROPERTY_PARAMETERS_CLASS_PROPS = \
+    list(i[2] for i in ORG_PROPERTY_PARAMETERS_ELEMENTS)
+
+
+class OrgPropertyParameters:
+    pass
+
+
+ORG_ELEMENTS = [
+    ('parameters', OrgPropertyParameters, 'parameters', '?'),
+    ('text', ValueText, 'text', '+')
+    ]
+
+ORG_CLASS_PROPS = list(i[2] for i in ORG_ELEMENTS)
+
+
+class Org:
+    pass
+
+
+MEMBER_PROPERTY_PARAMETERS_ELEMENTS = [
+    ('pref', ParamPref, 'pref', '?'),
+    ('altid', ParamAltID, 'altid', '?'),
+    ('pid', ParamPid, 'pid', '?'),
+    ('mediatype', ParamMediaType, 'mediatype', '?')
+    ]
+
+MEMBER_PROPERTY_PARAMETERS_CLASS_PROPS = \
+    list(i[2] for i in MEMBER_PROPERTY_PARAMETERS_ELEMENTS)
+
+
+class MemberPropertyParameters:
+    pass
+
+
+MEMBER_ELEMENTS = [
+    ('parameters', MemberPropertyParameters, 'parameters', '?'),
+    ('uri', ValueUri, 'uri', '')
+    ]
+
+MEMBER_CLASS_PROPS = list(i[2] for i in MEMBER_ELEMENTS)
+
+
+class Member:
+    pass
+
+
+class RelatedParamTypeText:
+
+    def check_value(self, value):
+        if not value in [
+            'work', 'home', 'contact', 'acquaintance',
+            'friend', 'met', 'co-worker', 'colleague', 'co-resident',
+            'neighbor', 'child', 'parent', 'sibling', 'spouse',
+            'kin', 'muse', 'crush', 'date', 'sweetheart', 'me',
+            'agent', 'emergency'
+            ]:
+            raise ValueError("Invalid RelatedParamTypeText value")
+
+
+RELATEDTYPE_ELEMENTS = [
+    ('text', RelatedParamTypeText, 'text', '+')
+    ]
+
+RELATEDTYPE_CLASS_PROPS = list(i[2] for i in RELATEDTYPE_ELEMENTS)
+
+
+class RelatedParamType:
+    pass
+
+
+RELATED_PROPERTY_PARAMETERS_ELEMENTS = [
+    ('pref', ParamPref, 'pref', '?'),
+    ('altid', ParamAltID, 'altid', '?'),
+    ('pid', ParamPid, 'pid', '?'),
+    ('type', RelatedParamType, 'type_', '?'),
+    ('mediatype', ParamMediaType, 'mediatype', '?')
+    ]
+
+RELATED_PROPERTY_PARAMETERS_CLASS_PROPS = \
+    list(i[2] for i in RELATED_PROPERTY_PARAMETERS_ELEMENTS)
+
+
+class RelatedPropertyParameters:
+    pass
+
+
+RELATED_ELEMENTS = [
+    ('parameters', RelatedPropertyParameters, 'parameters', '?'),
+    ]
+
+RELATED_CLASS_PROPS = list(i[2] for i in RELATED_ELEMENTS) + ['value']
+
+
+class Related:
+    pass
+
+
+CATEGORIES_PROPERTY_PARAMETERS_ELEMENTS = [
+    ('pref', ParamPref, 'pref', '?'),
+    ('altid', ParamAltID, 'altid', '?'),
+    ('pid', ParamPid, 'pid', '?'),
+    ('type', ParamType, 'type_', '?'),
+    ('mediatype', ParamMediaType, 'mediatype', '?')
+    ]
+
+CATEGORIES_PROPERTY_PARAMETERS_CLASS_PROPS = \
+    list(i[2] for i in CATEGORIES_PROPERTY_PARAMETERS_ELEMENTS)
+
+
+class CategoriesPropertyParameters:
+    pass
+
+
+CATEGORIES_ELEMENTS = [
+    ('parameters', CategoriesPropertyParameters, 'parameters', '?'),
+    ('text', ValueText, 'text', '+')
+    ]
+
+CATEGORIES_CLASS_PROPS = list(i[2] for i in CATEGORIES_ELEMENTS)
+
+
+class Categories:
+    pass
+
+
+NOTE_PROPERTY_PARAMETERS_ELEMENTS = [
+    ('language', ParamLanguage, 'language', '?'),
+    ('pref', ParamPref, 'pref', '?'),
+    ('altid', ParamAltID, 'altid', '?'),
+    ('pid', ParamPid, 'pid', '?'),
+    ('type', ParamType, 'type_', '?'),
+    ('mediatype', ParamMediaType, 'mediatype', '?')
+    ]
+
+NOTE_PROPERTY_PARAMETERS_CLASS_PROPS = \
+    list(i[2] for i in NOTE_PROPERTY_PARAMETERS_ELEMENTS)
+
+
+class NotePropertyParameters:
+    pass
+
+NOTE_ELEMENTS = [
+    ('parameters', NotePropertyParameters, 'parameters', '?'),
+    ('text', ValueText, 'text', '')
+    ]
+
+NOTE_CLASS_PROPS = list(i[2] for i in NOTE_ELEMENTS)
+
+
+class Note:
+    pass
+
+
+PROPID_ELEMENTS = [
+    ('text', ValueText, 'text', '')
+    ]
+
+PROPID_CLASS_PROPS = list(i[2] for i in PROPID_ELEMENTS)
+
+
+class Propid:
+    pass
+
+
+REV_ELEMENTS = [
+    ('timestamp', ValueTimestamp, 'timestamp', '')
+    ]
+
+REV_CLASS_PROPS = list(i[2] for i in REV_ELEMENTS)
+
+
+class Rev:
+    pass
+
+
+SOUND_PROPERTY_PARAMETERS_ELEMENTS = [
+    ('language', ParamLanguage, 'language', '?'),
+    ('pref', ParamPref, 'pref', '?'),
+    ('altid', ParamAltID, 'altid', '?'),
+    ('pid', ParamPid, 'pid', '?'),
+    ('type', ParamType, 'type_', '?'),
+    ('mediatype', ParamMediaType, 'mediatype', '?')
+    ]
+
+SOUND_PROPERTY_PARAMETERS_CLASS_PROPS = \
+    list(i[2] for i in SOUND_PROPERTY_PARAMETERS_ELEMENTS)
+
+
+class SoundPropertyParameters:
+    pass
+
+
 SOUND_ELEMENTS = [
-    ('PHONETIC', ValueText, 'phonetic', '?'),
-    ('BINVAL', ValueText, 'binval', '?'),
-    ('EXTVAL', ValueText, 'extval', '?')
+    ('parameters', SoundPropertyParameters, 'parameters', '?'),
+    ('uri', ValueUri, 'uri', '')
     ]
 
 SOUND_CLASS_PROPS = list(i[2] for i in SOUND_ELEMENTS)
@@ -497,37 +1101,179 @@ class Sound:
             raise ValueError("`value' must be None")
 
 
-class TelTypeText:
-
-    def check_value(self, value):
-        if not value in ['work', 'home', 'text', 'voice', 'fax', 'cell',
-                         'video', 'pager', 'textphone']:
-            raise ValueError("invalid TelTypeText value")
-
-
-PARAMTELTYPE_ELEMENTS = [
-    ('text', TelTypeText, 'text', '+')
+UID_ELEMENTS = [
+    ('uri', ValueUri, 'uri', '')
     ]
 
-PARAMTELTYPE_CLASS_PROPS = list(i[2] for i in PARAMTELTYPE_ELEMENTS)
+UID_CLASS_PROPS = list(i[2] for i in UID_ELEMENTS)
 
 
-class ParamTelType:
+class Uid:
     pass
 
 
-TEL_ELEMENTS = [
-    ('parameters', PropertyParameters, 'parameters', '?')
-    ]
-
-TEL_CLASS_PROPS = list(i[2] for i in TEL_ELEMENTS)
-
-
-class Tel:
+class ClientpidmapSourceId:
 
     def check_value(self, value):
-        if not isinstance(value, (ValueUri, ValueText)):
-            raise ValueError("`value' must be (ValueUri, ValueText)")
+        i = int(value)
+        if i < 0:
+            raise ValueError("ClientpidmapSourceId must be positive")
+
+
+CLIENTPIDMAP_ELEMENTS = [
+    ('sourceid', ClientpidmapSourceId, 'sourceid', ''),
+    ('uri', ValueUri, 'uri', '')
+    ]
+
+CLIENTPIDMAP_CLASS_PROPS = list(i[2] for i in CLIENTPIDMAP_ELEMENTS)
+
+
+class Clientpidmap:
+    pass
+
+
+URL_PROPERTY_PARAMETERS_ELEMENTS = [
+    ('pref', ParamPref, 'pref', '?'),
+    ('altid', ParamAltID, 'altid', '?'),
+    ('pid', ParamPid, 'pid', '?'),
+    ('type', ParamType, 'type_', '?'),
+    ('mediatype', ParamMediaType, 'mediatype', '?')
+    ]
+
+URL_PROPERTY_PARAMETERS_CLASS_PROPS = \
+    list(i[2] for i in URL_PROPERTY_PARAMETERS_ELEMENTS)
+
+
+class UrlPropertyParameters:
+    pass
+
+
+URL_ELEMENTS = [
+    ('parameters', UrlPropertyParameters, 'parameters', '?'),
+    ('uri', ValueUri, 'uri', '')
+    ]
+
+URL_CLASS_PROPS = list(i[2] for i in URL_ELEMENTS)
+
+
+class Url:
+    pass
+
+
+KEY_PROPERTY_PARAMETERS_ELEMENTS = [
+    ('pref', ParamPref, 'pref', '?'),
+    ('altid', ParamAltID, 'altid', '?'),
+    ('pid', ParamPid, 'pid', '?'),
+    ('type', ParamType, 'type_', '?'),
+    ('mediatype', ParamMediaType, 'mediatype', '?')
+    ]
+
+KEY_PROPERTY_PARAMETERS_CLASS_PROPS = \
+    list(i[2] for i in KEY_PROPERTY_PARAMETERS_ELEMENTS)
+
+
+class KeyPropertyParameters:
+    pass
+
+
+KEY_ELEMENTS = [
+    ('parameters', KeyPropertyParameters, 'parameters', '?'),
+    ('uri', ValueUri, 'value_uri', '?'),
+    ('text', ValueText, 'value_text', '?')
+    ]
+
+KEY_CLASS_PROPS = list(i[2] for i in KEY_ELEMENTS)
+
+
+class Key:
+    pass
+
+
+FBURL_PROPERTY_PARAMETERS_ELEMENTS = [
+    ('pref', ParamPref, 'pref', '?'),
+    ('altid', ParamAltID, 'altid', '?'),
+    ('pid', ParamPid, 'pid', '?'),
+    ('type', ParamType, 'type_', '?'),
+    ('mediatype', ParamMediaType, 'mediatype', '?')
+    ]
+
+FBURL_PROPERTY_PARAMETERS_CLASS_PROPS = \
+    list(i[2] for i in FBURL_PROPERTY_PARAMETERS_ELEMENTS)
+
+
+class FburlPropertyParameters:
+    pass
+
+
+FBURL_ELEMENTS = [
+    ('properties', FburlPropertyParameters, 'properties', '?'),
+    ('uri', ValueUri, 'uri', '')
+    ]
+
+FBURL_CLASS_PROPS = \
+    list(i[2] for i in FBURL_ELEMENTS)
+
+
+class Fburl:
+    pass
+
+
+CALADRURI_PROPERTY_PARAMETERS_ELEMENTS = [
+    ('pref', ParamPref, 'pref', '?'),
+    ('altid', ParamAltID, 'altid', '?'),
+    ('pid', ParamPid, 'pid', '?'),
+    ('type', ParamType, 'type_', '?'),
+    ('mediatype', ParamMediaType, 'mediatype', '?')
+    ]
+
+CALADRURI_PROPERTY_PARAMETERS_CLASS_PROPS = \
+    list(i[2] for i in CALADRURI_PROPERTY_PARAMETERS_ELEMENTS)
+
+
+class CaladruriPropertyParameters:
+    pass
+
+
+CALURI_ELEMENTS = [
+    ('properties', CaladruriPropertyParameters, 'properties', '?'),
+    ('uri', ValueUri, 'uri', '')
+    ]
+
+CALURI_CLASS_PROPS = \
+    list(i[2] for i in CALURI_ELEMENTS)
+
+
+class Caladruri:
+    pass
+
+
+CALURI_PROPERTY_PARAMETERS_ELEMENTS = [
+    ('pref', ParamPref, 'pref', '?'),
+    ('altid', ParamAltID, 'altid', '?'),
+    ('pid', ParamPid, 'pid', '?'),
+    ('type', ParamType, 'type_', '?'),
+    ('mediatype', ParamMediaType, 'mediatype', '?')
+    ]
+
+CALURI_PROPERTY_PARAMETERS_CLASS_PROPS = \
+    list(i[2] for i in CALURI_PROPERTY_PARAMETERS_ELEMENTS)
+
+
+class CaluriPropertyParameters:
+    pass
+
+
+CALURI_ELEMENTS = [
+    ('properties', CaluriPropertyParameters, 'properties', '?'),
+    ('uri', ValueUri, 'uri', '')
+    ]
+
+CALURI_CLASS_PROPS = \
+    list(i[2] for i in CALURI_ELEMENTS)
+
+
+class Caluri:
+    pass
 
 
 SKELETON = [
@@ -537,9 +1283,6 @@ SKELETON = [
     # 3. elements struct;
     # 4. object properties list;
     # 5. element text parameter name
-    (ValueTextList, 'text', NAMESPACE, VALUETEXTLIST_ELEMENTS,
-     VALUETEXTLIST_CLASS_PROPS, 'value'),
-
     (PropertyParameters, 'parameters', NAMESPACE, PROPERTY_PARAMETERS_ELEMENTS,
      PROPERTY_PARAMETERS_CLASS_PROPS, None),
 
@@ -566,7 +1309,7 @@ SKELETON = [
 
     (Sound, 'sound', NAMESPACE, SOUND_ELEMENTS, SOUND_CLASS_PROPS, None),
 
-    (ParamTelType, 'tel', NAMESPACE, TEL_ELEMENTS, TEL_CLASS_PROPS, None),
+    (TelParamType, 'tel', NAMESPACE, TEL_ELEMENTS, TEL_CLASS_PROPS, None),
 
     (ParamPref, 'pref', NAMESPACE, PARAM_PREF_ELEMENTS, PARAM_PREF_CLASS_PROPS,
      None),
@@ -604,7 +1347,7 @@ CHILDLESS_BONES = [
     (ParamPidText, 'text', 'value'),
     (ParamTypeText, 'text', 'value'),
     (GenderSex, 'sex', 'value'),
-    (TelTypeText, 'text', 'value'),
+    (TelParamTypeText, 'text', 'value'),
     (ParamMediaType, 'mediatype', 'value'),
     (ParamCalScaleText, 'text', 'value'),
     (ParamSortAs, 'sort-as', 'value'),
@@ -710,7 +1453,7 @@ org.wayround.utils.factory.class_generate_attributes_and_check(
 VCARD_ELEMENTS = [
     ('adr', Adr, 'adr', '*'),
     ('anniversary', Anniversary, 'anniversary', '*'),
-    ('bday', Bday, 'bday', '*'),
+    ('bday', BDay, 'bday', '*'),
     ('caladruri', Caladruri, 'caladruri', '*'),
     ('caluri', Caluri, 'caluri', '*'),
     ('categories', 'categories', Categories, '*'),
@@ -733,14 +1476,14 @@ VCARD_ELEMENTS = [
     ('photo', Photo, 'photo', '*'),
     ('prodid', ValueText, 'prodid', '*'),
     ('related', Related, 'related', '*'),
-    ('rev', ValueText, 'rev', '*'),
+    ('rev', Rev, 'rev', '*'),
     ('role', Role, 'role', '*'),
     ('sound', Sound, 'sound', '*'),
     ('source', Source, 'source', '*'),
     ('tel', Tel, 'tel', '*'),
     ('title', Title, 'title', '*'),
-    ('tz', ValueText, 'tz', '*'),
-    ('uid', ValueText, 'uid', '*'),
+    ('tz', TZ, 'tz', '*'),
+    ('uid', Uid, 'uid', '*'),
     ('url', Url, 'url', '*')
     ]
 
