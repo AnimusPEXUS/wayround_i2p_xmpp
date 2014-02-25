@@ -21,6 +21,8 @@ class ValueText:
         if not isinstance(value, str):
             raise ValueError("`value' must be str")
 
+# NOTE: ValueTextList is implemented as multiple ValueText
+
 
 class ValueUri(ValueText):
     pass
@@ -29,7 +31,7 @@ class ValueUri(ValueText):
 VALUE_DATE_RE = re.compile(r'\d{8}|\d{4}-\d\d|--\d\d(\d\d)?|---\d\d')
 
 
-class ValueDate(ValueText):
+class ValueDate:
 
     def check_value(self, value):
         if not VALUE_DATE_RE.match(value):
@@ -42,7 +44,7 @@ VALUE_TIME_RE = re.compile(
     )
 
 
-class ValueTime(ValueText):
+class ValueTime:
 
     def check_value(self, value):
         if not VALUE_TIME_RE.match(value):
@@ -55,13 +57,14 @@ VALUE_DATE_TIME_RE = re.compile(
     )
 
 
-class ValueDateTime(ValueText):
+class ValueDateTime:
 
     def check_value(self, value):
         if not VALUE_DATE_TIME_RE.match(value):
             raise ValueError("invalid date-time text format")
 
 
+# NOTE: ValueDateAndOrTime is implemented with other means
 #class ValueDateAndOrTime(ValueText):
 #
 #    def check_value(self, value):
@@ -75,7 +78,7 @@ VALUE_TIMESTAMP_RE = re.compile(
     )
 
 
-class ValueTimestamp(ValueText):
+class ValueTimestamp:
 
     def check_value(self, value):
         if not VALUE_TIMESTAMP_RE.match(value):
@@ -92,13 +95,13 @@ class ValueBoolean(ValueText):
     pass
 
 
-class ValueInteger(ValueText):
+class ValueInteger:
 
     def check_value(self, value):
         int(value)
 
 
-class ValueFloat(ValueText):
+class ValueFloat:
 
     def check_value(self, value):
         float(value)
@@ -107,7 +110,7 @@ class ValueFloat(ValueText):
 UTCOFFSET_RE = re.compile(r'[+\-]\d\d(\d\d)?')
 
 
-class ValueUtcOffset(ValueText):
+class ValueUtcOffset:
 
     def check_value(self, value):
         if not UTCOFFSET_RE.match(value):
@@ -124,7 +127,7 @@ LANGUAGETAG_RE = re.compile(
     )
 
 
-class ValueLanguageTag(ValueText):
+class ValueLanguageTag:
 
     def check_value(self, value):
         if not LANGUAGETAG_RE.match(value):
@@ -154,7 +157,7 @@ class ParamPrefValueInteger:
 
 
 PARAM_PREF_ELEMENTS = [
-    ('integer', ParamPrefValueInteger, 'integer', '?')
+    ('integer', ParamPrefValueInteger, 'integer', '')
     ]
 
 PARAM_PREF_CLASS_PROPS = list(i[2] for i in PARAM_PREF_ELEMENTS)
@@ -210,17 +213,19 @@ PARAMTYPE_CLASS_PROPS = list(i[2] for i in PARAMTYPE_ELEMENTS)
 
 
 class ParamType:
+    pass
 
-    def check_value(self, value):
-        if value != None:
-            raise ValueError("`value' must be None")
+
+PARAMMEDIATYPE_ELEMENTS = [
+    ('type', ParamType, 'type_', '')
+    ]
+
+PARAMMEDIATYPE_CLASS_PROPS = \
+    list(i[2] for i in PARAMMEDIATYPE_ELEMENTS)
 
 
 class ParamMediaType:
-
-    def check_value(self, value):
-        if value != None and not isinstance(value, ValueText):
-            raise ValueError("`value' must be None or ValueText")
+    pass
 
 
 class ParamCalScaleText:
@@ -238,32 +243,37 @@ PARAMCALSCALE_CLASS_PROPS = list(i[2] for i in PARAMCALSCALE_ELEMENTS)
 
 
 class ParamCalScale:
+    pass
 
-    def check_value(self, value):
-        if value != None:
-            raise ValueError("`value' must be None")
+
+PARAMSORTAS_ELEMENTS = [
+    ('text', ValueText, 'text', '+')
+    ]
+
+PARAMSORTAS_CLASS_PROPS = list(i[2] for i in PARAMSORTAS_ELEMENTS)
 
 
 class ParamSortAs:
+    pass
 
-    def check_value(self, value):
-        if not org.wayround.utils.types.struct_check(
-            value,
-            {'t': list,
-             '.': {'t': ValueText},
-             '<': 1, '>': None
-             }
-            ):
-            raise TypeError(
-                "ParamCalScale must be list of 1 or more ValueText"
-                )
+
+PARAMGEO_ELEMENTS = [
+    ('uri', ValueUri, 'uri', '')
+    ]
+
+PARAMGEO_CLASS_PROPS = list(i[2] for i in PARAMGEO_ELEMENTS)
 
 
 class ParamGeo:
+    pass
 
-    def check_value(self, value):
-        if value != None and not isinstance(value, ValueUri):
-            raise ValueError("ParamGeo value must be None or ValueUri")
+
+PARAMTZ_ELEMENTS = [
+    ('uri', ValueUri, 'uri', '?'),
+    ('text', ValueText, 'text', '?')
+    ]
+
+PARAMTZ_CLASS_PROPS = list(i[2] for i in PARAMTZ_ELEMENTS)
 
 
 class ParamTZ:
@@ -297,11 +307,18 @@ class Source:
     pass
 
 
+KIND_ELEMENTS = [
+    ('text', ValueText, 'text', '*')
+    ]
+
+KIND_CLASS_PROPS = list(i[2] for i in KIND_ELEMENTS)
+
+
 class Kind:
     pass
 
 
-PROPERTY_PARAMETERS_ELEMENTS = [
+FN_PROPERTY_PARAMETERS_ELEMENTS = [
     ('language', ParamLanguage, 'language', '?'),
     ('pref', ParamPref, 'pref', '?'),
     ('altid', ParamAltID, 'altid', '?'),
@@ -309,8 +326,8 @@ PROPERTY_PARAMETERS_ELEMENTS = [
     ('type', ParamType, 'type_', '?')
     ]
 
-PROPERTY_PARAMETERS_CLASS_PROPS = \
-    list(i[2] for i in PROPERTY_PARAMETERS_ELEMENTS)
+FN_PROPERTY_PARAMETERS_CLASS_PROPS = \
+    list(i[2] for i in FN_PROPERTY_PARAMETERS_ELEMENTS)
 
 
 class FnPropertyParameters:
@@ -599,14 +616,11 @@ ADR_ELEMENTS = [
     ('country', AdrCountry, 'country', '+')
     ]
 
-ADR_CLASS_PROPS = list(i[2] for i in ADR_ELEMENTS) + ['value']
+ADR_CLASS_PROPS = list(i[2] for i in ADR_ELEMENTS)
 
 
 class Adr:
-
-    def check_value(self, value):
-        if value != None:
-            raise ValueError("`value' must be None")
+    pass
 
 
 class TelParamTypeText:
@@ -707,7 +721,7 @@ IMPP_ELEMENTS = [
     ('uri', ValueUri, 'uri', '')
     ]
 
-IMPP_CLASS_PROPS = list(i[2] for i in IMPP_ELEMENTS) + ['value']
+IMPP_CLASS_PROPS = list(i[2] for i in IMPP_ELEMENTS)
 
 
 class Impp:
@@ -953,11 +967,11 @@ class RelatedParamTypeText:
             raise ValueError("Invalid RelatedParamTypeText value")
 
 
-RELATEDTYPE_ELEMENTS = [
+RELATEDPARAMTYPE_ELEMENTS = [
     ('text', RelatedParamTypeText, 'text', '+')
     ]
 
-RELATEDTYPE_CLASS_PROPS = list(i[2] for i in RELATEDTYPE_ELEMENTS)
+RELATEDPARAMTYPE_CLASS_PROPS = list(i[2] for i in RELATEDPARAMTYPE_ELEMENTS)
 
 
 class RelatedParamType:
@@ -984,7 +998,7 @@ RELATED_ELEMENTS = [
     ('parameters', RelatedPropertyParameters, 'parameters', '?'),
     ]
 
-RELATED_CLASS_PROPS = list(i[2] for i in RELATED_ELEMENTS) + ['value']
+RELATED_CLASS_PROPS = list(i[2] for i in RELATED_ELEMENTS)
 
 
 class Related:
@@ -1095,10 +1109,7 @@ SOUND_CLASS_PROPS = list(i[2] for i in SOUND_ELEMENTS)
 
 
 class Sound:
-
-    def check_value(self, value):
-        if value != None:
-            raise ValueError("`value' must be None")
+    pass
 
 
 UID_ELEMENTS = [
@@ -1283,9 +1294,6 @@ SKELETON = [
     # 3. elements struct;
     # 4. object properties list;
     # 5. element text parameter name
-    (PropertyParameters, 'parameters', NAMESPACE, PROPERTY_PARAMETERS_ELEMENTS,
-     PROPERTY_PARAMETERS_CLASS_PROPS, None),
-
     (Adr, 'adr', NAMESPACE, ADR_ELEMENTS, ADR_CLASS_PROPS, None),
 
     (Categories, 'categories', NAMESPACE, CATEGORIES_ELEMENTS,
@@ -1325,34 +1333,247 @@ SKELETON = [
     (ParamCalScale, 'calscale', NAMESPACE, PARAMCALSCALE_ELEMENTS,
      PARAMCALSCALE_CLASS_PROPS, None),
 
+    (ParamMediaType, 'mediatype', NAMESPACE, PARAMMEDIATYPE_ELEMENTS,
+     PARAMMEDIATYPE_CLASS_PROPS, None),
 
+    (ParamSortAs, 'sort-as', NAMESPACE, PARAMSORTAS_ELEMENTS,
+     PARAMSORTAS_CLASS_PROPS, None),
+
+    (ParamGeo, 'geo', NAMESPACE, PARAMGEO_ELEMENTS,
+     PARAMGEO_CLASS_PROPS, None),
+
+    (ParamTZ, 'tz', NAMESPACE, PARAMTZ_ELEMENTS,
+     PARAMTZ_CLASS_PROPS, None),
+
+    (Source, 'sound', NAMESPACE, SOURCE_ELEMENTS,
+     SOURCE_CLASS_PROPS, None),
+
+    (Kind, 'kind', NAMESPACE, KIND_ELEMENTS,
+     KIND_CLASS_PROPS, None),
+
+    (Nickname, 'nickname', NAMESPACE, NICKNAME_ELEMENTS,
+     NICKNAME_CLASS_PROPS, None),
+
+    (BDay, 'bday', NAMESPACE, BDAY_ELEMENTS,
+     BDAY_CLASS_PROPS, None),
+
+    (Anniversary, 'anniversary', NAMESPACE, ANNIVERSARY_ELEMENTS,
+     ANNIVERSARY_CLASS_PROPS, None),
+
+    (Gender, 'gender', NAMESPACE, ADRPARAMLABEL_ELEMENTS,
+     ADRPARAMLABEL_CLASS_PROPS, None),
+
+    (AdrParamLabel, 'label', NAMESPACE, ADRPARAMLABEL_ELEMENTS,
+     ADRPARAMLABEL_CLASS_PROPS, None),
+
+    (Impp, 'impp', NAMESPACE, IMPP_ELEMENTS,
+     IMPP_CLASS_PROPS, None),
+
+    (Lang, 'lang', NAMESPACE, LANG_ELEMENTS,
+     LANG_CLASS_PROPS, None),
+
+    (TZ, 'tz', NAMESPACE, TZ_ELEMENTS,
+     TZ_CLASS_PROPS, None),
+
+    (Title, 'title', NAMESPACE, TITLE_ELEMENTS,
+     TITLE_CLASS_PROPS, None),
+
+    (Role, 'role', NAMESPACE, ROLE_ELEMENTS,
+     ROLE_CLASS_PROPS, None),
+
+    (Member, 'member', NAMESPACE, MEMBER_ELEMENTS,
+     MEMBER_CLASS_PROPS, None),
+
+    (RelatedParamType, 'type', NAMESPACE, RELATEDPARAMTYPE_ELEMENTS,
+     RELATEDPARAMTYPE_CLASS_PROPS, None),
+
+    (Related, 'related', NAMESPACE, RELATED_ELEMENTS,
+     RELATED_CLASS_PROPS, None),
+
+    (Note, 'note', NAMESPACE, NOTE_ELEMENTS,
+     NOTE_CLASS_PROPS, None),
+
+    (Propid, 'propid', NAMESPACE, PROPID_ELEMENTS,
+     PROPID_CLASS_PROPS, None),
+
+    (Rev, 'rev', NAMESPACE, REV_ELEMENTS,
+     REV_CLASS_PROPS, None),
+
+    (Sound, 'sound', NAMESPACE, SOUND_ELEMENTS,
+     SOUND_CLASS_PROPS, None),
+
+    (Uid, 'uid', NAMESPACE, UID_ELEMENTS,
+     UID_CLASS_PROPS, None),
+
+    (Clientpidmap, 'clientpidmap', NAMESPACE, CLIENTPIDMAP_ELEMENTS,
+     CLIENTPIDMAP_CLASS_PROPS, None),
+
+    (Url, 'url', NAMESPACE, URL_ELEMENTS,
+     URL_CLASS_PROPS, None),
+
+    (Key, 'key', NAMESPACE, KEY_ELEMENTS,
+     KEY_CLASS_PROPS, None),
+
+    (Fburl, 'fburl', NAMESPACE, FBURL_ELEMENTS,
+     FBURL_CLASS_PROPS, None),
+
+    (Caladruri, 'caladruri', NAMESPACE, CALURI_ELEMENTS,
+     CALURI_CLASS_PROPS, None),
+
+    (Caluri, 'caluri', NAMESPACE, CALURI_ELEMENTS,
+     CALURI_CLASS_PROPS, None)
+
+    ] + [
+
+    (SourcePropertyParameters, 'parameters', NAMESPACE,
+     SOURCE_PROPERTY_PARAMETERS_ELEMENTS,
+     SOURCE_PROPERTY_PARAMETERS_CLASS_PROPS, None),
+
+    (FnPropertyParameters, 'parameters', NAMESPACE,
+     FN_PROPERTY_PARAMETERS_ELEMENTS,
+     FN_PROPERTY_PARAMETERS_CLASS_PROPS, None),
+
+    (NPropertyParameters, 'parameters', NAMESPACE,
+     N_PROPERTY_PARAMETERS_ELEMENTS,
+     N_PROPERTY_PARAMETERS_CLASS_PROPS, None),
+
+    (NicknamePropertyParameters, 'parameters', NAMESPACE,
+     NICKNAME_PROPERTY_PARAMETERS_ELEMENTS,
+     NICKNAME_PROPERTY_PARAMETERS_CLASS_PROPS, None),
+
+    (PhotoPropertyParameters, 'parameters', NAMESPACE,
+     PHOTO_PROPERTY_PARAMETERS_ELEMENTS,
+     PHOTO_PROPERTY_PARAMETERS_CLASS_PROPS, None),
+
+    (BDayPropertyParameters, 'parameters', NAMESPACE,
+     BDAY_PROPERTY_PARAMETERS_ELEMENTS,
+     BDAY_PROPERTY_PARAMETERS_CLASS_PROPS, None),
+
+    (AnniversaryPropertyParameters, 'parameters', NAMESPACE,
+     ANNIVERSARY_PROPERTY_PARAMETERS_ELEMENTS,
+     ANNIVERSARY_PROPERTY_PARAMETERS_CLASS_PROPS, None),
+
+    (AdrPropertyParameters, 'parameters', NAMESPACE,
+     ADR_PROPERTY_PARAMETERS_ELEMENTS,
+     ADR_PROPERTY_PARAMETERS_CLASS_PROPS, None),
+
+    (TelPropertyParameters, 'parameters', NAMESPACE,
+     TEL_PROPERTY_PARAMETERS_ELEMENTS,
+     TEL_PROPERTY_PARAMETERS_CLASS_PROPS, None),
+
+    (EmailPropertyParameters, 'parameters', NAMESPACE,
+     EMAIL_PROPERTY_PARAMETERS_ELEMENTS,
+     EMAIL_PROPERTY_PARAMETERS_CLASS_PROPS, None),
+
+    (ImppPropertyParameters, 'parameters', NAMESPACE,
+     IMPP_PROPERTY_PARAMETERS_ELEMENTS,
+     IMPP_PROPERTY_PARAMETERS_CLASS_PROPS, None),
+
+    (LangPropertyParameters, 'parameters', NAMESPACE,
+     LANG_PROPERTY_PARAMETERS_ELEMENTS,
+     LANG_PROPERTY_PARAMETERS_CLASS_PROPS, None),
+
+    (TZPropertyParameters, 'parameters', NAMESPACE,
+     TZ_PROPERTY_PARAMETERS_ELEMENTS,
+     TZ_PROPERTY_PARAMETERS_CLASS_PROPS, None),
+
+    (GeoPropertyParameters, 'parameters', NAMESPACE,
+     GEO_PROPERTY_PARAMETERS_ELEMENTS,
+     GEO_PROPERTY_PARAMETERS_CLASS_PROPS, None),
+
+    (TitlePropertyParameters, 'parameters', NAMESPACE,
+     TITLE_PROPERTY_PARAMETERS_ELEMENTS,
+     TITLE_PROPERTY_PARAMETERS_CLASS_PROPS, None),
+
+    (RolePropertyParameters, 'parameters', NAMESPACE,
+     ROLE_PROPERTY_PARAMETERS_ELEMENTS,
+     ROLE_PROPERTY_PARAMETERS_CLASS_PROPS, None),
+
+    (LogoPropertyParameters, 'parameters', NAMESPACE,
+     LOGO_PROPERTY_PARAMETERS_ELEMENTS,
+     LOGO_PROPERTY_PARAMETERS_CLASS_PROPS, None),
+
+    (OrgPropertyParameters, 'parameters', NAMESPACE,
+     ORG_PROPERTY_PARAMETERS_ELEMENTS,
+     ORG_PROPERTY_PARAMETERS_CLASS_PROPS, None),
+
+    (MemberPropertyParameters, 'parameters', NAMESPACE,
+     MEMBER_PROPERTY_PARAMETERS_ELEMENTS,
+     MEMBER_PROPERTY_PARAMETERS_CLASS_PROPS, None),
+
+    (RelatedPropertyParameters, 'parameters', NAMESPACE,
+     RELATED_PROPERTY_PARAMETERS_ELEMENTS,
+     RELATED_PROPERTY_PARAMETERS_CLASS_PROPS, None),
+
+    (CategoriesPropertyParameters, 'parameters', NAMESPACE,
+     CATEGORIES_PROPERTY_PARAMETERS_ELEMENTS,
+     CATEGORIES_PROPERTY_PARAMETERS_CLASS_PROPS, None),
+
+    (NotePropertyParameters, 'parameters', NAMESPACE,
+     NOTE_PROPERTY_PARAMETERS_ELEMENTS,
+     NOTE_PROPERTY_PARAMETERS_CLASS_PROPS, None),
+
+    (SoundPropertyParameters, 'parameters', NAMESPACE,
+     SOUND_PROPERTY_PARAMETERS_ELEMENTS,
+     SOUND_PROPERTY_PARAMETERS_CLASS_PROPS, None),
+
+    (UrlPropertyParameters, 'parameters', NAMESPACE,
+     URL_PROPERTY_PARAMETERS_ELEMENTS,
+     URL_PROPERTY_PARAMETERS_CLASS_PROPS, None),
+
+    (KeyPropertyParameters, 'parameters', NAMESPACE,
+     KEY_PROPERTY_PARAMETERS_ELEMENTS,
+     KEY_PROPERTY_PARAMETERS_CLASS_PROPS, None),
+
+    (FburlPropertyParameters, 'parameters', NAMESPACE,
+     FBURL_PROPERTY_PARAMETERS_ELEMENTS,
+     FBURL_PROPERTY_PARAMETERS_CLASS_PROPS, None),
+
+    (CaladruriPropertyParameters, 'parameters', NAMESPACE,
+     CALADRURI_PROPERTY_PARAMETERS_ELEMENTS,
+     CALADRURI_PROPERTY_PARAMETERS_CLASS_PROPS, None),
+
+    (CaluriPropertyParameters, 'parameters', NAMESPACE,
+     CALURI_PROPERTY_PARAMETERS_ELEMENTS,
+     CALURI_PROPERTY_PARAMETERS_CLASS_PROPS, None)
     ]
 
 CHILDLESS_BONES = [
-    (ValueText, 'text', 'value'),
-    (ValueUri, 'uri', 'value'),
-    (ValueDate, 'date', 'value'),
-    (ValueTime, 'time', 'value'),
-    (ValueDateTime, 'date-time', 'value'),
-    #    (ValueDateAndOrTime, 'text', 'value'),
-    (ValueTimestamp, 'timestamp', 'value'),
-    (ValueBoolean, 'boolean', 'value'),
-    (ValueInteger, 'integer', 'value'),
-    (ValueFloat, 'float', 'value'),
-    (ValueUtcOffset, 'utc-offset', 'value'),
-    (ValueLanguageTag, 'language-tag', 'value'),
-    (ParamLanguage, 'language', 'value'),
-    (ParamPrefValueInteger, 'integer', 'value'),
-    (ParamAltID, 'altid', 'value'),
-    (ParamPidText, 'text', 'value'),
-    (ParamTypeText, 'text', 'value'),
-    (GenderSex, 'sex', 'value'),
-    (TelParamTypeText, 'text', 'value'),
-    (ParamMediaType, 'mediatype', 'value'),
-    (ParamCalScaleText, 'text', 'value'),
-    (ParamSortAs, 'sort-as', 'value'),
-    (ParamGeo, 'geo', 'value'),
-    #    (111111, 'text', 'value'),
+    (ValueText, 'text', None),
+    (ValueUri, 'uri', None),
+    (ValueDate, 'date', None),
+    (ValueTime, 'time', None),
+    (ValueDateTime, 'date-time', None),
+    #    (ValueDateAndOrTime, 'text', None),
+    (ValueTimestamp, 'timestamp', None),
+    (ValueBoolean, 'boolean', None),
+    (ValueInteger, 'integer', None),
+    (ValueFloat, 'float', None),
+    (ValueUtcOffset, 'utc-offset', None),
+    (ValueLanguageTag, 'language-tag', None),
+    (ParamLanguage, 'language', None),
+    (ParamPrefValueInteger, 'integer', None),
+    (ParamAltID, 'altid', None),
+    (ParamPidText, 'text', None),
+    (ParamTypeText, 'text', None),
+    (GenderSex, 'sex', None),
+    (GenderIdentity, 'identity', None),
+    (TelParamTypeText, 'text', None),
+    (ParamCalScaleText, 'text', None),
+    (NSurname, 'surname', None),
+    (NGiven, 'given', None),
+    (NAdditional, 'additional', None),
+    (NPrefix, 'prefix', None),
+    (NSuffix, 'suffix', None),
+    (AdrPobox, 'pobox', None),
+    (AdrExt, 'ext', None),
+    (AdrStreet, 'street', None),
+    (AdrLocality, 'locality', None),
+    (AdrRegion, 'region', None),
+    (AdrCode, 'code', None),
+    (AdrCountry, 'country', None),
+    (ClientpidmapSourceId, 'sourceid', None),
+    #    (111111, 'text', None),
     ]
 
 for i in CHILDLESS_BONES:
@@ -1488,3 +1709,5 @@ VCARD_ELEMENTS = [
     ]
 
 VCARD_CLASS_PROPS = list(i[2] for i in VCARD_ELEMENTS)
+
+del i
