@@ -5,6 +5,7 @@ XEP-0292 implementation
 One of this module purposes is to ensure pickling possibility
 """
 
+import logging
 import re
 import lxml.etree
 import org.wayround.utils.factory
@@ -1577,31 +1578,35 @@ CHILDLESS_BONES = [
     ]
 
 for i in CHILDLESS_BONES:
-    SKELETON.append((i[0], i[1], NAMESPACE, [], [i[2]], i[2]))
+    SKELETON.append((i[0], i[1], NAMESPACE, [], [], i[2]))
 
 del CHILDLESS_BONES
 
 
 for i in SKELETON:
 
-    org.wayround.utils.lxml.simple_exchange_class_factory(
-        i[0],
-        i[1],
-        i[2],
-        i[3],
-        i[4],
-        i[5]
-        )
+    try:
+        org.wayround.utils.lxml.simple_exchange_class_factory(
+            i[0],
+            i[1],
+            i[2],
+            i[3],
+            i[4],
+            i[5]
+            )
 
-    org.wayround.utils.factory.class_generate_attributes_and_check(
-        i[0],
-        i[4]
-        )
+        org.wayround.utils.factory.class_generate_attributes_and_check(
+            i[0],
+            i[4]
+            )
 
-    org.wayround.utils.lxml.checker_factory(
-        i[0],
-        i[3]
-        )
+        org.wayround.utils.lxml.checker_factory(
+            i[0],
+            i[3]
+            )
+    except:
+        logging.exception("Exception on line:\n{}".format(i))
+        raise
 
 del SKELETON
 
