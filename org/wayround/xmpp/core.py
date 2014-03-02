@@ -1595,14 +1595,16 @@ class Stanza:
 
         subjects = []
 
-        for i in list(value.keys()):
+        if value != None:
 
-            xmllang = None
+            for i in list(value.keys()):
 
-            if i != '':
-                xmllang = i
+                xmllang = None
 
-            subjects.append(MessageSubject(value[i], xmllang))
+                if i != '':
+                    xmllang = i
+
+                subjects.append(MessageSubject(value[i], xmllang))
 
         self.set_subject(subjects)
 
@@ -1612,14 +1614,16 @@ class Stanza:
 
         bodys = []
 
-        for i in list(value.keys()):
+        if value != None:
 
-            xmllang = None
+            for i in list(value.keys()):
 
-            if i != '':
-                xmllang = i
+                xmllang = None
 
-            bodys.append(MessageBody(value[i], xmllang))
+                if i != '':
+                    xmllang = i
+
+                bodys.append(MessageBody(value[i], xmllang))
 
         self.set_body(bodys)
 

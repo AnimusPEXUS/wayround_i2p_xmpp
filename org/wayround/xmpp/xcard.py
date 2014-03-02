@@ -399,10 +399,7 @@ N_CLASS_PROPS = list(i[2] for i in N_ELEMENTS)
 
 
 class N:
-
-    def check_value(self, value):
-        if value != None:
-            raise ValueError("`value' must be None")
+    pass
 
 
 NICKNAME_PROPERTY_PARAMETERS_ELEMENTS = [
@@ -1716,3 +1713,19 @@ VCARD_ELEMENTS = [
 VCARD_CLASS_PROPS = list(i[2] for i in VCARD_ELEMENTS)
 
 del i
+
+
+def is_xcard(element):
+
+    ret = False
+
+    tag = org.wayround.utils.lxml.parse_element_tag(
+        element,
+        'vcard',
+        [NAMESPACE]
+        )[0]
+
+    if tag != None:
+        ret = True
+
+    return ret
