@@ -962,7 +962,7 @@ class XMPPOutputStreamWriter:
             snd_obj = obj
         elif isinstance(obj, str):
             snd_obj = bytes(obj, encoding='utf-8')
-        elif type(obj) == lxml.etree._Element:
+        elif org.wayround.utils.lxml.is_lxml_tag_element(obj):
             snd_obj = bytes(
                 lxml.etree.tostring(
                     obj,
@@ -1669,7 +1669,7 @@ class MessageBody:
     @classmethod
     def new_from_element(cls, element):
 
-        if type(element) != lxml.etree._Element:
+        if not org.wayround.utils.lxml.is_lxml_tag_element(element):
             raise ValueError("`element' must be lxml.etree.Element")
 
         tag = org.wayround.utils.lxml.parse_element_tag(
@@ -1738,7 +1738,7 @@ class MessageSubject:
     @classmethod
     def new_from_element(cls, element):
 
-        if type(element) != lxml.etree._Element:
+        if not org.wayround.utils.lxml.is_lxml_tag_element(element):
             raise ValueError("`element' must be lxml.etree.Element")
 
         tag = org.wayround.utils.lxml.parse_element_tag(
@@ -1807,7 +1807,7 @@ class MessageThread:
     @classmethod
     def new_from_element(cls, element):
 
-        if type(element) != lxml.etree._Element:
+        if not org.wayround.utils.lxml.is_lxml_tag_element(element):
             raise ValueError("`element' must be lxml.etree.Element")
 
         tag = org.wayround.utils.lxml.parse_element_tag(
@@ -1867,7 +1867,7 @@ class PresenceShow:
     @classmethod
     def new_from_element(cls, element):
 
-        if type(element) != lxml.etree._Element:
+        if not org.wayround.utils.lxml.is_lxml_tag_element(element):
             raise ValueError("`element' must be lxml.etree.Element")
 
         tag = org.wayround.utils.lxml.parse_element_tag(
@@ -1923,7 +1923,7 @@ class PresenceStatus:
     @classmethod
     def new_from_element(cls, element):
 
-        if type(element) != lxml.etree._Element:
+        if not org.wayround.utils.lxml.is_lxml_tag_element(element):
             raise ValueError("`element' must be lxml.etree.Element")
 
         tag = org.wayround.utils.lxml.parse_element_tag(
@@ -2117,15 +2117,15 @@ org.wayround.utils.factory.class_generate_check(
 # TODO: what is this? and what for?
 def element_add_object(element, obj):
 
-    if type(element) != lxml.etree._Element:
-        raise TypeError("`element' must be lxml.etree._Element")
+    if not org.wayround.utils.lxml.is_lxml_tag_element(element):
+        raise TypeError("`element' must be lxml tag element")
 
     if not isinstance(obj, list):
         obj = [obj]
 
     for i in obj:
 
-        if type(i) == lxml.etree._Element:
+        if org.wayround.utils.lxml.is_lxml_tag_element(i):
             element.append(i)
 
         elif isinstance(i, bytes):
@@ -2501,7 +2501,7 @@ class STARTTLS:
     @classmethod
     def new_from_element(cls, element):
 
-        if type(element) != lxml.etree._Element:
+        if not org.wayround.utils.lxml.is_lxml_tag_element(element):
             raise ValueError("`element' must be lxml.etree.Element")
 
         tag = org.wayround.utils.lxml.parse_element_tag(
@@ -2581,7 +2581,7 @@ class Session:
     @classmethod
     def new_from_element(cls, element):
 
-        if type(element) != lxml.etree._Element:
+        if not org.wayround.utils.lxml.is_lxml_tag_element(element):
             raise ValueError("`element' must be lxml.etree.Element")
 
         tag = org.wayround.utils.lxml.parse_element_tag(
@@ -2816,7 +2816,7 @@ org.wayround.utils.factory.class_generate_check(
 def determine_stream_error(xml_element):
 
     """
-    Returns None if not isinstance(xml_element, lxml.etree._Element)
+    Returns None if not xml_element is lxml tag element
 
     Returns False if not {http://etherx.jabber.org/streams}error
 
@@ -2831,7 +2831,7 @@ def determine_stream_error(xml_element):
 
     ret = None
 
-    if not type(xml_element) == lxml.etree._Element:
+    if not org.wayround.utils.lxml.is_lxml_tag_element(xml_element):
         ret = False
 
     else:
@@ -2843,19 +2843,21 @@ def determine_stream_error(xml_element):
 
             for i in xml_element:
 
-                parsed_qn = lxml.etree.QName(i)
-                ns = parsed_qn.namespace
-                tag = parsed_qn.localname
+                if org.wayround.utils.lxml.is_lxml_tag_element(i):
 
-                if tag == 'text':
-                    if ns == 'http://etherx.jabber.org/streams':
-                        error_text = i.text
-                else:
-                    if ns == 'http://etherx.jabber.org/streams':
-                        error_name = tag
+                    parsed_qn = lxml.etree.QName(i)
+                    ns = parsed_qn.namespace
+                    tag = parsed_qn.localname
 
-                        if not error_name in STREAM_ERROR_NAMES:
-                            error_name = 'non-standard-error-name'
+                    if tag == 'text':
+                        if ns == 'http://etherx.jabber.org/streams':
+                            error_text = i.text
+                    else:
+                        if ns == 'http://etherx.jabber.org/streams':
+                            error_name = tag
+
+                            if not error_name in STREAM_ERROR_NAMES:
+                                error_name = 'non-standard-error-name'
 
             if not error_name:
                 error_name = 'error-name-absent'
@@ -2909,8 +2911,8 @@ def determine_stanza_error(stanza):
 
 def determine_stanza_element_error(element):
 
-    if type(element) != lxml.etree._Element:
-        raise TypeError("`element' must be lxml.etree._Element")
+    if not org.wayround.utils.lxml.is_lxml_tag_element(element):
+        raise TypeError("`element' must be lxml tag element")
 
     if not element.tag == '{jabber:client}error':
         raise ValueError("`element' must be {jabber:client}error")
@@ -2981,7 +2983,7 @@ def determine_stanza_element_error(element):
 
 
 def is_features_element(obj):
-    return (type(obj) == lxml.etree._Element
+    return (org.wayround.utils.lxml.is_lxml_tag_element(obj)
         and obj.tag == '{http://etherx.jabber.org/streams}features')
 
 
@@ -2992,7 +2994,7 @@ def is_stanza_element(obj):
     """
     ret = True
 
-    if not type(obj) == lxml.etree._Element:
+    if not org.wayround.utils.lxml.is_lxml_tag_element(obj):
         ret = False
 
     else:

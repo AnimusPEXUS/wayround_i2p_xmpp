@@ -934,7 +934,7 @@ org.wayround.utils.factory.class_generate_check(
 
 def check_element_and_namespace(element, tag_localname):
 
-    if type(element) != lxml.etree._Element:
+    if not org.wayround.utils.lxml.is_lxml_tag_element(element):
         raise TypeError("`element' must be lxml.etree.Element")
 
     if not isinstance(tag_localname, str):

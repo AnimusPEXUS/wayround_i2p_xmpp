@@ -52,21 +52,22 @@ def get_commands_list(to_jid, from_jid, stanza_processor=None):
 
 def is_command_element(element):
     return (
-        type(element) == lxml.etree._Element and
+        org.wayround.utils.lxml.is_lxml_tag_element(element) and
         element.tag == '{http://jabber.org/protocol/commands}command'
         )
 
 
 def extract_element_commands(element):
 
-    if type(element) != lxml.etree._Element:
-        raise TypeError("`element' must be of type lxml.etree._Element")
+    if not org.wayround.utils.lxml.is_lxml_tag_element(element):
+        raise TypeError("`element' must be of type lxml tag element")
 
     ret = []
 
     for i in element:
-        if is_command_element(i):
-            ret.append(Command.new_from_element(i))
+        if org.wayround.utils.lxml.is_lxml_tag_element(i):
+            if is_command_element(i):
+                ret.append(Command.new_from_element(i))
 
     return ret
 

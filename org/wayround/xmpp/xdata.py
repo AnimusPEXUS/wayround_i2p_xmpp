@@ -87,7 +87,7 @@ class XData:
     @classmethod
     def new_from_element(cls, element):
 
-        if type(element) != lxml.etree._Element:
+        if not org.wayround.utils.lxml.is_lxml_tag_element(element):
             raise TypeError("`element' must be lxml.etree.Element")
 
         tag = org.wayround.utils.lxml.parse_element_tag(
@@ -319,7 +319,7 @@ class XDataField:
     @classmethod
     def new_from_element(cls, element):
 
-        if type(element) != lxml.etree._Element:
+        if not org.wayround.utils.lxml.is_lxml_tag_element(element):
             raise TypeError("`element' must be lxml.etree.Element")
 
         if element.tag != '{jabber:x:data}field':
@@ -428,7 +428,7 @@ class XDataOption:
     @classmethod
     def new_from_element(cls, element):
 
-        if type(element) != lxml.etree._Element:
+        if not org.wayround.utils.lxml.is_lxml_tag_element(element):
             raise TypeError("`element' must be lxml.etree.Element")
 
         if element.tag != '{jabber:x:data}option':
@@ -493,7 +493,7 @@ class XDataValue:
     @classmethod
     def new_from_element(cls, element):
 
-        if type(element) != lxml.etree._Element:
+        if not org.wayround.utils.lxml.is_lxml_tag_element(element):
             raise TypeError("`element' must be lxml.etree.Element")
 
         if element.tag != '{jabber:x:data}value':
@@ -529,7 +529,7 @@ def get_x_data_elements(element):
     Search for jabber:x:data elements in supplied element
     """
 
-    if type(element) != lxml.etree._Element:
+    if not org.wayround.utils.lxml.is_lxml_tag_element(element):
         raise TypeError("`element' must be lxml.etree.Element")
 
     return element.findall('{jabber:x:data}x')

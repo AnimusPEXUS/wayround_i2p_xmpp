@@ -216,8 +216,8 @@ org.wayround.utils.factory.class_generate_check(
 
 def get_query_from_element(element):
 
-    if type(element) != lxml.etree._Element:
-        raise TypeError("`element' must be lxml.etree._Element")
+    if not org.wayround.utils.lxml.is_lxml_tag_element(element):
+        raise TypeError("`element' must be lxml tag element")
 
     ret = None
 
