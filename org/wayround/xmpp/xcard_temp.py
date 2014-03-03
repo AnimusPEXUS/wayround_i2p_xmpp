@@ -23,8 +23,13 @@ class PCData:
         tag - tag name without namespace
         """
 
+        self._text = ''
+
         self.set_tag(tag)
         self.set_text(text)
+
+    def corresponding_tag(self):
+        return self.get_tag()
 
     def check_tag(self, value):
         if not isinstance(value, str):
@@ -33,6 +38,16 @@ class PCData:
     def check_text(self, value):
         if value is not None and not isinstance(value, str):
             raise ValueError("`text' must be str")
+
+    def set_text(self, value):
+        self.check_text(value)
+        if value == None:
+            value = ''
+        self._text = value
+        return
+
+    def get_text(self):
+        return self._text
 
     @classmethod
     def new_from_element(cls, element):
@@ -58,7 +73,7 @@ class PCData:
 
 org.wayround.utils.factory.class_generate_attributes_and_check(
     PCData,
-    ['tag', 'text']
+    ['tag']
     )
 
 
@@ -578,9 +593,8 @@ class XCardTemp:
         el = lxml.etree.Element('vCard')
         el.set('xmlns', NAMESPACE)
 
-        org.wayround.utils.lxml.subelems_to_order(
-            self.get_order(), el,
-            VCARD_ELEMENTS
+        org.wayround.utils.lxml.order_to_subelems(
+            self.get_order(), el
             )
 
         return el
@@ -621,6 +635,8 @@ VCARD_ELEMENTS = [
     (LXML_NAMESPACE + 'KEY', Key, 'key', '*'),
     (LXML_NAMESPACE + 'DESC', PCData, 'desc', '*')
     ]
+
+org.wayround.utils.lxml.check_tagname_class_attrnames(VCARD_ELEMENTS)
 
 VCARD_CLASS_PROPS = list(i[2] for i in VCARD_ELEMENTS)
 

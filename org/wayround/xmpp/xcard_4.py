@@ -1710,6 +1710,8 @@ VCARD_ELEMENTS = [
     ('url', Url, 'url', '*')
     ]
 
+org.wayround.utils.lxml.check_tagname_class_attrnames(VCARD_ELEMENTS)
+
 VCARD_CLASS_PROPS = list(i[2] for i in VCARD_ELEMENTS)
 
 del i

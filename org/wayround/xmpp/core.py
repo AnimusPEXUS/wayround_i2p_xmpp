@@ -1352,7 +1352,7 @@ class Stanza:
                 or not callable(getattr(i, 'gen_element'))):
                 raise ValueError(
                     "all objects in `objects' must have gen_element() method"
-                    " ({} has not)".format(i)
+                    " (and `{}' does not have one)".format(i)
                     )
 
     def check_tag(self, value):
