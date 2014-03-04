@@ -50,7 +50,12 @@ class PCData:
         return self._text
 
     @classmethod
+    def new_empty(cls):
+        return cls('', '')
+
+    @classmethod
     def new_from_element(cls, element):
+
         tag = org.wayround.utils.lxml.parse_element_tag(
             element,
             None,
@@ -79,7 +84,7 @@ org.wayround.utils.factory.class_generate_attributes_and_check(
 
 class Empty:
 
-    def __init__(self, tag, text):
+    def __init__(self, tag):
 
         self.set_tag(tag)
 
@@ -95,7 +100,7 @@ class Empty:
             [NAMESPACE]
             )[0]
 
-        cl = cls(tag, element.text)
+        cl = cls(tag)
 
         return cl
 
@@ -111,12 +116,14 @@ org.wayround.utils.factory.class_generate_attributes_and_check(Empty, ['tag'])
 
 
 N_ELEMENTS = [
-    (LXML_NAMESPACE + 'FAMILY', PCData, 'family', '?'),
-    (LXML_NAMESPACE + 'GIVEN', PCData, 'given', '?'),
-    (LXML_NAMESPACE + 'MIDDLE', PCData, 'middle', '?'),
-    (LXML_NAMESPACE + 'PREFIX', PCData, 'prefix', '?'),
-    (LXML_NAMESPACE + 'SUFFIX', PCData, 'suffix', '?')
+    (LXML_NAMESPACE + 'PREFIX', PCData, 'prefix', '?', 'Prefix'),
+    (LXML_NAMESPACE + 'GIVEN', PCData, 'given', '?', 'Given'),
+    (LXML_NAMESPACE + 'MIDDLE', PCData, 'middle', '?', 'Middle'),
+    (LXML_NAMESPACE + 'FAMILY', PCData, 'family', '?', 'Family'),
+    (LXML_NAMESPACE + 'SUFFIX', PCData, 'suffix', '?', 'Suffix')
     ]
+
+org.wayround.utils.lxml.check_tagname_class_attrnames(N_ELEMENTS)
 
 N_CLASS_PROPS = list(i[2] for i in N_ELEMENTS)
 
@@ -144,10 +151,12 @@ org.wayround.utils.factory.class_generate_attributes_and_check(
 
 
 PHOTO_ELEMENTS = [
-    (LXML_NAMESPACE + 'TYPE', PCData, 'type', '?'),
-    (LXML_NAMESPACE + 'BINVAL', PCData, 'binval', '?'),
-    (LXML_NAMESPACE + 'EXTVAL', PCData, 'extval', '?')
+    (LXML_NAMESPACE + 'TYPE', PCData, 'type', '?', 'Type'),
+    (LXML_NAMESPACE + 'BINVAL', PCData, 'binval', '?', 'Binary Value'),
+    (LXML_NAMESPACE + 'EXTVAL', PCData, 'extval', '?', 'External Value')
     ]
+
+org.wayround.utils.lxml.check_tagname_class_attrnames(PHOTO_ELEMENTS)
 
 PHOTO_CLASS_PROPS = list(i[2] for i in PHOTO_ELEMENTS)
 
@@ -175,21 +184,23 @@ org.wayround.utils.lxml.checker_factory(
 
 
 ADR_ELEMENTS = [
-    (LXML_NAMESPACE + 'HOME', Empty, 'home', '?'),
-    (LXML_NAMESPACE + 'WORK', Empty, 'work', '?'),
-    (LXML_NAMESPACE + 'POSTAL', Empty, 'postal', '?'),
-    (LXML_NAMESPACE + 'PARCEL', Empty, 'parcel', '?'),
-    (LXML_NAMESPACE + 'DOM', Empty, 'dom', '?'),
-    (LXML_NAMESPACE + 'INTL', Empty, 'intl', '?'),
-    (LXML_NAMESPACE + 'PREF', Empty, 'pref', '?'),
-    (LXML_NAMESPACE + 'POBOX', PCData, 'pobox', '?'),
-    (LXML_NAMESPACE + 'EXTADD', PCData, 'extadd', '?'),
-    (LXML_NAMESPACE + 'STREET', PCData, 'street', '?'),
-    (LXML_NAMESPACE + 'LOCALITY', PCData, 'locality', '?'),
-    (LXML_NAMESPACE + 'REGION', PCData, 'region', '?'),
-    (LXML_NAMESPACE + 'PCODE', PCData, 'pcode', '?'),
-    (LXML_NAMESPACE + 'CTRY', PCData, 'ctry', '?')
+    (LXML_NAMESPACE + 'PREF', Empty, 'pref', '?', 'Preferred'),
+    (LXML_NAMESPACE + 'HOME', Empty, 'home', '?', 'Home'),
+    (LXML_NAMESPACE + 'WORK', Empty, 'work', '?', 'Work'),
+    (LXML_NAMESPACE + 'POSTAL', Empty, 'postal', '?', 'Postal'),
+    (LXML_NAMESPACE + 'PARCEL', Empty, 'parcel', '?', 'PARCEL?'),
+    (LXML_NAMESPACE + 'DOM', Empty, 'dom', '?', 'DOM?'),
+    (LXML_NAMESPACE + 'INTL', Empty, 'intl', '?', 'INTL?'),
+    (LXML_NAMESPACE + 'CTRY', PCData, 'ctry', '?', 'Country'),
+    (LXML_NAMESPACE + 'REGION', PCData, 'region', '?', 'Region (State)'),
+    (LXML_NAMESPACE + 'LOCALITY', PCData, 'locality', '?', 'Locality (City)'),
+    (LXML_NAMESPACE + 'STREET', PCData, 'street', '?', 'Street'),
+    (LXML_NAMESPACE + 'EXTADD', PCData, 'extadd', '?', 'EXTADD?'),
+    (LXML_NAMESPACE + 'POBOX', PCData, 'pobox', '?', 'POBOX?'),
+    (LXML_NAMESPACE + 'PCODE', PCData, 'pcode', '?', 'PCODE?')
     ]
+
+org.wayround.utils.lxml.check_tagname_class_attrnames(ADR_ELEMENTS)
 
 ADR_CLASS_PROPS = list(i[2] for i in ADR_ELEMENTS)
 
@@ -217,15 +228,17 @@ org.wayround.utils.lxml.checker_factory(
 
 
 LABEL_ELEMENTS = [
-    (LXML_NAMESPACE + 'HOME', Empty, 'home', '?'),
-    (LXML_NAMESPACE + 'WORK', Empty, 'work', '?'),
-    (LXML_NAMESPACE + 'POSTAL', Empty, 'postal', '?'),
-    (LXML_NAMESPACE + 'PARCEL', Empty, 'parcel', '?'),
-    (LXML_NAMESPACE + 'DOM', Empty, 'dom', '?'),
-    (LXML_NAMESPACE + 'INTL', Empty, 'intl', '?'),
-    (LXML_NAMESPACE + 'PREF', Empty, 'pref', '?'),
-    (LXML_NAMESPACE + 'LINE', PCData, 'line', '+')
+    (LXML_NAMESPACE + 'PREF', Empty, 'pref', '?', 'Preferred'),
+    (LXML_NAMESPACE + 'HOME', Empty, 'home', '?', 'Home'),
+    (LXML_NAMESPACE + 'WORK', Empty, 'work', '?', 'Work'),
+    (LXML_NAMESPACE + 'POSTAL', Empty, 'postal', '?', 'Postal'),
+    (LXML_NAMESPACE + 'PARCEL', Empty, 'parcel', '?', 'PARCEL?'),
+    (LXML_NAMESPACE + 'DOM', Empty, 'dom', '?', 'DOM?'),
+    (LXML_NAMESPACE + 'INTL', Empty, 'intl', '?', 'INTL?'),
+    (LXML_NAMESPACE + 'LINE', PCData, 'line', '+', 'Line')
     ]
+
+org.wayround.utils.lxml.check_tagname_class_attrnames(LABEL_ELEMENTS)
 
 LABEL_CLASS_PROPS = list(i[2] for i in LABEL_ELEMENTS)
 
@@ -253,21 +266,23 @@ org.wayround.utils.lxml.checker_factory(
 
 
 TEL_ELEMENTS = [
-    (LXML_NAMESPACE + 'HOME', Empty, 'home', '?'),
-    (LXML_NAMESPACE + 'WORK', Empty, 'work', '?'),
-    (LXML_NAMESPACE + 'VOICE', Empty, 'voice', '?'),
-    (LXML_NAMESPACE + 'FAX', Empty, 'fax', '?'),
-    (LXML_NAMESPACE + 'PAGER', Empty, 'pager', '?'),
-    (LXML_NAMESPACE + 'MSG', Empty, 'msg', '?'),
-    (LXML_NAMESPACE + 'CELL', Empty, 'cell', '?'),
-    (LXML_NAMESPACE + 'VIDEO', Empty, 'video', '?'),
-    (LXML_NAMESPACE + 'BBS', Empty, 'bbs', '?'),
-    (LXML_NAMESPACE + 'MODEM', Empty, 'modem', '?'),
-    (LXML_NAMESPACE + 'ISDN', Empty, 'isdn', '?'),
-    (LXML_NAMESPACE + 'PCS', Empty, 'pcs', '?'),
-    (LXML_NAMESPACE + 'PREF', Empty, 'pref', '?'),
-    (LXML_NAMESPACE + 'NUMBER', PCData, 'number', '')
+    (LXML_NAMESPACE + 'PREF', Empty, 'pref', '?', 'Preferred'),
+    (LXML_NAMESPACE + 'HOME', Empty, 'home', '?', 'Home'),
+    (LXML_NAMESPACE + 'WORK', Empty, 'work', '?', 'Work'),
+    (LXML_NAMESPACE + 'VOICE', Empty, 'voice', '?', 'Voice'),
+    (LXML_NAMESPACE + 'FAX', Empty, 'fax', '?', 'Fax'),
+    (LXML_NAMESPACE + 'PAGER', Empty, 'pager', '?', 'Pager'),
+    (LXML_NAMESPACE + 'MSG', Empty, 'msg', '?', 'Msg'),
+    (LXML_NAMESPACE + 'CELL', Empty, 'cell', '?', 'Cell'),
+    (LXML_NAMESPACE + 'VIDEO', Empty, 'video', '?', 'Video'),
+    (LXML_NAMESPACE + 'BBS', Empty, 'bbs', '?', 'BBS'),
+    (LXML_NAMESPACE + 'MODEM', Empty, 'modem', '?', 'Modem'),
+    (LXML_NAMESPACE + 'ISDN', Empty, 'isdn', '?', 'ISDN'),
+    (LXML_NAMESPACE + 'PCS', Empty, 'pcs', '?', 'PCS'),
+    (LXML_NAMESPACE + 'NUMBER', PCData, 'number', '', 'Number')
     ]
+
+org.wayround.utils.lxml.check_tagname_class_attrnames(TEL_ELEMENTS)
 
 TEL_CLASS_PROPS = list(i[2] for i in TEL_ELEMENTS)
 
@@ -295,13 +310,16 @@ org.wayround.utils.lxml.checker_factory(
 
 
 EMAIL_ELEMENTS = [
-    (LXML_NAMESPACE + 'HOME', Empty, 'home', '?'),
-    (LXML_NAMESPACE + 'WORK', Empty, 'work', '?'),
-    (LXML_NAMESPACE + 'INTERNET', Empty, 'internet', '?'),
-    (LXML_NAMESPACE + 'PREF', Empty, 'pref', '?'),
-    (LXML_NAMESPACE + 'X400', Empty, 'x400', '?'),
-    (LXML_NAMESPACE + 'USERID', PCData, 'userid', '')
+    (LXML_NAMESPACE + 'PREF', Empty, 'pref', '?', 'Preferred'),
+    (LXML_NAMESPACE + 'HOME', Empty, 'home', '?', 'Home'),
+    (LXML_NAMESPACE + 'WORK', Empty, 'work', '?', 'Work'),
+    (LXML_NAMESPACE + 'INTERNET', Empty, 'internet', '?', 'Internet'),
+    (LXML_NAMESPACE + 'X400', Empty, 'x400', '?', 'X400'),
+    (LXML_NAMESPACE + 'USERID', PCData, 'userid', '', 'UserID',
+     'example: example@example.com')
     ]
+
+org.wayround.utils.lxml.check_tagname_class_attrnames(EMAIL_ELEMENTS)
 
 EMAIL_CLASS_PROPS = list(i[2] for i in EMAIL_ELEMENTS)
 
@@ -329,9 +347,11 @@ org.wayround.utils.lxml.checker_factory(
 
 
 GEO_ELEMENTS = [
-    (LXML_NAMESPACE + 'LAT', PCData, 'lat', ''),
-    (LXML_NAMESPACE + 'LON', PCData, 'lon', '')
+    (LXML_NAMESPACE + 'LAT', PCData, 'lat', '', 'Latitude'),
+    (LXML_NAMESPACE + 'LON', PCData, 'lon', '', 'Longitude')
     ]
+
+org.wayround.utils.lxml.check_tagname_class_attrnames(GEO_ELEMENTS)
 
 GEO_CLASS_PROPS = list(i[2] for i in GEO_ELEMENTS)
 
@@ -359,10 +379,12 @@ org.wayround.utils.lxml.checker_factory(
 
 
 LOGO_ELEMENTS = [
-    (LXML_NAMESPACE + 'TYPE', PCData, 'type', '?'),
-    (LXML_NAMESPACE + 'BINVAL', PCData, 'binval', '?'),
-    (LXML_NAMESPACE + 'EXTVAL', PCData, 'extval', '?')
+    (LXML_NAMESPACE + 'TYPE', PCData, 'type', '?', 'Type'),
+    (LXML_NAMESPACE + 'BINVAL', PCData, 'binval', '?', 'Binary Value'),
+    (LXML_NAMESPACE + 'EXTVAL', PCData, 'extval', '?', 'External Value')
     ]
+
+org.wayround.utils.lxml.check_tagname_class_attrnames(LOGO_ELEMENTS)
 
 LOGO_CLASS_PROPS = list(i[2] for i in LOGO_ELEMENTS)
 
@@ -390,9 +412,11 @@ org.wayround.utils.lxml.checker_factory(
 
 
 ORG_ELEMENTS = [
-    (LXML_NAMESPACE + 'ORGNAME', PCData, 'orgname', ''),
-    (LXML_NAMESPACE + 'ORGUNIT', PCData, 'orgunit', '*')
+    (LXML_NAMESPACE + 'ORGNAME', PCData, 'orgname', '', 'Organization Name'),
+    (LXML_NAMESPACE + 'ORGUNIT', PCData, 'orgunit', '*', 'Organization Unit')
     ]
+
+org.wayround.utils.lxml.check_tagname_class_attrnames(ORG_ELEMENTS)
 
 ORG_CLASS_PROPS = list(i[2] for i in ORG_ELEMENTS)
 
@@ -423,6 +447,8 @@ CATEGORIES_ELEMENTS = [
     ('KEYWORD', PCData, 'keyword', '+')
     ]
 
+org.wayround.utils.lxml.check_tagname_class_attrnames(CATEGORIES_ELEMENTS)
+
 CATEGORIES_CLASS_PROPS = list(i[2] for i in CATEGORIES_ELEMENTS)
 
 
@@ -449,10 +475,12 @@ org.wayround.utils.lxml.checker_factory(
 
 
 SOUND_ELEMENTS = [
-    (LXML_NAMESPACE + 'PHONETIC', PCData, 'phonetic', '?'),
-    (LXML_NAMESPACE + 'BINVAL', PCData, 'binval', '?'),
-    (LXML_NAMESPACE + 'EXTVAL', PCData, 'extval', '?')
+    (LXML_NAMESPACE + 'PHONETIC', PCData, 'phonetic', '?', 'Phonetic'),
+    (LXML_NAMESPACE + 'BINVAL', PCData, 'binval', '?', 'Binary Value'),
+    (LXML_NAMESPACE + 'EXTVAL', PCData, 'extval', '?', 'External Value')
     ]
+
+org.wayround.utils.lxml.check_tagname_class_attrnames(SOUND_ELEMENTS)
 
 SOUND_CLASS_PROPS = list(i[2] for i in SOUND_ELEMENTS)
 
@@ -480,10 +508,13 @@ org.wayround.utils.lxml.checker_factory(
 
 
 CLASS_ELEMENTS = [
-    (LXML_NAMESPACE + 'PUBLIC', Empty, 'public', '?'),
-    (LXML_NAMESPACE + 'PRIVATE', Empty, 'private', '?'),
-    (LXML_NAMESPACE + 'CONFIDENTIAL', Empty, 'confidential', '?')
+    (LXML_NAMESPACE + 'PUBLIC', Empty, 'public', '?', 'Public'),
+    (LXML_NAMESPACE + 'PRIVATE', Empty, 'private', '?', 'Private'),
+    (LXML_NAMESPACE + 'CONFIDENTIAL', Empty, 'confidential', '?',
+     'Confidential')
     ]
+
+org.wayround.utils.lxml.check_tagname_class_attrnames(CLASS_ELEMENTS)
 
 CLASS_CLASS_PROPS = list(i[2] for i in CLASS_ELEMENTS)
 
@@ -510,9 +541,11 @@ org.wayround.utils.lxml.checker_factory(
     )
 
 KEY_ELEMENTS = [
-    (LXML_NAMESPACE + 'TYPE', Empty, 'type_', '?'),
-    (LXML_NAMESPACE + 'CRED', PCData, 'cred', '')
+    (LXML_NAMESPACE + 'TYPE', PCData, 'type_', '?', 'Type'),
+    (LXML_NAMESPACE + 'CRED', PCData, 'cred', '', 'CRED?')
     ]
+
+org.wayround.utils.lxml.check_tagname_class_attrnames(KEY_ELEMENTS)
 
 KEY_CLASS_PROPS = list(i[2] for i in KEY_ELEMENTS)
 
@@ -605,35 +638,43 @@ org.wayround.utils.factory.class_generate_attributes_and_check(
     )
 
 VCARD_ELEMENTS = [
-    (LXML_NAMESPACE + 'FN', PCData, 'fn', ''),
-    (LXML_NAMESPACE + 'N', N, 'n', ''),
-    (LXML_NAMESPACE + 'NICKNAME', PCData, 'nickname', '*'),
-    (LXML_NAMESPACE + 'PHOTO', Photo, 'photo', '*'),
-    (LXML_NAMESPACE + 'BDAY', PCData, 'bday', '*'),
-    (LXML_NAMESPACE + 'ADR', Adr, 'adr', '*'),
-    (LXML_NAMESPACE + 'LABEL', Label, 'label', '*'),
-    (LXML_NAMESPACE + 'TEL', Tel, 'tel', '*'),
-    (LXML_NAMESPACE + 'EMAIL', Email, 'email', '*'),
-    (LXML_NAMESPACE + 'JABBERID', PCData, 'jabberid', '*'),
-    (LXML_NAMESPACE + 'MAILER', PCData, 'mailer', '*'),
-    (LXML_NAMESPACE + 'TZ', PCData, 'tz', '*'),
-    (LXML_NAMESPACE + 'GEO', Geo, 'geo', '*'),
-    (LXML_NAMESPACE + 'TITLE', PCData, 'title', '*'),
-    (LXML_NAMESPACE + 'ROLE', PCData, 'role', '*'),
-    (LXML_NAMESPACE + 'LOGO', Logo, 'logo', '*'),
-    (LXML_NAMESPACE + 'AGENT', XCardTemp, 'agent', '*'),
-    (LXML_NAMESPACE + 'ORG', Org, 'org', '*'),
-    (LXML_NAMESPACE + 'CATEGORIES', 'categories', Categories, '*'),
-    (LXML_NAMESPACE + 'NOTE', PCData, 'note', '*'),
-    (LXML_NAMESPACE + 'PRODID', PCData, 'prodid', '*'),
-    (LXML_NAMESPACE + 'REV', PCData, 'rev', '*'),
-    (LXML_NAMESPACE + 'SORT-STRING', PCData, 'sort_string', '*'),
-    (LXML_NAMESPACE + 'SOUND', Sound, 'sound', '*'),
-    (LXML_NAMESPACE + 'UID', PCData, 'uid', '*'),
-    (LXML_NAMESPACE + 'URL', PCData, 'url', '*'),
-    (LXML_NAMESPACE + 'CLASS', Class, 'class', '*'),
-    (LXML_NAMESPACE + 'KEY', Key, 'key', '*'),
-    (LXML_NAMESPACE + 'DESC', PCData, 'desc', '*')
+    # 0. tag
+    # 1. class
+    # 2. corresponding class property
+    # 3. mask
+    # 4. title
+    # 5. description
+    (LXML_NAMESPACE + 'FN', PCData, 'fn', '', 'FN (Full Name)'),
+    (LXML_NAMESPACE + 'N', N, 'n', '', 'N (Name)'),
+    (LXML_NAMESPACE + 'NICKNAME', PCData, 'nickname', '*', 'NICKNAME'),
+    (LXML_NAMESPACE + 'PHOTO', Photo, 'photo', '*', 'PHOTO'),
+    (LXML_NAMESPACE + 'BDAY', PCData, 'bday', '*', 'BDAY'),
+    (LXML_NAMESPACE + 'ADR', Adr, 'adr', '*', 'ADR'),
+    (LXML_NAMESPACE + 'LABEL', Label, 'label', '*', 'LABEL'),
+    (LXML_NAMESPACE + 'TEL', Tel, 'tel', '*', 'TEL'),
+    (LXML_NAMESPACE + 'EMAIL', Email, 'email', '*', 'EMAIL'),
+    (LXML_NAMESPACE + 'JABBERID', PCData, 'jabberid', '*', 'JABBERID'),
+    (LXML_NAMESPACE + 'MAILER', PCData, 'mailer', '*', 'MAILER'),
+    (LXML_NAMESPACE + 'TZ', PCData, 'tz', '*', 'TZ (TimeZone)'),
+    (LXML_NAMESPACE + 'GEO', Geo, 'geo', '*', 'GEO'),
+    (LXML_NAMESPACE + 'TITLE', PCData, 'title', '*', 'TITLE (Organization)'),
+    (LXML_NAMESPACE + 'ROLE', PCData, 'role', '*', 'ROLE (Organization)'),
+    (LXML_NAMESPACE + 'LOGO', Logo, 'logo', '*', 'LOGO (Organization)'),
+    (LXML_NAMESPACE + 'AGENT', XCardTemp, 'agent', '*', 'AGENT'),
+    (LXML_NAMESPACE + 'ORG', Org, 'org', '*', 'ORG'),
+    (LXML_NAMESPACE + 'CATEGORIES', Categories, 'categories', '*',
+     'CATEGORIES'),
+    (LXML_NAMESPACE + 'NOTE', PCData, 'note', '*', 'NOTE'),
+    (LXML_NAMESPACE + 'PRODID', PCData, 'prodid', '*', 'PRODID'),
+    (LXML_NAMESPACE + 'REV', PCData, 'rev', '*', 'REV'),
+    (LXML_NAMESPACE + 'SORT-STRING', PCData, 'sort_string', '*',
+     'SORT-STRING'),
+    (LXML_NAMESPACE + 'SOUND', Sound, 'sound', '*', 'SOUND'),
+    (LXML_NAMESPACE + 'UID', PCData, 'uid', '*', 'UID (UserID)'),
+    (LXML_NAMESPACE + 'URL', PCData, 'url', '*', 'URL'),
+    (LXML_NAMESPACE + 'CLASS', Class, 'class', '*', 'CLASS'),
+    (LXML_NAMESPACE + 'KEY', Key, 'key', '*', 'KEY (PGP)'),
+    (LXML_NAMESPACE + 'DESC', PCData, 'desc', '*', 'DESC')
     ]
 
 org.wayround.utils.lxml.check_tagname_class_attrnames(VCARD_ELEMENTS)
