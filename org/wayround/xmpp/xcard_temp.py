@@ -279,7 +279,9 @@ TEL_ELEMENTS = [
     (LXML_NAMESPACE + 'MODEM', Empty, 'modem', '?', 'Modem'),
     (LXML_NAMESPACE + 'ISDN', Empty, 'isdn', '?', 'ISDN'),
     (LXML_NAMESPACE + 'PCS', Empty, 'pcs', '?', 'PCS'),
-    (LXML_NAMESPACE + 'NUMBER', PCData, 'number', '', 'Number')
+    (LXML_NAMESPACE + 'NUMBER', PCData, 'number',
+     '',
+     'Number')
     ]
 
 org.wayround.utils.lxml.check_tagname_class_attrnames(TEL_ELEMENTS)
@@ -315,7 +317,9 @@ EMAIL_ELEMENTS = [
     (LXML_NAMESPACE + 'WORK', Empty, 'work', '?', 'Work'),
     (LXML_NAMESPACE + 'INTERNET', Empty, 'internet', '?', 'Internet'),
     (LXML_NAMESPACE + 'X400', Empty, 'x400', '?', 'X400'),
-    (LXML_NAMESPACE + 'USERID', PCData, 'userid', '', 'UserID',
+    (LXML_NAMESPACE + 'USERID', PCData, 'userid',
+     '',
+     'UserID',
      'example: example@example.com')
     ]
 
