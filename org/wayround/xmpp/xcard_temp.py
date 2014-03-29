@@ -151,7 +151,7 @@ org.wayround.utils.factory.class_generate_attributes_and_check(
 
 
 PHOTO_ELEMENTS = [
-    (LXML_NAMESPACE + 'TYPE', PCData, 'type', '?', 'Type'),
+    (LXML_NAMESPACE + 'TYPE', PCData, 'type_', '?', 'Type'),
     (LXML_NAMESPACE + 'BINVAL', PCData, 'binval', '?', 'Binary Value'),
     (LXML_NAMESPACE + 'EXTVAL', PCData, 'extval', '?', 'External Value')
     ]
@@ -383,7 +383,7 @@ org.wayround.utils.lxml.checker_factory(
 
 
 LOGO_ELEMENTS = [
-    (LXML_NAMESPACE + 'TYPE', PCData, 'type', '?', 'Type'),
+    (LXML_NAMESPACE + 'TYPE', PCData, 'type_', '?', 'Type'),
     (LXML_NAMESPACE + 'BINVAL', PCData, 'binval', '?', 'Binary Value'),
     (LXML_NAMESPACE + 'EXTVAL', PCData, 'extval', '?', 'External Value')
     ]
