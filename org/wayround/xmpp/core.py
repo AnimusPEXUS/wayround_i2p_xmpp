@@ -644,7 +644,7 @@ class XMPPInputStreamReader:
                         read_method_name='read',
                         write_method_name='_feed',
                         exit_on_input_eof=True,
-                        flush_after_every_write=False,
+                        flush_after_each_write=False,
                         flush_on_input_eof=False,
                         close_output_on_eof=False,
                         waiting_for_input=True,
@@ -2195,8 +2195,8 @@ class StanzaProcessor:
         emit_reply_message=True
         ):
         # TODO: documentation rework required
-        # NOTE: cb parameter is removed: newly received stanza either signalled,
-        #       either returned by this method
+        # NOTE: cb parameter is removed: newly received stanza either
+        #       signalled, either returned by this method
         """
         Sends pointed stanza object to connected peer
 
