@@ -636,6 +636,7 @@ class XMPPInputStreamReader:
                     self._stream_reader_thread = org.wayround.utils.stream.cat(
                         stdin=self._read_from,
                         stdout=self,
+                        read_type='pipe-nb',
                         bs=(2 * 1024 ** 2),
                         threaded=True,
                         thread_name=thread_name_in,
@@ -647,8 +648,6 @@ class XMPPInputStreamReader:
                         flush_after_each_write=False,
                         flush_on_input_eof=False,
                         close_output_on_eof=False,
-                        waiting_for_input=True,
-                        waiting_for_output=False,
                         descriptor_to_wait_for_input=self._read_from.fileno(),
                         descriptor_to_wait_for_output=None,
                         apply_input_seek=False,
