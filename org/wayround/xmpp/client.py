@@ -726,7 +726,6 @@ class Presence:
         return
 
 
-# TODO: do we really need message client?
 class Message:
 
     def __init__(self, client, client_jid):
@@ -742,12 +741,7 @@ class Message:
         self.client = client
         self.client_jid = client_jid
 
-        self.signal = org.wayround.utils.threading.Signal(
-            self,
-            [
-            'message'
-            ]
-            )
+        self.signal = org.wayround.utils.threading.Signal(self, ['message'])
 
         self.client.signal.connect(
             'stanza_processor_new_stanza',

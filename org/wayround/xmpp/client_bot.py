@@ -7,15 +7,13 @@ import logging
 import socket
 import threading
 
+import lxml.etree
 import org.wayround.gsasl.gsasl
-
-import org.wayround.xmpp.core
-import org.wayround.xmpp.client
-
-import org.wayround.utils.getopt
 import org.wayround.utils.file
-import org.wayround.utils.shlex
 import org.wayround.utils.program
+import org.wayround.utils.shlex
+import org.wayround.xmpp.client
+import org.wayround.xmpp.core
 
 
 class AuthLocalDriver:
@@ -187,229 +185,486 @@ class Bot:
 
     def __init__(self):
 
-        self._clean(init=True)
+        """
+        :param org.wayround.pyabber.main.ProfileSession profile:
+        """
 
-    def _clean(self, init=False):
+        self.self_disco_info = org.wayround.xmpp.disco.IQDisco(mode='info')
 
-        self.connection = False
-
-        self._driven = False
-        self._stream_in = False
-        self._stream_out = False
-
-        if not init:
-            self._features_recieved.set()
-
-        self._features_recieved = threading.Event()
-
-        self._stop_flag = False
-
-        self._stopping = False
-        self._starting = False
-
-        self._commands = {}
-        self._last_features = None
-
-    def set_commands(self, commands):
-
-        self._commands = commands
-
-    def start(self, jid, connection_info, auth_info):
-
-        if not self._stopping and not self._starting:
-
-            self._starting = True
-
-            self.jid = jid
-
-            self.connection_info = connection_info
-
-            self.auth_info = auth_info
-
-            self.sock = socket.create_connection(
-                (
-                 self.connection_info.host,
-                 self.connection_info.port
-                 )
+        self.self_disco_info.set_identity(
+            [
+             org.wayround.xmpp.disco.IQDiscoIdentity(
+                'client', 'bot', 'simplybot'
                 )
+             ]
+            )
 
-            logging.debug("Starting socket watcher")
+        self.clear(init=True)
 
-            self.client = org.wayround.xmpp.client.XMPPC2SClient(
-                self.sock
-                )
-
-            self._reset_hubs()
-
-            self.client.start()
-
-            self.client.wait('working')
-
-            self.stanza_processor = org.wayround.xmpp.core.StanzaProcessor()
-            self.stanza_processor.connect_input_object_stream_hub(
-                self.client.input_stream_objects_hub
-                )
-            self.stanza_processor.connect_io_machine(self.client.io_machine)
-
-            self._driven = True
-
-            while True:
-
-                if self._features_recieved.wait(200):
-                    break
-
-                if self._stop_flag:
-                    break
-
-            self._features_recieved.clear()
-
-            if not self._stop_flag:
-
-                res = org.wayround.xmpp.client.client_starttls(
-                    self.client,
-                    self.jid,
-                    self.connection_info,
-                    self._last_features
-                    )
-
-                if res != 'success':
-                    self._stop_flag = True
-                else:
-
-                    while True:
-
-                        if self._features_recieved.wait(200):
-                            break
-
-                        if self._stop_flag:
-                            break
-
-                    self._features_recieved.clear()
-
-                    if not self._stop_flag:
-
-                        local_auth = AuthLocalDriver(self)
-                        local_auth.start()
-
-                        res = org.wayround.xmpp.client.client_sasl_auth(
-                            self.client,
-                            local_auth.mech_select,
-                            local_auth.auth,
-                            local_auth.response,
-                            local_auth.challenge,
-                            local_auth.success,
-                            local_auth.failure,
-                            local_auth.text,
-                            self.jid,
-                            self.connection_info,
-                            self._last_features
-                            )
-
-                        if res != 'success':
-                            self._stop_flag = True
-                        else:
-
-                            while True:
-
-                                if self._features_recieved.wait(200):
-                                    break
-
-                                if self._stop_flag:
-                                    break
-
-                            self._features_recieved.clear()
-
-                            if not self._stop_flag:
-
-                                res = org.wayround.xmpp.client.client_resource_bind(
-                                    self.client,
-                                    self.jid,
-                                    self.connection_info,
-                                    self._last_features,
-                                    self.stanza_processor
-                                    )
-
-                                if res != 'success':
-                                    self._stop_flag = True
-                                else:
-
-                                    if not self._stop_flag:
-
-                                        res = org.wayround.xmpp.client.client_session_start(
-                                            self.client,
-                                            self.jid,
-                                            self.connection_info,
-                                            self._last_features,
-                                            self.stanza_processor
-                                            )
-
-                                        if res != 'success':
-                                            self._stop_flag = True
-                                        else:
-
-                                            self._driven = False
-
-                                            logging.debug("Connecting bot inbound stanza processor")
-
-                                            self.stanza_processor.stanza_hub.set_waiter(
-                                                'tasktracker_bot',
-                                                self._inbound_stanzas
-                                                )
-
-            self._driven = False
-
-            self._starting = False
-
-            if self._stop_flag:
-                self.stop()
-
-        return 0
-
-    def stop(self):
-
-        if not self._stopping and not self._starting:
-
-            self._stopping = True
-
-            self._driven = False
-
-            self._stop_flag = True
-
-            self.client.stop()
-
-            self._stopping = False
-            
         return
 
-    def _reset_hubs(self):
+    def clear(self, init=False):
 
-        self.client.connection_events_hub.clear()
-        self.client.input_stream_events_hub.clear()
-        self.client.input_stream_objects_hub.clear()
-        self.client.output_stream_events_hub.clear()
+        self._simple_gsasl = None
+        self.auth_info = None
+        self.client = None
+        self.connection_info = None
+        self.is_driven = False
+        self.jid = None
+        self.message_client = None
+        self.muc_client = None
+        self.presence_client = None
+        self.privacy_client = None
+        self.roster_client = None
+        self.roster_storage = None
+        self.sock = None
 
-        self.client.connection_events_hub.set_waiter(
-            'main', self._on_connection_event,
+        if init:
+            self._disconnection_flag = threading.Event()
+        else:
+            self._disconnection_flag.clear()
+
+        self._incomming_message_lock = threading.RLock()
+
+    def set_commands(self, commands):
+        self._commands = commands
+
+    def connect(self, jid, connection_info, auth_info):
+
+        ret = 0
+
+        if not isinstance(jid, org.wayround.xmpp.core.JID):
+            raise TypeError(
+                "`jid' must be of type org.wayround.xmpp.core.JID"
+                )
+
+        self.disconnect()
+
+        self.jid = jid
+
+        self.connection_info = connection_info
+
+        self.auth_info = auth_info
+
+        self.sock = socket.create_connection(
+            (
+             self.connection_info.host,
+             self.connection_info.port
+             )
             )
 
-        self.client.input_stream_events_hub.set_waiter(
-            'main', self._on_stream_in_event,
+        # make non-blocking socket
+        self.sock.settimeout(0)
+
+        self.client = org.wayround.xmpp.client.XMPPC2SClient(
+            self.sock
             )
 
-        self.client.input_stream_objects_hub.set_waiter(
-            'main', self._on_stream_object,
+        self.message_client = org.wayround.xmpp.client.Message(
+            self.client,
+            self.jid
             )
 
-        self.client.output_stream_events_hub.set_waiter(
-            'main', self._on_stream_out_event,
+        self.roster_client = org.wayround.xmpp.client.Roster(
+            self.client,
+            self.jid
             )
+
+        self.presence_client = org.wayround.xmpp.client.Presence(
+            self.client,
+            self.jid
+            )
+
+        self.client.sock_streamer.signal.connect(
+            ['start', 'stop', 'error'],
+            self._on_connection_event
+            )
+
+        logging.debug("streamer connected")
+
+        self.client.io_machine.signal.connect(
+            ['in_start', 'in_stop', 'in_error',
+             'out_start', 'out_stop', 'out_error'],
+            self._on_stream_io_event
+            )
+
+        features_waiter = org.wayround.utils.threading.SignalWaiter(
+            self.client.signal,
+            'features'
+            )
+        features_waiter.start()
+
+        self.is_driven = True
+
+        self.client.start(
+            from_jid=self.jid.bare(),
+            to_jid=self.connection_info.host
+            )
+        self.client.wait('working')
+
+        res = None
+
+        if ret == 0:
+
+            features = features_waiter.pop()
+            features_waiter.stop()
+
+            if features == None:
+                logging.error(
+                    "Timedout waiting for initial server features"
+                    )
+                ret = 1
+            else:
+                last_features = features['args'][1]
+
+        if (not self._disconnection_flag.is_set()
+            and ret == 0):
+
+            logging.debug("Starting TLS")
+
+            res = org.wayround.xmpp.client.drive_starttls(
+                self.client,
+                last_features,
+                self.jid.bare(),
+                self.connection_info.host,
+                self._auto_starttls_controller
+                )
+
+            if not org.wayround.xmpp.core.is_features_element(res):
+                logging.debug("Can't establish TLS encryption")
+                ret = 2
+            else:
+                logging.debug("Encryption established")
+                last_features = res
+
+        if (not self._disconnection_flag.is_set()
+            and ret == 0):
+
+            logging.debug("Logging in")
+
+            if not self._simple_gsasl:
+                self._simple_gsasl = (
+                    org.wayround.gsasl.gsasl.GSASLSimple(
+                        mechanism='DIGEST-MD5',
+                        callback=self._gsasl_cb
+                        )
+                    )
+
+            logging.debug(
+                "Passing following features to sasl driver:\n{}".format(
+                    lxml.etree.tostring(last_features)
+                    )
+                )
+
+            res = org.wayround.xmpp.client.drive_sasl(
+                self.client,
+                last_features,
+                self.jid.bare(),
+                self.connection_info.host,
+                self._auto_auth_controller
+                )
+
+            self._simple_gsasl = None
+
+            if not org.wayround.xmpp.core.is_features_element(res):
+                logging.debug("Can't authenticate: {}".format(res))
+                ret = 3
+            else:
+                logging.debug("Authenticated")
+                last_features = res
+
+        if (not self._disconnection_flag.is_set()
+            and ret == 0):
+
+            res = org.wayround.xmpp.client.bind(
+                self.client,
+                self.jid.resource
+                )
+            if not isinstance(res, str):
+                logging.debug("bind error {}".format(res.gen_error()))
+                ret = 4
+            else:
+                self.jid.update(
+                    org.wayround.xmpp.core.JID.new_from_str(res)
+                    )
+                logging.debug(
+                    "Bound jid is: {}".format(self.jid.full())
+                    )
+
+        if (not self._disconnection_flag.is_set()
+            and ret == 0):
+
+            logging.debug("Starting session")
+
+            res = org.wayround.xmpp.client.session(
+                self.client,
+                self.jid.domain
+                )
+
+            if (not isinstance(res, org.wayround.xmpp.core.Stanza)
+                or res.is_error()):
+                logging.debug("Session establishing error")
+                ret = 5
+            else:
+                logging.debug("Session established")
+
+        if (not self._disconnection_flag.is_set()
+            and ret == 0):
+
+            self.message_client.signal.connect(
+                ['message'], self._on_message
+                )
+
+            self.presence_client.presence()
+
+            logging.info("XMPP bot connected")
+
+        self.is_driven = False
+
+        if ret != 0:
+            logging.info("error connecting XMPP bot")
+            threading.Thread(
+                target=self.disconnect,
+                name="Disconnecting by connection error"
+                ).start()
+
+        return ret
+
+    def disconnect(self):
+        if not self._disconnection_flag.is_set():
+            self._disconnection_flag.set()
+
+            if self.client != None:
+
+                self.client.stop()
+                logging.debug("Now waiting for client to stop...")
+                self.client.wait('stopped')
+
+                sock = self.client.get_socket()
+
+                logging.debug("Shutting down socket")
+                try:
+                    sock.shutdown(socket.SHUT_RDWR)
+                except:
+                    logging.exception(
+                        "Can't shutdown socket. Maybe it's already dead"
+                        )
+
+                logging.debug("Closing socket object")
+                try:
+                    sock.close()
+                except:
+                    logging.exception(
+                        "Can't close socket. Maybe it's already dead"
+                        )
+
+            self.clear()
+
+    def _on_connection_event(self, event, streamer, sock):
+
+        if not self.is_driven:
+
+            logging.debug(
+                "_on_connection_event `{}', `{}'".format(event, sock)
+                )
+
+            if event == 'start':
+                logging.debug("Connection started")
+
+            elif event == 'stop':
+                logging.debug("Connection stopped")
+                self.disconnect()
+
+            elif event == 'error':
+                logging.debug("Connection error")
+                self.disconnect()
+
+        return
+
+    def _on_stream_io_event(self, event, io_machine, attrs=None):
+
+        if not self.is_driven:
+
+            logging.debug("Stream io event `{}' : `{}'".format(event, attrs))
+
+            if event == 'in_start':
+                pass
+
+            elif event == 'in_stop':
+                self.disconnect()
+
+            elif event == 'in_error':
+                self.disconnect()
+
+            elif event == 'out_start':
+                pass
+
+            elif event == 'out_stop':
+                self.disconnect()
+
+            elif event == 'out_error':
+                self.disconnect()
+
+        return
+
+    def _auto_starttls_controller(self, status, data):
+
+        logging.debug("_auto_starttls_controller {}, {}".format(status, data))
+
+        ret = None
+
+        raise ValueError("status `{}' not supported".format(status))
+
+        return ret
+
+    def _auto_auth_controller(self, status, data):
+
+        ret = ''
+
+        logging.debug("_auto_auth_controller {}, {}".format(status, data))
+
+        if status == 'mechanism_name':
+            ret = 'DIGEST-MD5'
+
+        elif status == 'bare_from_jid':
+            ret = self.jid.bare()
+
+        elif status == 'bare_to_jid':
+#            TODO: fix self.connection_info.host
+            ret = self.connection_info.host
+
+        elif status == 'sock_streamer':
+            ret = self.client.sock_streamer
+
+        elif status == 'io_machine':
+            ret = self.client.io_machine
+
+        elif status == 'challenge':
+            res = self._simple_gsasl.step64(data['text'])
+
+            if res[0] == org.wayround.gsasl.gsasl.GSASL_OK:
+                pass
+            elif res[0] == org.wayround.gsasl.gsasl.GSASL_NEEDS_MORE:
+                pass
+            else:
+                # TODO: this is need to be hidden
+                raise Exception(
+                    "step64 returned error: {}".format(
+                        org.wayround.gsasl.gsasl.strerror_name(res[0])
+                        )
+                    )
+
+            ret = str(res[1], 'utf-8')
+
+        elif status == 'success':
+            pass
+
+        else:
+            raise ValueError("status `{}' not supported".format(status))
+
+        return ret
+
+    def _gsasl_cb(self, context, session, prop):
+
+        # TODO: maybe all this method need to be separated and standardized
+
+        ret = org.wayround.gsasl.gsasl.GSASL_OK
+
+        logging.debug(
+            "SASL client requested for: {} ({}) {}".format(
+                org.wayround.gsasl.gsasl.strproperty_name(prop),
+                prop,
+                org.wayround.gsasl.gsasl.strproperty(prop)
+                )
+            )
+
+        if prop == org.wayround.gsasl.gsasl.GSASL_QOP:
+
+            server_allowed_qops = str(
+                session.property_get(
+                    org.wayround.gsasl.gsasl.GSASL_QOPS
+                    ),
+                'utf-8'
+                ).split(',')
+
+            value = ''
+            if not 'qop-auth' in server_allowed_qops:
+                value = ''
+            else:
+                value = 'qop-auth'
+
+            session.property_set(
+                org.wayround.gsasl.gsasl.GSASL_QOP,
+                bytes(value, 'utf-8')
+                )
+
+        elif prop == org.wayround.gsasl.gsasl.GSASL_AUTHID:
+
+            value = None
+            if self.auth_info.authid:
+                value = bytes(self.auth_info.authid, 'utf-8')
+
+            session.property_set(prop, value)
+
+        elif prop == org.wayround.gsasl.gsasl.GSASL_SERVICE:
+
+            value = None
+            if self.auth_info.service:
+                value = bytes(self.auth_info.service, 'utf-8')
+
+            session.property_set(prop, value)
+
+        elif prop == org.wayround.gsasl.gsasl.GSASL_HOSTNAME:
+
+            value = None
+            if self.auth_info.hostname:
+                value = bytes(self.auth_info.hostname, 'utf-8')
+
+            session.property_set(prop, value)
+
+        elif prop == org.wayround.gsasl.gsasl.GSASL_REALM:
+
+            value = None
+            if self.auth_info.realm:
+                value = bytes(self.auth_info.realm, 'utf-8')
+
+            session.property_set(prop, value)
+
+        elif prop == org.wayround.gsasl.gsasl.GSASL_AUTHZID:
+
+            value = None
+            if self.auth_info.authzid:
+                value = bytes(self.auth_info.authzid, 'utf-8')
+
+            session.property_set(prop, value)
+
+        elif prop == org.wayround.gsasl.gsasl.GSASL_PASSWORD:
+
+            value = None
+            if self.auth_info.password:
+                value = bytes(self.auth_info.password, 'utf-8')
+
+            session.property_set(prop, value)
+
+        else:
+            logging.error("Requested SASL property not available")
+            ret = 1
+
+        return ret
+
+    def _on_message(self, event, message_client, stanza):
+        self._inbound_stanzas(stanza)
 
     def _inbound_stanzas(self, obj):
 
-        if obj.kind == 'message' and obj.typ == 'chat':
+        if not isinstance(obj, org.wayround.xmpp.core.Stanza):
+            raise TypeError("`obj' must be org.wayround.xmpp.core.Stanza inst")
 
+        if obj.get_tag() == 'message' and obj.get_typ() == 'chat':
+
+            # FIXME: get_body()[0] - is incorrect
             cmd_line = org.wayround.utils.shlex.split(
-                obj.body.find('{jabber:client}body').text.splitlines()[0]
+                obj.get_body()[0].get_text().splitlines()[0]
                 )
 
             if len(cmd_line) == 0:
@@ -418,30 +673,20 @@ class Bot:
 
                 messages = []
 
-#                self.stanza_processor.send(
-#                    org.wayround.xmpp.core.Stanza(
-#                        kind='message',
-#                        typ='chat',
-#                        from_jid=self.jid.full(),
-#                        to_jid='animus@wayround.org',
-#                        body='<body>TaskTracker bot is now online</body><subject>WOW!</subject>'
-#                        )
-#                    )
-
                 ret_stanza = org.wayround.xmpp.core.Stanza(
                     from_jid=self.jid.bare(),
-                    to_jid=obj.from_jid,
-                    kind='message',
+                    to_jid=obj.get_from_jid(),
+                    tag='message',
                     typ='chat',
                     body=[
-                        org.wayround.xmpp.stanza_elements.Body(
+                        org.wayround.xmpp.core.MessageBody(
                             text=''
                             )
                         ]
                     )
 
                 asker_jid = org.wayround.xmpp.core.JID.new_from_str(
-                    obj.from_jid
+                    obj.get_from_jid()
                     ).bare()
 
                 res = org.wayround.utils.program.command_processor(
@@ -468,116 +713,27 @@ class Bot:
                         text=text
                         )
 
-                for i in ret_stanza.body:
+                for i in ret_stanza.get_body():
 
-                    if isinstance(i, org.wayround.xmpp.stanza_elements.Body):
+                    if isinstance(i, org.wayround.xmpp.core.MessageBody):
 
-                        i.text = '\n{}\n{}\n'.format(
+                        # TODO: clean away this mess
+
+                        t = i.get_text()
+
+                        t = '\n{}\n{}\n'.format(
                             messages_text,
-                            i.text
+                            t
                             )
 
-                        i.text += '{}\n'.format(res['message'])
+                        t += '{}\n'.format(res['message'])
 
-                        i.text += 'Exit Code: {}\n'.format(
+                        t += 'Exit Code: {}\n'.format(
                             res['code']
                             )
+
+                        i.set_text(t)
+
                         break
 
-                self.stanza_processor.send(ret_stanza)
-
-    def _on_connection_event(self, event, sock):
-
-        if not self._driven:
-
-            logging.debug(
-                "_on_connection_event `{}', `{}'".format(event, sock)
-                )
-
-            if event == 'start':
-                print("Connection started")
-
-                self.connection = True
-
-                self.client.wait('working')
-
-                logging.debug(
-                    "Ended waiting for connection. Opening output stream"
-                    )
-
-                self.client.io_machine.send(
-                    org.wayround.xmpp.core.start_stream(
-                        from_jid=self.jid.bare(),
-                        to_jid=self.connection_info.host
-                        )
-                    )
-
-                logging.debug("Stream opening tag was started")
-
-            elif event == 'stop':
-                print("Connection stopped")
-                self.connection = False
-                self.stop()
-
-            elif event == 'error':
-                print("Connection error")
-                self.connection = False
-                self.stop()
-
-        return
-
-    def _on_stream_in_event(self, event, attrs=None):
-
-        if not self._driven:
-
-            logging.debug("Stream in event `{}' : `{}'".format(event, attrs))
-
-            if event == 'start':
-
-                self._stream_in = True
-
-            elif event == 'stop':
-                self._stream_in = False
-                self.stop()
-
-            elif event == 'error':
-                self._stream_in = False
-                self.stop()
-
-        return
-
-    def _on_stream_out_event(self, event, attrs=None):
-
-        if not self._driven:
-
-            logging.debug("Stream out event `{}' : `{}'".format(event, attrs))
-
-            if event == 'start':
-
-                self._stream_out = True
-
-            elif event == 'stop':
-                self._stream_out = False
-                self.stop()
-
-            elif event == 'error':
-                self._stream_out = False
-                self.stop()
-
-        return
-
-    def _on_stream_object(self, obj):
-
-        logging.debug(
-            "_on_stream_object (first 255 bytes):`{}'".format(
-                repr(lxml.etree.tostring(obj)[:255])
-                )
-            )
-
-        if obj.tag == '{http://etherx.jabber.org/streams}features':
-
-            self._last_features = obj
-
-            self._features_recieved.set()
-
-        return
+                self.client.stanza_processor.send(ret_stanza)
