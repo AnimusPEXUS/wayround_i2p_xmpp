@@ -721,7 +721,7 @@ class Bot:
 
                         t = i.get_text()
 
-                        t = '\n{}\n{}\n'.format(
+                        t = '{}\n{}\n'.format(
                             messages_text,
                             t
                             )
