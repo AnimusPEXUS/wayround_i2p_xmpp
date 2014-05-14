@@ -423,9 +423,7 @@ class Roster:
             wait=wait
             )
 
-        if not isinstance(res, org.wayround.xmpp.core.Stanza):
-            ret = None
-        else:
+        if isinstance(res, org.wayround.xmpp.core.Stanza):
             if res.is_error():
                 ret = res
             else:
@@ -496,9 +494,7 @@ class Roster:
             wait=wait
             )
 
-        if not isinstance(res, org.wayround.xmpp.core.Stanza):
-            ret = None
-        else:
+        if isinstance(res, org.wayround.xmpp.core.Stanza):
             if res.is_error():
                 ret = res.gen_error()
             else:

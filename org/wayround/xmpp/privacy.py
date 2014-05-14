@@ -481,11 +481,12 @@ def _result(stanza, stanza_processor, wait):
     res = stanza_processor.send(stanza, wait=wait)
 
     ret = None
-    if res.is_error():
-        ret = res.gen_error()
-    else:
 
-        ret = Query.new_from_stanza_lxml(res.get_element())
+    if isinstance(res, org.wayround.xmpp.core.Stanza):
+        if res.is_error():
+            ret = res.gen_error()
+        else:
+            ret = Query.new_from_stanza_lxml(res.get_element())
 
     return ret
 

@@ -1,10 +1,10 @@
 
-import logging
 import collections
 
 import lxml.etree
 import org.wayround.utils.factory
 import org.wayround.utils.lxml
+import org.wayround.xmpp.core
 import org.wayround.xmpp.oob
 import org.wayround.xmpp.xdata
 
@@ -251,7 +251,7 @@ def get_query(from_jid, to_jid, stanza_processor, wait=True):
 
     res = stanza_processor.send(s, wait=wait)
 
-    if res != None:
+    if isinstance(res, org.wayround.xmpp.core.Stanza):
         if not res.is_error():
             ret = get_query_from_element(res.get_element()), res
         else:
@@ -285,7 +285,7 @@ def set_query(
         emit_reply_anyway=emit_reply_anyway
         )
 
-    if res != None:
+    if isinstance(res, org.wayround.xmpp.core.Stanza):
         if not res.is_error():
             ret = get_query_from_element(res.get_element())
         else:

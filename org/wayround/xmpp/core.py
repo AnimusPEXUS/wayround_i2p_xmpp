@@ -2236,6 +2236,8 @@ class StanzaProcessor:
 
         if wait != 0, then False is returned in case of timeout, or Stanza
         object is returned in case of success
+
+        None is returned in other cases, when no response is requested
         """
 
         # ===== default ret is None
