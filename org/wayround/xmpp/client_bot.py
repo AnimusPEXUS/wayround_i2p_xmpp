@@ -212,7 +212,6 @@ class Bot:
         self.is_driven = False
         self.jid = None
         self.message_client = None
-        self.muc_client = None
         self.presence_client = None
         self.privacy_client = None
         self.roster_client = None

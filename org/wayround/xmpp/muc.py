@@ -268,7 +268,6 @@ class Query:
              org.wayround.xmpp.xdata.XData,
              'xdata',
               '*'
-              
              )]
             )
 
@@ -961,37 +960,6 @@ def check_element_and_namespace(element, tag_localname):
         raise ValueError("invalid namespace")
 
     return xmlns
-
-
-# mechanics
-
-class Server:
-
-    def __init__(self):
-        pass
-
-    def connect_stanza_processor(self, stanza_processor):
-        pass
-
-    def disconnect_stanza_processor(self):
-        pass
-
-
-# TODO: remove?
-class Client:
-
-    def __init__(self, client, client_jid):
-
-        self._stanza_processor = None
-        self._client_jid = client_jid
-        self._client = client
-
-    def connect_stanza_processor(self, stanza_processor):
-
-        self._stanza_processor = stanza_processor
-
-    def disconnect_stanza_processor(self):
-        pass
 
 
 def create_room_instantly(room_bare_jid, from_full_jid, stanza_processor):

@@ -2113,41 +2113,6 @@ org.wayround.utils.factory.class_generate_check(
     )
 
 
-# TODO: what is this? and what for?
-def element_add_object(element, obj):
-
-    if not org.wayround.utils.lxml.is_lxml_tag_element(element):
-        raise TypeError("`element' must be lxml tag element")
-
-    if not isinstance(obj, list):
-        obj = [obj]
-
-    for i in obj:
-
-        if org.wayround.utils.lxml.is_lxml_tag_element(i):
-            element.append(i)
-
-        elif isinstance(i, bytes):
-            element.append(
-                lxml.etree.fromstring(str(i, 'utf-8'))
-                )
-
-        elif isinstance(i, str):
-            element.append(
-                lxml.etree.fromstring(i)
-                )
-
-        else:
-            logging.warning(
-                "Adding directly unsupported element"
-                " type as element child {}".format(type(i))
-                )
-            element.append(
-                lxml.etree.fromstring(str(i))
-                )
-    return
-
-
 class StanzaProcessor:
 
     """
