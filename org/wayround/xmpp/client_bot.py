@@ -716,20 +716,23 @@ class Bot:
 
                     if isinstance(i, org.wayround.xmpp.core.MessageBody):
 
-                        # TODO: clean away this mess
+                        t = ''
 
-                        t = i.get_text()
+                        if messages_text != '':
+                            t += messages_text
+                            t += '\n'
 
-                        t = '{}\n{}\n'.format(
-                            messages_text,
-                            t
-                            )
+                        tt = i.get_text()
+                        if tt != '':
+                            t += tt
+                            t += '\n'
 
-                        t += '{}\n'.format(res['message'])
+                        tt = res['message']
+                        if tt != '':
+                            t += tt
+                            t += '\n'
 
-                        t += 'Exit Code: {}\n'.format(
-                            res['code']
-                            )
+                        t += 'Exit Code: {}\n'.format(res['code'])
 
                         i.set_text(t)
 

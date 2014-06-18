@@ -94,7 +94,6 @@ class JID:
     Class for working with JID
 
     Domain and user parts are automatically converted to low register
-
     """
 
     def __init__(self, user=None, domain=None, resource=None):
@@ -109,6 +108,8 @@ class JID:
     def new_from_string(cls, in_str):
         """
         Try to convert string to JID instance. Returns None in case of error.
+
+        :rtype JID:
         """
 
         ret = None
