@@ -116,7 +116,7 @@ class AuthLocalDriver:
                 ).split(',')
 
             value = ''
-            if not 'qop-auth' in server_allowed_qops:
+            if 'qop-auth' not in server_allowed_qops:
                 value = ''
             else:
                 value = 'qop-auth'
@@ -184,7 +184,6 @@ class AuthLocalDriver:
 class Bot:
 
     def __init__(self):
-
         """
         :param org.wayround.pyabber.main.ProfileSession profile:
         """
@@ -193,10 +192,10 @@ class Bot:
 
         self.self_disco_info.set_identity(
             [
-             org.wayround.xmpp.disco.IQDiscoIdentity(
-                'client', 'bot', 'simplybot'
-                )
-             ]
+                org.wayround.xmpp.disco.IQDiscoIdentity(
+                    'client', 'bot', 'simplybot'
+                    )
+                ]
             )
 
         self.clear(init=True)
@@ -247,9 +246,9 @@ class Bot:
 
         self.sock = socket.create_connection(
             (
-             self.connection_info.host,
-             self.connection_info.port
-             )
+                self.connection_info.host,
+                self.connection_info.port
+                )
             )
 
         # make non-blocking socket
@@ -308,7 +307,7 @@ class Bot:
             features = features_waiter.pop()
             features_waiter.stop()
 
-            if features == None:
+            if features is None:
                 logging.error(
                     "Timedout waiting for initial server features"
                     )
@@ -317,7 +316,7 @@ class Bot:
                 last_features = features['args'][1]
 
         if (not self._disconnection_flag.is_set()
-            and ret == 0):
+                and ret == 0):
 
             logging.debug("Starting TLS")
 
@@ -337,7 +336,7 @@ class Bot:
                 last_features = res
 
         if (not self._disconnection_flag.is_set()
-            and ret == 0):
+                and ret == 0):
 
             logging.debug("Logging in")
 
@@ -373,7 +372,7 @@ class Bot:
                 last_features = res
 
         if (not self._disconnection_flag.is_set()
-            and ret == 0):
+                and ret == 0):
 
             res = org.wayround.xmpp.client.bind(
                 self.client,
@@ -391,7 +390,7 @@ class Bot:
                     )
 
         if (not self._disconnection_flag.is_set()
-            and ret == 0):
+                and ret == 0):
 
             logging.debug("Starting session")
 
@@ -401,14 +400,14 @@ class Bot:
                 )
 
             if (not isinstance(res, org.wayround.xmpp.core.Stanza)
-                or res.is_error()):
+                    or res.is_error()):
                 logging.debug("Session establishing error")
                 ret = 5
             else:
                 logging.debug("Session established")
 
         if (not self._disconnection_flag.is_set()
-            and ret == 0):
+                and ret == 0):
 
             self.message_client.signal.connect(
                 ['message'], self._on_message
@@ -433,7 +432,7 @@ class Bot:
         if not self._disconnection_flag.is_set():
             self._disconnection_flag.set()
 
-            if self.client != None:
+            if self.client is not None:
 
                 self.client.stop()
                 logging.debug("Now waiting for client to stop...")
@@ -529,7 +528,7 @@ class Bot:
             ret = self.jid.bare()
 
         elif status == 'bare_to_jid':
-#            TODO: fix self.connection_info.host
+            # TODO: fix self.connection_info.host
             ret = self.connection_info.host
 
         elif status == 'sock_streamer':
@@ -587,7 +586,7 @@ class Bot:
                 ).split(',')
 
             value = ''
-            if not 'qop-auth' in server_allowed_qops:
+            if 'qop-auth' not in server_allowed_qops:
                 value = ''
             else:
                 value = 'qop-auth'
@@ -707,8 +706,18 @@ class Bot:
                     typ = i['type']
                     text = i['text']
 
-                    messages_text += '[{typ}]: {text}\n'.format(
-                        typ=typ,
+                    typ_text = ''
+                    if typ not in [
+                            'plain', 'text', 'simple',
+                            'warning', 'info', 'error'
+                            ]:
+                        raise ValueError("invalid message `type' value")
+
+                    if typ not in ['plain', 'text', 'simple']:
+                        typ_text = '[{typ}]: '.format(typ=typ)
+
+                    messages_text += '{typ_text}{text}\n'.format(
+                        typ_text=typ_text,
                         text=text
                         )
 
