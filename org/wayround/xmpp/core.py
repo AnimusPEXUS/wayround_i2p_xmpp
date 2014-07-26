@@ -116,7 +116,7 @@ class JID:
 
         res = re.match(
             (r'^((?P<localpart>.+?)@)?(?P<domainpart>.+?)'
-            r'(/(?P<resourcepart>.+?))?$'),
+             r'(/(?P<resourcepart>.+?))?$'),
             in_str
             )
 
@@ -157,8 +157,8 @@ class JID:
         if isinstance(other, JID):
 
             if other.user == self.user and \
-                other.domain == self.domain and \
-                other.resource == self.resource:
+                    other.domain == self.domain and \
+                    other.resource == self.resource:
 
                 ret = True
 
@@ -201,14 +201,14 @@ class JID:
         if value == '':
             value = None
 
-        if value != None:
+        if value is not None:
             self._values['resource'] = str(value)
         else:
             self._values['resource'] = value
         return
 
     def _set(self, name, value):
-        if value != None:
+        if value is not None:
             self._values[name] = str(value).lower()
         else:
             self._values[name] = None
@@ -225,15 +225,15 @@ class JID:
 
     def _bare_part(self, user, domain):
 
-        if user == None:
+        if user is None:
             user = ''
 
-        if domain == None:
+        if domain is None:
             domain = ''
 
         at = '@'
 
-        if self.user == '' or self.user == None:
+        if self.user == '' or self.user is None:
             at = ''
 
         return user, domain, at
@@ -272,24 +272,24 @@ class JID:
 
         ret = 'unknown'
 
-        if (self.user == None
-            and self.domain != None
-            and self.resource == None):
+        if (self.user is None
+                and self.domain is not None
+                and self.resource is None):
             ret = 'domain'
 
-        elif (self.user == None
-              and self.domain != None
-              and self.resource != None):
+        elif (self.user is None
+              and self.domain is not None
+              and self.resource is not None):
             ret = 'resource'
 
-        elif (self.user != None
-              and self.domain != None
-              and self.resource == None):
+        elif (self.user is not None
+              and self.domain is not None
+              and self.resource is None):
             ret = 'bare'
 
-        elif (self.user != None
-              and self.domain != None
-              and self.resource != None):
+        elif (self.user is not None
+              and self.domain is not None
+              and self.resource is not None):
             ret = 'full'
 
         else:
@@ -353,14 +353,14 @@ class JID:
 class Authentication:
 
     def __init__(
-        self,
-        service='xmpp',
-        hostname='localhost',
-        authid='',
-        authzid='',
-        realm='',
-        password=''
-        ):
+            self,
+            service='xmpp',
+            hostname='localhost',
+            authid='',
+            authzid='',
+            realm='',
+            password=''
+            ):
 
         self.service = service
         self.hostname = hostname
@@ -373,11 +373,11 @@ class Authentication:
 class C2SConnectionInfo:
 
     def __init__(
-        self,
-        host='localhost',
-        port=5222,
-        priority='default'
-        ):
+            self,
+            host='localhost',
+            port=5222,
+            priority='default'
+            ):
 
         self.host = host
         self.port = port
@@ -385,6 +385,7 @@ class C2SConnectionInfo:
 
 
 class XMPPStreamParserTargetClosed(Exception):
+
     """
     This exception is raised in case of some one's trying to send some more
     data to parsed when it is closed already.
@@ -405,7 +406,6 @@ class XMPPStreamParserTarget:
     """
 
     def __init__(self):
-
         """
         :param on_stream_event: callback to call when stream starts, stops or
             fails (hard xml stream error. at this time, xml errors are separate
@@ -438,7 +438,6 @@ class XMPPStreamParserTarget:
         return
 
     def start(self, name, attributes):
-
         """
         Target receiving tag starts
         """
@@ -495,7 +494,6 @@ class XMPPStreamParserTarget:
         return
 
     def end(self, name):
-
         """
         Target receiving tag ends
         """
@@ -523,7 +521,7 @@ class XMPPStreamParserTarget:
             if name == '{http://etherx.jabber.org/streams}stream':
                 logging.debug(
                     ("{} :: end :: stream close tag received "
-                    "- closing parser target").format(
+                     "- closing parser target").format(
                         type(self).__name__
                         )
                     )
@@ -532,7 +530,6 @@ class XMPPStreamParserTarget:
         return
 
     def data(self, data):
-
         """
         Target receiving data
         """
@@ -548,7 +545,6 @@ class XMPPStreamParserTarget:
         return
 
     def comment(self, text):
-
         """
         Target receiving comment
         """
@@ -564,7 +560,6 @@ class XMPPStreamParserTarget:
         return
 
     def close(self):
-
         """
         This target is reacting on stream end and calls callback function
         """
@@ -625,8 +620,8 @@ class XMPPInputStreamReader:
         thread_name_in = 'Thread feeding data to XML parser'
 
         if (not self._starting
-            and not self._stopping
-            and self.stat() == 'stopped'):
+                and not self._stopping
+                and self.stat() == 'stopped'):
 
             self._stat = 'starting'
             self._starting = True
@@ -664,7 +659,7 @@ class XMPPInputStreamReader:
                 else:
                     self._stream_reader_thread.start()
 
-            if self._feed_pool_thread == None:
+            if self._feed_pool_thread is None:
                 self._feed_pool_thread = threading.Thread(
                     name="{} _feed pool worker".format(type(self).__name__),
                     target=self._feed_pool_worker_thread
@@ -683,8 +678,8 @@ class XMPPInputStreamReader:
         """
 
         if (not self._stopping
-            and not self._starting
-            and self.stat() == 'working'):
+                and not self._starting
+                and self.stat() == 'working'):
             self._stat = 'stopping'
             self._stopping = True
 
@@ -704,7 +699,7 @@ class XMPPInputStreamReader:
         ret = 'unknown'
 
         if (self._stream_reader_thread is not None
-            or self._feed_pool_thread is not None):
+                or self._feed_pool_thread is not None):
             ret = 'working'
         elif (self._stream_reader_thread is None
               and self._feed_pool_thread is None):
@@ -796,7 +791,6 @@ class XMPPOutputStreamWriter:
     """
 
     def __init__(self, write_to, xml_parser):
-
         """
         read_from - xml stream input
         """
@@ -831,8 +825,8 @@ class XMPPOutputStreamWriter:
         """
 
         if (not self._starting
-            and not self._stopping
-            and self.stat() == 'stopped'):
+                and not self._stopping
+                and self.stat() == 'stopped'):
 
             thread_name_in = 'Thread feeding data to XML parser'
 
@@ -1044,9 +1038,9 @@ class XMPPStreamMachine:
     def send(self, obj):
 
         if (self.stream_worker
-            and hasattr(self.stream_worker, 'send')
-            and callable(self.stream_worker.send)
-            ):
+                    and hasattr(self.stream_worker, 'send')
+                    and callable(self.stream_worker.send)
+                ):
 
             threading.Thread(
                 target=self.stream_worker.send,
@@ -1069,8 +1063,8 @@ class XMPPStreamMachine:
             raise Exception("self.stream_worker must be defined")
 
         if (not self._starting
-            and not self._stopping
-            and self.stat() == 'stopped'):
+                and not self._stopping
+                and self.stat() == 'stopped'):
 
             self._starting = True
 
@@ -1081,8 +1075,8 @@ class XMPPStreamMachine:
             self._xml_parser = lxml.etree.XMLParser(
                 target=self.xml_target,
                 huge_tree=True
-#                strip_cdata=False,
-#                resolve_entities=False
+                #                strip_cdata=False,
+                #                resolve_entities=False
                 )
 
             self.stream_worker = None
@@ -1113,8 +1107,8 @@ class XMPPStreamMachine:
         """
 
         if (not self._stopping
-            and not self._starting
-            and self.stat() == 'working'):
+                and not self._starting
+                and self.stat() == 'working'):
 
             self._stopping = True
 
@@ -1139,7 +1133,7 @@ class XMPPStreamMachine:
         if self.stream_worker:
             ret = self.stream_worker.stat()
 
-        if ret == None:
+        if ret is None:
             ret = 'stopped'
 
         return ret
@@ -1154,6 +1148,7 @@ class XMPPStreamMachine:
 
 
 class XMPPIOStreamRWMachine:
+
     """
     Signals:
 
@@ -1245,7 +1240,7 @@ self.out_machine.stat() == {}
         elif v1 == v2 == 'stopped':
             ret = 'stopped'
 
-        elif v1 == v2 == None:
+        elif v1 == v2 is None:
             ret = 'stopped'
 
         return ret
@@ -1279,7 +1274,6 @@ class Driver:
         self.description = 'This driver has no description'
 
     def drive(self, features_element):
-
         """
         Override this method
         """
@@ -1288,6 +1282,7 @@ class Driver:
 
 
 class StanzaMalformed(Exception):
+
     """
     For stanza parsing errors
     """
@@ -1303,19 +1298,19 @@ class Stanza:
 
         thread=None, subject=None, body=None, objects=None,
 
-        priority=None, show=None, status=None
-        ):
+            priority=None, show=None, status=None
+            ):
 
-        if body == None:
+        if body is None:
             body = []
 
-        if subject == None:
+        if subject is None:
             subject = []
 
-        if objects == None:
+        if objects is None:
             objects = []
 
-        if status == None:
+        if status is None:
             status = []
 
         self.set_element(None)
@@ -1343,13 +1338,13 @@ class Stanza:
         return self.to_str()
 
     def check_element(self, value):
-        if value != None and not is_stanza_element(value):
+        if value is not None and not is_stanza_element(value):
             raise TypeError("`element' must be stanza lxml.etree.Element")
 
     def check_objects(self, value):
         for i in value:
             if (not hasattr(i, 'gen_element')
-                or not callable(getattr(i, 'gen_element'))):
+                    or not callable(getattr(i, 'gen_element'))):
                 raise ValueError(
                     "all objects in `objects' must have gen_element() method"
                     " (and `{}' does not have one)".format(i)
@@ -1360,24 +1355,24 @@ class Stanza:
             raise ValueError("`tag' must be in ['message', 'iq', 'presence']")
 
     def check_ide(self, value):
-        if value != None and not isinstance(value, str):
+        if value is not None and not isinstance(value, str):
             raise ValueError("`ide' must be None or str")
 
     def check_from_jid(self, value):
-        if value != None:
+        if value is not None:
             JID.new_from_str(value)
 
     def check_to_jid(self, value):
-        if value != None:
+        if value is not None:
             JID.new_from_str(value)
 
     def check_typ(self, value):
 
-        if value != None and not value in [
-            'error', 'get', 'result', 'set', 'chat', 'error', 'groupchat',
-            'headline', 'normal', 'error', 'probe', 'subscribe',
-            'subscribed', 'unavailable', 'unsubscribe', 'unsubscribed'
-            ]:
+        if value is not None and not value in [
+                'error', 'get', 'result', 'set', 'chat', 'error', 'groupchat',
+                'headline', 'normal', 'error', 'probe', 'subscribe',
+                'subscribed', 'unavailable', 'unsubscribe', 'unsubscribed'
+                ]:
             raise ValueError("invalid `typ'")
 
         return
@@ -1389,41 +1384,41 @@ class Stanza:
                 )
 
     def check_xmllang(self, value):
-        if value != None and not isinstance(value, str):
+        if value is not None and not isinstance(value, str):
             raise ValueError("`xmllang' must be None or str")
 
     def check_thread(self, value):
-        if value != None and not isinstance(value, MessageThread):
+        if value is not None and not isinstance(value, MessageThread):
             raise ValueError("`thread' must be MessageThread")
 
     def check_subject(self, value):
         if not org.wayround.utils.types.struct_check(
-            value,
-            {'t': list, '.': {'t': MessageSubject}}
-            ):
+                value,
+                {'t': list, '.': {'t': MessageSubject}}
+                ):
             raise ValueError("`subject' must be list of MessageSubject")
 
     def check_body(self, value):
         if not org.wayround.utils.types.struct_check(
-            value,
-            {'t': list, '.': {'t': MessageBody}}
-            ):
+                value,
+                {'t': list, '.': {'t': MessageBody}}
+                ):
             raise ValueError("`body' must be list of MessageBody")
 
     def check_show(self, value):
-        if value != None and not isinstance(value, PresenceShow):
+        if value is not None and not isinstance(value, PresenceShow):
             raise ValueError("`show' must be PresenceShow")
 
     def check_status(self, value):
         if not org.wayround.utils.types.struct_check(
-            value,
-            {'t': list, '.': {'t': PresenceStatus}}
-            ):
+                value,
+                {'t': list, '.': {'t': PresenceStatus}}
+                ):
             raise ValueError("`status' must be list of PresenceStatus")
 
     def check_priority(self, value):
-        if (value != None
-            and (not isinstance(value, int) or not value in range(255))):
+        if (value is not None
+                and (not isinstance(value, int) or not value in range(255))):
             raise ValueError(
                 "`priority' must be byte and 0 <= `priority' 255"
                 )
@@ -1437,7 +1432,7 @@ class Stanza:
             ['jabber:client', 'jabber:server']
             )
 
-        if tag == None:
+        if tag is None:
             raise ValueError("invalid element")
 
         cl = cls(
@@ -1450,12 +1445,12 @@ class Stanza:
         org.wayround.utils.lxml.subelems_to_object_props(
             element, cl,
             [
-             ('{{{}}}thread'.format(ns), MessageThread, 'thread', '*')
-             ]
+                ('{{{}}}thread'.format(ns), MessageThread, 'thread', '*')
+                ]
             )
 
         show = element.find('{{{}}}show'.format(ns))
-        if show != None:
+        if show is not None:
             show = show.text
             if not show in ['away', 'chat', 'dnd', 'xa']:
                 show = None
@@ -1467,25 +1462,25 @@ class Stanza:
         org.wayround.utils.lxml.subelemsm_to_object_propsm(
             element, cl,
             [
-             ('{{{}}}status'.format(ns), PresenceStatus, 'status', '*'),
-             ('{{{}}}subject'.format(ns), MessageSubject, 'subject', '*'),
-             ('{{{}}}body'.format(ns), MessageBody, 'body', '*')
-             ]
+                ('{{{}}}status'.format(ns), PresenceStatus, 'status', '*'),
+                ('{{{}}}subject'.format(ns), MessageSubject, 'subject', '*'),
+                ('{{{}}}body'.format(ns), MessageBody, 'body', '*')
+                ]
             )
 
         org.wayround.utils.lxml.elem_props_to_object_props(
             element, cl,
             [
-             ('id', 'ide'),
-             ('from', 'from_jid'),
-             ('to', 'to_jid'),
-             ('type', 'typ'),
-             ('{{{}}}lang'.format(XML_NAMESPACE), 'xmllang')
-             ]
+                ('id', 'ide'),
+                ('from', 'from_jid'),
+                ('to', 'to_jid'),
+                ('type', 'typ'),
+                ('{{{}}}lang'.format(XML_NAMESPACE), 'xmllang')
+                ]
             )
 
         priority_el = element.find('{{{}}}priority'.format(ns))
-        if priority_el != None:
+        if priority_el is not None:
             prio = 255
             prio_error = False
             try:
@@ -1520,30 +1515,30 @@ class Stanza:
         org.wayround.utils.lxml.object_props_to_elem_props(
             self, el,
             [
-             # ('xmlns', 'xmlns'),
-             ('ide', 'id'),
-             ('from_jid', 'from'),
-             ('to_jid', 'to'),
-             ('xmllang', '{{{}}}lang'.format(XML_NAMESPACE)),
-             ('typ', 'type')
-             ]
+                # ('xmlns', 'xmlns'),
+                ('ide', 'id'),
+                ('from_jid', 'from'),
+                ('to_jid', 'to'),
+                ('xmllang', '{{{}}}lang'.format(XML_NAMESPACE)),
+                ('typ', 'type')
+                ]
             )
 
         org.wayround.utils.lxml.object_props_to_subelems(
             self, el,
             [
-             ('thread'),
-             ('show')
-             ]
+                ('thread'),
+                ('show')
+                ]
             )
 
         org.wayround.utils.lxml.object_propsm_to_subelemsm(
             self, el,
             [
-             ('status'),
-             ('subject'),
-             ('body')
-             ]
+                ('status'),
+                ('subject'),
+                ('body')
+                ]
             )
 
         objects = self.get_objects()
@@ -1575,7 +1570,7 @@ class Stanza:
         if subject is not None:
             for i in subject:
                 lang = i.get_xmllang()
-                if lang == None:
+                if lang is None:
                     lang = ''
                 subject_d[lang] = i.get_text()
         return subject_d
@@ -1586,7 +1581,7 @@ class Stanza:
         if body is not None:
             for i in body:
                 lang = i.get_xmllang()
-                if lang == None:
+                if lang is None:
                     lang = ''
                 body_d[lang] = i.get_text()
         return body_d
@@ -1595,7 +1590,7 @@ class Stanza:
 
         subjects = []
 
-        if value != None:
+        if value is not None:
 
             for i in list(value.keys()):
 
@@ -1614,7 +1609,7 @@ class Stanza:
 
         bodys = []
 
-        if value != None:
+        if value is not None:
 
             for i in list(value.keys()):
 
@@ -1638,16 +1633,16 @@ class Stanza:
 org.wayround.utils.factory.class_generate_attributes(
     Stanza,
     [
-     'element', 'objects', 'tag', 'ide', 'from_jid', 'to_jid', 'typ',
-     'xmlns', 'xmllang', 'thread', 'subject', 'body', 'show', 'status',
-     'priority']
+        'element', 'objects', 'tag', 'ide', 'from_jid', 'to_jid', 'typ',
+        'xmlns', 'xmllang', 'thread', 'subject', 'body', 'show', 'status',
+        'priority']
     )
 org.wayround.utils.factory.class_generate_check(
     Stanza,
     [
-     'element', 'objects', 'tag', 'ide', 'from_jid', 'to_jid', 'typ',
-     'xmlns', 'xmllang', 'thread', 'subject', 'body', 'show', 'status',
-     'priority']
+        'element', 'objects', 'tag', 'ide', 'from_jid', 'to_jid', 'typ',
+        'xmlns', 'xmllang', 'thread', 'subject', 'body', 'show', 'status',
+        'priority']
     )
 
 
@@ -1676,11 +1671,11 @@ class MessageBody:
             element, 'body', None
             )[0]
 
-        if tag == None:
+        if tag is None:
             raise ValueError("invalid tag")
 
         txt = element.text
-        if txt == None:
+        if txt is None:
             txt = ''
 
         cl = cls(txt)
@@ -1745,11 +1740,11 @@ class MessageSubject:
             element, 'subject', None
             )[0]
 
-        if tag == None:
+        if tag is None:
             raise ValueError("invalid tag")
 
         txt = element.text
-        if txt == None:
+        if txt is None:
             txt = ''
 
         cl = cls(txt)
@@ -1801,7 +1796,7 @@ class MessageThread:
             raise ValueError("`thread' must be str")
 
     def check_parent(self, value):
-        if value != None and not isinstance(value, str):
+        if value is not None and not isinstance(value, str):
             raise ValueError("`parent' must be str")
 
     @classmethod
@@ -1814,7 +1809,7 @@ class MessageThread:
             element, 'thread', None
             )[0]
 
-        if tag == None:
+        if tag is None:
             raise ValueError("invalid tag")
 
         cl = cls(element.text)
@@ -1859,7 +1854,7 @@ class PresenceShow:
     def check_text(self, value):
         if not value in ['away', 'chat', 'dnd', 'xa']:
             raise ValueError(
-"`show' must be in ['away', 'chat', 'dnd', 'xa'], but '{}' is supplied".format(
+                "`show' must be in ['away', 'chat', 'dnd', 'xa'], but '{}' is supplied".format(
                     value
                     )
                 )
@@ -1874,7 +1869,7 @@ class PresenceShow:
             element, 'show', None
             )[0]
 
-        if tag == None:
+        if tag is None:
             raise ValueError("invalid tag")
 
         cl = cls(text=element.text)
@@ -1930,7 +1925,7 @@ class PresenceStatus:
             element, 'status', None
             )[0]
 
-        if tag == None:
+        if tag is None:
             raise ValueError("invalid tag")
 
         cl = cls(text=element.text)
@@ -1975,9 +1970,9 @@ class StanzaErrorMalformed(Exception):
 class StanzaError:
 
     def __init__(
-        self,
-        xmlns=None, error_type=None, condition=None, text=None, code=None
-        ):
+            self,
+            xmlns=None, error_type=None, condition=None, text=None, code=None
+            ):
 
         self.set_xmlns(xmlns)
         self.set_error_type(error_type)
@@ -2020,7 +2015,7 @@ class StanzaError:
         for i in element:
             qname = lxml.etree.QName(i)
             if (qname.localname == 'error'
-                and qname.namespace in ['jabber:client', 'jabber:server']):
+                    and qname.namespace in ['jabber:client', 'jabber:server']):
                 element = i
                 found = True
 
@@ -2096,10 +2091,10 @@ Condition: {}
 Code: {}
 Text:
 {}""".format(
-        self.get_error_type(),
-        self.get_condition(),
-        self.get_code(),
-        self.get_text()
+            self.get_error_type(),
+            self.get_condition(),
+            self.get_code(),
+            self.get_text()
         )
 
     gen_text = to_text
@@ -2155,10 +2150,10 @@ class StanzaProcessor:
         self._io_machine = None
 
     def send(
-        self, stanza_obj, ide_mode='generate', ide=None, wait=False,
-        emit_reply_anyway=False,
-        emit_reply_message=True
-        ):
+            self, stanza_obj, ide_mode='generate', ide=None, wait=False,
+            emit_reply_anyway=False,
+            emit_reply_message=True
+            ):
         # TODO: documentation rework required
         # NOTE: cb parameter is removed: newly received stanza either
         #       signalled, either returned by this method
@@ -2215,7 +2210,7 @@ class StanzaProcessor:
 
         # ===== parameters checks
 
-        if wait != None and not isinstance(wait, (bool, int,)):
+        if wait is not None and not isinstance(wait, (bool, int,)):
             raise TypeError("`wait' must be None, bool or int")
 
         if wait == True:
@@ -2229,8 +2224,8 @@ class StanzaProcessor:
             wait = None
 
         if not ide_mode in [
-            'from_stanza', 'generate', 'generate_implicit', 'implicit'
-            ]:
+                'from_stanza', 'generate', 'generate_implicit', 'implicit'
+                ]:
             raise ValueError("wrong value for ide_mode parameter")
 
         # ===== stanza ID generation routines
@@ -2242,7 +2237,7 @@ class StanzaProcessor:
 
         elif ide_mode in ['generate', 'generate_implicit']:
             if ((not stanza_obj.get_ide() and ide_mode == 'generate')
-                or ide_mode == 'generate_implicit'):
+                    or ide_mode == 'generate_implicit'):
 
                 new_stanza_ide = '{}-stanza-{}'.format(
                     self._stanza_id_generation_unifire,
@@ -2303,7 +2298,7 @@ class StanzaProcessor:
     def _is_wait_in_sand(
             self, wait, emit_reply_anyway, emit_reply_message
             ):
-        return (wait == None
+        return (wait is None
                 or (isinstance(wait, int) and wait > 0)
                 or emit_reply_anyway == True
                 or emit_reply_message == True
@@ -2322,11 +2317,11 @@ class StanzaProcessor:
     def _process_input_object(self, obj):
 
         logging.debug(
-    "{} :: _process_input_object :: received element `{}' :: `{}'".format(
-        self,
-        obj,
-        obj.tag
-        )
+            "{} :: _process_input_object :: received element `{}' :: `{}'".format(
+                self,
+                obj,
+                obj.tag
+                )
             )
 
         if is_stanza_element(obj):
@@ -2337,8 +2332,8 @@ class StanzaProcessor:
                 stanza = Stanza.new_from_element(obj)
             except:
                 logging.exception(
-                "Error generating stanza object sent from `{}'".format(
-                    obj.get('from')
+                    "Error generating stanza object sent from `{}'".format(
+                        obj.get('from')
                     )
                     )
                 self.signal.emit('defective_stanza', self, obj)
@@ -2349,38 +2344,38 @@ class StanzaProcessor:
                     ide = stanza.get_ide()
 
                     logging.debug(
-    "{} :: _process_input_object :: processing {} with wait_callbacks".format(
-        self,
-        ide
-        )
+                        "{} :: _process_input_object :: processing {} with wait_callbacks".format(
+                            self,
+                            ide
+                            )
                         )
 
                     if (not ide in self._wait_callbacks
-                        or (ide in self._wait_callbacks
-                            and self._wait_callbacks[ide][
-                                'emit_reply_anyway'
-                                ] == True)
-                        or (ide in self._wait_callbacks
-                            and self._wait_callbacks[ide][
-                                'emit_reply_message'
-                                ] == True
-                            and stanza.get_tag() == 'message'
-                            )
-                        ):
+                                or (ide in self._wait_callbacks
+                                    and self._wait_callbacks[ide][
+                                        'emit_reply_anyway'
+                                        ] == True)
+                                or (ide in self._wait_callbacks
+                                    and self._wait_callbacks[ide][
+                                        'emit_reply_message'
+                                        ] == True
+                                    and stanza.get_tag() == 'message'
+                                    )
+                            ):
                         logging.debug(
-                    "{} :: _process_input_object :: emiting stanza {}".format(
-                        self,
-                        ide
-                        )
+                            "{} :: _process_input_object :: emiting stanza {}".format(
+                                self,
+                                ide
+                                )
                             )
                         self.signal.emit('new_stanza', self, stanza)
 
                     if ide in self._wait_callbacks:
                         logging.debug(
-"{} :: _process_input_object :: triggering wait callback for stanza {}".format(
-    self,
-    ide
-    )
+                            "{} :: _process_input_object :: triggering wait callback for stanza {}".format(
+                                self,
+                                ide
+                                )
                             )
                         self._wait_callbacks[ide]['response'] = stanza
                         self._wait_callbacks[ide]['event'].set()
@@ -2428,14 +2423,13 @@ class Monitor:
 
 
 def start_stream_tpl(
-    from_jid,
-    to_jid,
-    version='1.0',
-    xmllang='en',
-    xmlns='jabber:client',
-    xmlns_stream='http://etherx.jabber.org/streams'
-    ):
-
+        from_jid,
+        to_jid,
+        version='1.0',
+        xmllang='en',
+        xmlns='jabber:client',
+        xmlns_stream='http://etherx.jabber.org/streams'
+        ):
     """
     Standard XMPP stream begin template
     """
@@ -2498,7 +2492,7 @@ class Bind:
             raise ValueError("Wrong bind type")
 
     def check_value(self, value):
-        if value != None and not isinstance(value, str):
+        if value is not None and not isinstance(value, str):
             raise ValueError("`value' must be None or str")
 
     @classmethod
@@ -2515,7 +2509,7 @@ class Bind:
 
         value = self.get_value()
 
-        if value != None:
+        if value is not None:
             tag_name = ''
 
             typ = self.get_typ()
@@ -2577,9 +2571,9 @@ class IQRoster:
 
     def check_item(self, value):
         if not org.wayround.utils.types.struct_check(
-            value,
-            {'t': list, '.': {'t': IQRosterItem}}
-            ):
+                value,
+                {'t': list, '.': {'t': IQRosterItem}}
+                ):
             raise ValueError("`item' must be list of IQRosterItem")
 
     def check_ver(self, value):
@@ -2604,7 +2598,7 @@ class IQRoster:
             ['jabber:iq:roster']
             )[0]
 
-        if tag == None:
+        if tag is None:
             raise ValueError("Invalid roster query `element'")
 
         cl = cls()
@@ -2612,15 +2606,15 @@ class IQRoster:
         org.wayround.utils.lxml.elem_props_to_object_props(
             element, cl,
             [
-             ('ver', 'ver')
-             ]
+                ('ver', 'ver')
+                ]
             )
 
         org.wayround.utils.lxml.subelemsm_to_object_propsm(
             element, cl,
             [
-             ('{jabber:iq:roster}item', IQRosterItem, 'item', '*')
-             ]
+                ('{jabber:iq:roster}item', IQRosterItem, 'item', '*')
+                ]
             )
 
         cl.check()
@@ -2637,8 +2631,8 @@ class IQRoster:
         org.wayround.utils.lxml.object_props_to_elem_props(
             self, element,
             [
-             ('ver', 'ver')
-             ]
+                ('ver', 'ver')
+                ]
             )
 
         org.wayround.utils.lxml.object_propsm_to_subelemsm(
@@ -2662,10 +2656,10 @@ org.wayround.utils.factory.class_generate_check(
 class IQRosterItem:
 
     def __init__(
-        self,
-        jid=None, group=None, approved=None, ask=None,
-        name=None, subscription=None
-        ):
+            self,
+            jid=None, group=None, approved=None, ask=None,
+            name=None, subscription=None
+            ):
 
         if group is None:
             group = []
@@ -2679,9 +2673,9 @@ class IQRosterItem:
 
     def check_group(self, value):
         if not org.wayround.utils.types.struct_check(
-            value,
-            {'t': list, '.': {'t': str}}
-            ):
+                value,
+                {'t': list, '.': {'t': str}}
+                ):
             raise ValueError("`group' must be list of str")
 
     def check_approved(self, value):
@@ -2702,10 +2696,10 @@ class IQRosterItem:
 
     def check_subscription(self, value):
         if not value in [
-            None, 'both', 'from', 'none', 'remove', 'to'
-            ]:
+                None, 'both', 'from', 'none', 'remove', 'to'
+                ]:
             raise ValueError(
-    "`subscription' must be in [None, 'both','from','none','remove','to']"
+                "`subscription' must be in [None, 'both','from','none','remove','to']"
                 )
 
     @classmethod
@@ -2717,7 +2711,7 @@ class IQRosterItem:
             ['jabber:iq:roster']
             )[0]
 
-        if tag == None:
+        if tag is None:
             raise ValueError("Invalid roster query `element'")
 
         cl = cls(jid=element.get('jid'))
@@ -2727,10 +2721,10 @@ class IQRosterItem:
         org.wayround.utils.lxml.elem_props_to_object_props(
             element, cl,
             [
-             ('ask', 'ask'),
-             ('name', 'name'),
-             ('subscription', 'subscription')
-             ]
+                ('ask', 'ask'),
+                ('name', 'name'),
+                ('subscription', 'subscription')
+                ]
             )
 
         groups = cl.get_group()
@@ -2749,11 +2743,11 @@ class IQRosterItem:
         org.wayround.utils.lxml.object_props_to_elem_props(
             self, element,
             [
-             ('ask', 'ask'),
-             ('jid', 'jid'),
-             ('name', 'name'),
-             ('subscription', 'subscription')
-             ]
+                ('ask', 'ask'),
+                ('jid', 'jid'),
+                ('name', 'name'),
+                ('subscription', 'subscription')
+                ]
             )
 
         approved = '0'
@@ -2781,7 +2775,6 @@ org.wayround.utils.factory.class_generate_check(
 
 
 def determine_stream_error(xml_element):
-
     """
     Returns None if not xml_element is lxml tag element
 
@@ -2838,7 +2831,6 @@ def determine_stream_error(xml_element):
 
 
 def determine_stanza_error(stanza):
-
     """
     If stanza is of error type and has correct structure, return is
         {
@@ -2893,7 +2885,7 @@ def determine_stanza_element_error(element):
 
     e1 = element
 
-    if e1 == None:
+    if e1 is None:
         ret = None
     else:
 
@@ -2936,7 +2928,7 @@ def determine_stanza_element_error(element):
                 if not condition in STANZA_ERROR_NAMES:
                     condition = 'invalid-condition'
 
-                if condition == None:
+                if condition is None:
                     condition = 'undefined-condition'
 
                 ret = {
@@ -2951,11 +2943,10 @@ def determine_stanza_element_error(element):
 
 def is_features_element(obj):
     return (org.wayround.utils.lxml.is_lxml_tag_element(obj)
-        and obj.tag == '{http://etherx.jabber.org/streams}features')
+            and obj.tag == '{http://etherx.jabber.org/streams}features')
 
 
 def is_stanza_element(obj):
-
     """
     Determine is obj is stanza element
     """
