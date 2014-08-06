@@ -656,7 +656,9 @@ class Bot:
     def _inbound_stanzas(self, obj):
 
         if not isinstance(obj, org.wayround.xmpp.core.Stanza):
-            raise TypeError("`obj' must be org.wayround.xmpp.core.Stanza inst")
+            raise TypeError(
+                "`obj' must be org.wayround.xmpp.core.Stanza inst"
+                )
 
         if obj.get_tag() == 'message' and obj.get_typ() == 'chat':
 
@@ -736,12 +738,13 @@ class Bot:
                             t += tt
                             t += '\n'
 
-                        tt = res['message']
-                        if tt != '':
-                            t += tt
-                            t += '\n'
+                        if 'main_message' in res and res['main_message']:
+                            t += '{}\n'.format(res['main_message'])
 
-                        t += 'Exit Code: {}\n'.format(res['code'])
+                        t += 'Exit Code: {} ({})\n'.format(
+                            res['code'],
+                            res['message']
+                            )
 
                         i.set_text(t)
 

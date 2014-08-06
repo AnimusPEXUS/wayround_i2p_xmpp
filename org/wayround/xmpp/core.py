@@ -87,6 +87,93 @@ STANZA_ERROR_NAMES = [
     'unexpected-request'
     ]
 
+VALID_JID_MATCHES = ['full', 'bare', 'domain', 'resource', 'unknown']
+VALID_JID_CONVERSION = ['full', 'bare', 'domain', 'resource']
+
+
+def jid_is_x(string_or_jid, x):
+
+    if isinstance(string_or_jid, str):
+        string_or_jid = JID.new_from_string(string_or_jid)
+
+    if not isinstance(string_or_jid, JID):
+        raise ValueError("invalid `string_or_jid' value")
+
+    if not x in VALID_JID_MATCHES:
+        raise ValueError("invalid `x' value")
+
+    if not hasattr(JID, 'is_{}'.format(x)):
+        raise ValueError("invalid `x' value")
+
+    return getattr(string_or_jid, 'is_{}'.format(x))()
+
+
+def jid_is_full(string_or_jid):
+    return jid_is_x(string_or_jid, 'full'):
+
+
+def jid_is_bare(string_or_jid):
+    return jid_is_x(string_or_jid, 'bare'):
+
+
+def jid_is_domain(string_or_jid):
+    return _id_is_x(string_or_jid, 'domain'):
+
+
+def jid_is_resource(string_or_jid):
+    return jid_is_x(string_or_jid, 'resource'):
+
+
+def jid_is_unknown(string_or_jid):
+    return jid_is_x(string_or_jid, 'unknown'):
+
+
+def jid_to_x(string_or_jid, x):
+
+    ret = None
+
+    if isinstance(string_or_jid, str):
+        string_or_jid = JID.new_from_string(string_or_jid)
+
+    if not isinstance(string_or_jid, JID):
+        raise ValueError("invalid `string_or_jid' value")
+
+    if not x in VALID_JID_CONVERSION:
+        raise ValueError("invalid `x' value")
+
+    if x == 'full':
+        ret = string_or_jid.full()
+
+    elif x == 'bare':
+        ret = string_or_jid.bare()
+
+    elif x == 'domain':
+        ret = string_or_jid.domain
+
+    elif x == 'resource':
+        ret = string_or_jid.resource
+
+    else:
+        raise Exception("programming error")
+
+    return ret
+
+
+def jid_to_full(string_or_jid):
+    return jid_to_x(string_or_jid, 'full'):
+
+
+def jid_to_bare(string_or_jid):
+    return jid_to_x(string_or_jid, 'bare'):
+
+
+def jid_to_domain(string_or_jid):
+    return _id_to_x(string_or_jid, 'domain'):
+
+
+def jid_to_resource(string_or_jid):
+    return jid_to_x(string_or_jid, 'resource'):
+
 
 class JID:
 
@@ -95,14 +182,6 @@ class JID:
 
     Domain and user parts are automatically converted to low register
     """
-
-    def __init__(self, user=None, domain=None, resource=None):
-
-        self._values = {}
-
-        self.user = user
-        self.domain = domain
-        self.resource = resource
 
     @classmethod
     def new_from_string(cls, in_str):
@@ -131,6 +210,14 @@ class JID:
         return ret
 
     new_from_str = new_from_string
+
+    def __init__(self, user=None, domain=None, resource=None):
+
+        self._values = {}
+
+        self.user = user
+        self.domain = domain
+        self.resource = resource
 
     def __str__(self):
 
@@ -270,47 +357,44 @@ class JID:
 
     def get_type(self):
 
-        ret = 'unknown'
+        ret = []
 
         if (self.user is None
                 and self.domain is not None
                 and self.resource is None):
-            ret = 'domain'
+            ret.append('domain')
 
-        elif (self.user is None
-              and self.domain is not None
-              and self.resource is not None):
-            ret = 'resource'
+        if (self.user is None
+                and self.domain is not None
+                and self.resource is not None):
+            ret.append('resource')
 
-        elif (self.user is not None
-              and self.domain is not None
-              and self.resource is None):
-            ret = 'bare'
+        if (self.user is not None
+                and self.domain is not None
+                and self.resource is None):
+            ret.append('bare')
 
-        elif (self.user is not None
-              and self.domain is not None
-              and self.resource is not None):
-            ret = 'full'
-
-        else:
-            ret = 'unknown'
+        if (self.user is not None
+                and self.domain is not None
+                and self.resource is not None):
+            ret.append('full')
 
         return ret
 
     def is_full(self):
-        return self.get_type() == 'full'
+        return 'full' in self.get_type()
 
     def is_bare(self):
-        return self.get_type() == 'bare'
+        return 'bare' in self.get_type()
 
     def is_domain(self):
-        return self.get_type() == 'domain'
+        return 'domain' in self.get_type()
 
     def is_resource(self):
-        return self.get_type() == 'resource'
+        return 'resource' in self.get_type()
 
     def is_unknown(self):
-        return self.get_type() == 'unknown'
+        return len(self.get_type()) == 0
 
     def update(self, jid_obj):
 
@@ -1038,9 +1122,9 @@ class XMPPStreamMachine:
     def send(self, obj):
 
         if (self.stream_worker
-                    and hasattr(self.stream_worker, 'send')
-                    and callable(self.stream_worker.send)
-                ):
+            and hasattr(self.stream_worker, 'send')
+            and callable(self.stream_worker.send)
+            ):
 
             threading.Thread(
                 target=self.stream_worker.send,
@@ -2351,17 +2435,17 @@ class StanzaProcessor:
                         )
 
                     if (not ide in self._wait_callbacks
-                                or (ide in self._wait_callbacks
+                        or (ide in self._wait_callbacks
                                     and self._wait_callbacks[ide][
                                         'emit_reply_anyway'
                                         ] == True)
-                                or (ide in self._wait_callbacks
+                        or (ide in self._wait_callbacks
                                     and self._wait_callbacks[ide][
                                         'emit_reply_message'
                                         ] == True
                                     and stanza.get_tag() == 'message'
                                     )
-                            ):
+                        ):
                         logging.debug(
                             "{} :: _process_input_object :: emiting stanza {}".format(
                                 self,
