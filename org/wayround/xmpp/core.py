@@ -109,23 +109,23 @@ def jid_is_x(string_or_jid, x):
 
 
 def jid_is_full(string_or_jid):
-    return jid_is_x(string_or_jid, 'full'):
+    return jid_is_x(string_or_jid, 'full')
 
 
 def jid_is_bare(string_or_jid):
-    return jid_is_x(string_or_jid, 'bare'):
+    return jid_is_x(string_or_jid, 'bare')
 
 
 def jid_is_domain(string_or_jid):
-    return _id_is_x(string_or_jid, 'domain'):
+    return _id_is_x(string_or_jid, 'domain')
 
 
 def jid_is_resource(string_or_jid):
-    return jid_is_x(string_or_jid, 'resource'):
+    return jid_is_x(string_or_jid, 'resource')
 
 
 def jid_is_unknown(string_or_jid):
-    return jid_is_x(string_or_jid, 'unknown'):
+    return jid_is_x(string_or_jid, 'unknown')
 
 
 def jid_to_x(string_or_jid, x):
@@ -160,19 +160,19 @@ def jid_to_x(string_or_jid, x):
 
 
 def jid_to_full(string_or_jid):
-    return jid_to_x(string_or_jid, 'full'):
+    return jid_to_x(string_or_jid, 'full')
 
 
 def jid_to_bare(string_or_jid):
-    return jid_to_x(string_or_jid, 'bare'):
+    return jid_to_x(string_or_jid, 'bare')
 
 
 def jid_to_domain(string_or_jid):
-    return _id_to_x(string_or_jid, 'domain'):
+    return _id_to_x(string_or_jid, 'domain')
 
 
 def jid_to_resource(string_or_jid):
-    return jid_to_x(string_or_jid, 'resource'):
+    return jid_to_x(string_or_jid, 'resource')
 
 
 class JID:
