@@ -211,13 +211,35 @@ class JID:
 
     new_from_str = new_from_string
 
-    def __init__(self, user=None, domain=None, resource=None):
+    def __init__(
+            self,
+            user=None,
+            domain=None,
+            resource=None
+            ):
+
+        self._set_lock = threading.Lock()
 
         self._values = {}
+
+        self.signal = org.wayround.utils.threading.Signal(
+            self,
+            [
+                'changed',          # self, old_value_copy
+                'changed_user',     # self, old_value, new_value
+                'changed_domain',   # self, old_value, new_value
+                'changed_resource'  # self, old_value, new_value
+                ],
+            disabled=True
+            )
 
         self.user = user
         self.domain = domain
         self.resource = resource
+
+        self.signal.enable()
+
+        return
 
     def __str__(self):
 
@@ -288,17 +310,40 @@ class JID:
         if value == '':
             value = None
 
-        if value is not None:
-            self._values['resource'] = str(value)
-        else:
-            self._values['resource'] = value
+        self._set('resource', value)
         return
 
     def _set(self, name, value):
-        if value is not None:
-            self._values[name] = str(value).lower()
-        else:
-            self._values[name] = None
+        with self._set_lock:
+            if not self.signal.get_disabled():
+                old_copy = self.copy(disable_signals=True)
+                old_value = self._values[name]
+
+            if name != 'resource':
+                if value is not None:
+                    self._values[name] = str(value).lower()
+                else:
+                    self._values[name] = None
+            else:
+                if value is not None:
+                    self._values[name] = str(value)
+                else:
+                    self._values[name] = value
+
+            if not self.signal.get_disabled():
+                new_value = self._values[name]
+                self.signal.emit(
+                    'changed_{}'.format(name),
+                    self,
+                    old_value,
+                    new_value
+                    )
+
+                self.signal.emit(
+                    'changed',
+                    self,
+                    old_copy
+                    )
         return
 
     def _get(self, name):
@@ -396,19 +441,25 @@ class JID:
     def is_unknown(self):
         return len(self.get_type()) == 0
 
-    def update(self, jid_obj):
+    def update(self, jid_obj, disable_signals=False):
 
         if not isinstance(jid_obj, JID):
             raise TypeError("`jid_obj' must be of type JID")
+
+        if disable_signals:
+            self.signal.disable()
 
         self.user = jid_obj.user
         self.domain = jid_obj.domain
         self.resource = jid_obj.resource
 
+        if disable_signals:
+            self.signal.enable()
+
         return self
 
-    def copy(self):
-        return JID().update(self)
+    def copy(self, disable_signals=False):
+        return JID().update(self, disable_signals=disable_signals)
 
     def make_connection_info(self):
         """
@@ -1122,8 +1173,8 @@ class XMPPStreamMachine:
     def send(self, obj):
 
         if (self.stream_worker
-            and hasattr(self.stream_worker, 'send')
-            and callable(self.stream_worker.send)
+                and hasattr(self.stream_worker, 'send')
+                and callable(self.stream_worker.send)
             ):
 
             threading.Thread(
@@ -2435,16 +2486,16 @@ class StanzaProcessor:
                         )
 
                     if (not ide in self._wait_callbacks
-                        or (ide in self._wait_callbacks
-                                    and self._wait_callbacks[ide][
-                                        'emit_reply_anyway'
-                                        ] == True)
-                        or (ide in self._wait_callbacks
-                                    and self._wait_callbacks[ide][
-                                        'emit_reply_message'
-                                        ] == True
-                                    and stanza.get_tag() == 'message'
-                                    )
+                            or (ide in self._wait_callbacks
+                                and self._wait_callbacks[ide][
+                                    'emit_reply_anyway'
+                                    ] == True)
+                            or (ide in self._wait_callbacks
+                                and self._wait_callbacks[ide][
+                                    'emit_reply_message'
+                                    ] == True
+                                and stanza.get_tag() == 'message'
+                                )
                         ):
                         logging.debug(
                             "{} :: _process_input_object :: emiting stanza {}".format(
