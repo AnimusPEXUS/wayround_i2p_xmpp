@@ -767,7 +767,8 @@ class XMPPInputStreamReader:
                     self._stream_reader_thread = org.wayround.utils.stream.cat(
                         stdin=self._read_from,
                         stdout=self,
-                        read_type='pipe-nb',
+                        read_type='async',
+                        read_selectable=True,
                         bs=(2 * 1024 ** 2),
                         threaded=True,
                         thread_name=thread_name_in,
