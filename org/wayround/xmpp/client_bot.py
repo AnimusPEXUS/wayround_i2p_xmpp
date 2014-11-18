@@ -627,7 +627,8 @@ class Bot:
             if self.auth_info.authzid:
                 value = bytes(self.auth_info.authzid, 'utf-8')
 
-            session.property_set(prop, value)
+            if value is not None:
+                session.property_set(prop, value)
 
         elif prop == Gsasl.Property.PASSWORD:
 
