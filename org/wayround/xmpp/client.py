@@ -889,6 +889,8 @@ def drive_starttls(
     if not can_drive_starttls(features_element):
         ret = 'invalid features'
 
+    client_reactions_waiter = None
+
     if ret == 'ok':
 
         logging.debug("STARTTLS routines beginning now")
@@ -1033,7 +1035,8 @@ def drive_starttls(
             )
         ret = obj
 
-    client_reactions_waiter.stop()
+    if client_reactions_waiter is not None:
+        client_reactions_waiter.stop()
 
     if isinstance(ret, str):
         logging.debug("STARTTLS driver exited with error '{}'".format(ret))
