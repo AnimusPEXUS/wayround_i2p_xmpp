@@ -7,9 +7,9 @@ The main programmer interface to this module should be and XCardTemp class
 
 import lxml.etree
 
-import org.wayround.utils.lxml
-import org.wayround.utils.types
-import org.wayround.utils.factory
+import wayround_org.utils.lxml
+import wayround_org.utils.types
+import wayround_org.utils.factory
 
 NAMESPACE = 'vcard-temp'
 LXML_NAMESPACE = '{{{}}}'.format(NAMESPACE)
@@ -56,7 +56,7 @@ class PCData:
     @classmethod
     def new_from_element(cls, element):
 
-        tag = org.wayround.utils.lxml.parse_element_tag(
+        tag = wayround_org.utils.lxml.parse_element_tag(
             element,
             None,
             [NAMESPACE]
@@ -76,7 +76,7 @@ class PCData:
 
         return el
 
-org.wayround.utils.factory.class_generate_attributes_and_check(
+wayround_org.utils.factory.class_generate_attributes_and_check(
     PCData,
     ['tag']
     )
@@ -94,7 +94,7 @@ class Empty:
 
     @classmethod
     def new_from_element(cls, element):
-        tag = org.wayround.utils.lxml.parse_element_tag(
+        tag = wayround_org.utils.lxml.parse_element_tag(
             element,
             None,
             [NAMESPACE]
@@ -112,7 +112,7 @@ class Empty:
 
         return el
 
-org.wayround.utils.factory.class_generate_attributes_and_check(Empty, ['tag'])
+wayround_org.utils.factory.class_generate_attributes_and_check(Empty, ['tag'])
 
 
 N_ELEMENTS = [
@@ -123,7 +123,7 @@ N_ELEMENTS = [
     (LXML_NAMESPACE + 'SUFFIX', PCData, 'suffix', '?', 'Suffix')
     ]
 
-org.wayround.utils.lxml.check_tagname_class_attrnames(N_ELEMENTS)
+wayround_org.utils.lxml.check_tagname_class_attrnames(N_ELEMENTS)
 
 N_CLASS_PROPS = list(i[2] for i in N_ELEMENTS)
 
@@ -131,7 +131,7 @@ N_CLASS_PROPS = list(i[2] for i in N_ELEMENTS)
 class N:
     pass
 
-org.wayround.utils.lxml.simple_exchange_class_factory(
+wayround_org.utils.lxml.simple_exchange_class_factory(
     N,
     'N',
     NAMESPACE,
@@ -139,12 +139,12 @@ org.wayround.utils.lxml.simple_exchange_class_factory(
     N_CLASS_PROPS
     )
 
-org.wayround.utils.lxml.checker_factory(
+wayround_org.utils.lxml.checker_factory(
     N,
     N_ELEMENTS
     )
 
-org.wayround.utils.factory.class_generate_attributes_and_check(
+wayround_org.utils.factory.class_generate_attributes_and_check(
     N,
     N_CLASS_PROPS
     )
@@ -156,7 +156,7 @@ PHOTO_ELEMENTS = [
     (LXML_NAMESPACE + 'EXTVAL', PCData, 'extval', '?', 'External Value')
     ]
 
-org.wayround.utils.lxml.check_tagname_class_attrnames(PHOTO_ELEMENTS)
+wayround_org.utils.lxml.check_tagname_class_attrnames(PHOTO_ELEMENTS)
 
 PHOTO_CLASS_PROPS = list(i[2] for i in PHOTO_ELEMENTS)
 
@@ -164,7 +164,7 @@ PHOTO_CLASS_PROPS = list(i[2] for i in PHOTO_ELEMENTS)
 class Photo:
     pass
 
-org.wayround.utils.lxml.simple_exchange_class_factory(
+wayround_org.utils.lxml.simple_exchange_class_factory(
     Photo,
     'PHOTO',
     NAMESPACE,
@@ -172,12 +172,12 @@ org.wayround.utils.lxml.simple_exchange_class_factory(
     PHOTO_CLASS_PROPS
     )
 
-org.wayround.utils.factory.class_generate_attributes_and_check(
+wayround_org.utils.factory.class_generate_attributes_and_check(
     Photo,
     PHOTO_CLASS_PROPS
     )
 
-org.wayround.utils.lxml.checker_factory(
+wayround_org.utils.lxml.checker_factory(
     Photo,
     PHOTO_ELEMENTS
     )
@@ -200,7 +200,7 @@ ADR_ELEMENTS = [
     (LXML_NAMESPACE + 'PCODE', PCData, 'pcode', '?', 'PCODE?')
     ]
 
-org.wayround.utils.lxml.check_tagname_class_attrnames(ADR_ELEMENTS)
+wayround_org.utils.lxml.check_tagname_class_attrnames(ADR_ELEMENTS)
 
 ADR_CLASS_PROPS = list(i[2] for i in ADR_ELEMENTS)
 
@@ -208,7 +208,7 @@ ADR_CLASS_PROPS = list(i[2] for i in ADR_ELEMENTS)
 class Adr:
     pass
 
-org.wayround.utils.lxml.simple_exchange_class_factory(
+wayround_org.utils.lxml.simple_exchange_class_factory(
     Adr,
     'ADR',
     NAMESPACE,
@@ -216,12 +216,12 @@ org.wayround.utils.lxml.simple_exchange_class_factory(
     ADR_CLASS_PROPS
     )
 
-org.wayround.utils.factory.class_generate_attributes_and_check(
+wayround_org.utils.factory.class_generate_attributes_and_check(
     Adr,
     ADR_CLASS_PROPS
     )
 
-org.wayround.utils.lxml.checker_factory(
+wayround_org.utils.lxml.checker_factory(
     Adr,
     ADR_ELEMENTS
     )
@@ -238,7 +238,7 @@ LABEL_ELEMENTS = [
     (LXML_NAMESPACE + 'LINE', PCData, 'line', '+', 'Line')
     ]
 
-org.wayround.utils.lxml.check_tagname_class_attrnames(LABEL_ELEMENTS)
+wayround_org.utils.lxml.check_tagname_class_attrnames(LABEL_ELEMENTS)
 
 LABEL_CLASS_PROPS = list(i[2] for i in LABEL_ELEMENTS)
 
@@ -246,7 +246,7 @@ LABEL_CLASS_PROPS = list(i[2] for i in LABEL_ELEMENTS)
 class Label:
     pass
 
-org.wayround.utils.lxml.simple_exchange_class_factory(
+wayround_org.utils.lxml.simple_exchange_class_factory(
     Label,
     'LABEL',
     NAMESPACE,
@@ -254,12 +254,12 @@ org.wayround.utils.lxml.simple_exchange_class_factory(
     LABEL_CLASS_PROPS
     )
 
-org.wayround.utils.factory.class_generate_attributes_and_check(
+wayround_org.utils.factory.class_generate_attributes_and_check(
     Label,
     LABEL_CLASS_PROPS
     )
 
-org.wayround.utils.lxml.checker_factory(
+wayround_org.utils.lxml.checker_factory(
     Label,
     LABEL_ELEMENTS
     )
@@ -284,7 +284,7 @@ TEL_ELEMENTS = [
      'Number')
     ]
 
-org.wayround.utils.lxml.check_tagname_class_attrnames(TEL_ELEMENTS)
+wayround_org.utils.lxml.check_tagname_class_attrnames(TEL_ELEMENTS)
 
 TEL_CLASS_PROPS = list(i[2] for i in TEL_ELEMENTS)
 
@@ -292,7 +292,7 @@ TEL_CLASS_PROPS = list(i[2] for i in TEL_ELEMENTS)
 class Tel:
     pass
 
-org.wayround.utils.lxml.simple_exchange_class_factory(
+wayround_org.utils.lxml.simple_exchange_class_factory(
     Tel,
     'TEL',
     NAMESPACE,
@@ -300,12 +300,12 @@ org.wayround.utils.lxml.simple_exchange_class_factory(
     TEL_CLASS_PROPS
     )
 
-org.wayround.utils.factory.class_generate_attributes_and_check(
+wayround_org.utils.factory.class_generate_attributes_and_check(
     Tel,
     TEL_CLASS_PROPS
     )
 
-org.wayround.utils.lxml.checker_factory(
+wayround_org.utils.lxml.checker_factory(
     Tel,
     TEL_ELEMENTS
     )
@@ -323,7 +323,7 @@ EMAIL_ELEMENTS = [
      'example: example@example.com')
     ]
 
-org.wayround.utils.lxml.check_tagname_class_attrnames(EMAIL_ELEMENTS)
+wayround_org.utils.lxml.check_tagname_class_attrnames(EMAIL_ELEMENTS)
 
 EMAIL_CLASS_PROPS = list(i[2] for i in EMAIL_ELEMENTS)
 
@@ -331,7 +331,7 @@ EMAIL_CLASS_PROPS = list(i[2] for i in EMAIL_ELEMENTS)
 class Email:
     pass
 
-org.wayround.utils.lxml.simple_exchange_class_factory(
+wayround_org.utils.lxml.simple_exchange_class_factory(
     Email,
     'EMAIL',
     NAMESPACE,
@@ -339,12 +339,12 @@ org.wayround.utils.lxml.simple_exchange_class_factory(
     EMAIL_CLASS_PROPS
     )
 
-org.wayround.utils.factory.class_generate_attributes_and_check(
+wayround_org.utils.factory.class_generate_attributes_and_check(
     Email,
     EMAIL_CLASS_PROPS
     )
 
-org.wayround.utils.lxml.checker_factory(
+wayround_org.utils.lxml.checker_factory(
     Email,
     EMAIL_ELEMENTS
     )
@@ -355,7 +355,7 @@ GEO_ELEMENTS = [
     (LXML_NAMESPACE + 'LON', PCData, 'lon', '', 'Longitude')
     ]
 
-org.wayround.utils.lxml.check_tagname_class_attrnames(GEO_ELEMENTS)
+wayround_org.utils.lxml.check_tagname_class_attrnames(GEO_ELEMENTS)
 
 GEO_CLASS_PROPS = list(i[2] for i in GEO_ELEMENTS)
 
@@ -363,7 +363,7 @@ GEO_CLASS_PROPS = list(i[2] for i in GEO_ELEMENTS)
 class Geo:
     pass
 
-org.wayround.utils.lxml.simple_exchange_class_factory(
+wayround_org.utils.lxml.simple_exchange_class_factory(
     Geo,
     'GEO',
     NAMESPACE,
@@ -371,12 +371,12 @@ org.wayround.utils.lxml.simple_exchange_class_factory(
     GEO_CLASS_PROPS
     )
 
-org.wayround.utils.factory.class_generate_attributes_and_check(
+wayround_org.utils.factory.class_generate_attributes_and_check(
     Geo,
     GEO_CLASS_PROPS
     )
 
-org.wayround.utils.lxml.checker_factory(
+wayround_org.utils.lxml.checker_factory(
     Geo,
     GEO_ELEMENTS
     )
@@ -388,7 +388,7 @@ LOGO_ELEMENTS = [
     (LXML_NAMESPACE + 'EXTVAL', PCData, 'extval', '?', 'External Value')
     ]
 
-org.wayround.utils.lxml.check_tagname_class_attrnames(LOGO_ELEMENTS)
+wayround_org.utils.lxml.check_tagname_class_attrnames(LOGO_ELEMENTS)
 
 LOGO_CLASS_PROPS = list(i[2] for i in LOGO_ELEMENTS)
 
@@ -396,7 +396,7 @@ LOGO_CLASS_PROPS = list(i[2] for i in LOGO_ELEMENTS)
 class Logo:
     pass
 
-org.wayround.utils.lxml.simple_exchange_class_factory(
+wayround_org.utils.lxml.simple_exchange_class_factory(
     Logo,
     'LOGO',
     NAMESPACE,
@@ -404,12 +404,12 @@ org.wayround.utils.lxml.simple_exchange_class_factory(
     LOGO_CLASS_PROPS
     )
 
-org.wayround.utils.factory.class_generate_attributes_and_check(
+wayround_org.utils.factory.class_generate_attributes_and_check(
     Logo,
     LOGO_CLASS_PROPS
     )
 
-org.wayround.utils.lxml.checker_factory(
+wayround_org.utils.lxml.checker_factory(
     Logo,
     LOGO_ELEMENTS
     )
@@ -420,7 +420,7 @@ ORG_ELEMENTS = [
     (LXML_NAMESPACE + 'ORGUNIT', PCData, 'orgunit', '*', 'Organization Unit')
     ]
 
-org.wayround.utils.lxml.check_tagname_class_attrnames(ORG_ELEMENTS)
+wayround_org.utils.lxml.check_tagname_class_attrnames(ORG_ELEMENTS)
 
 ORG_CLASS_PROPS = list(i[2] for i in ORG_ELEMENTS)
 
@@ -428,7 +428,7 @@ ORG_CLASS_PROPS = list(i[2] for i in ORG_ELEMENTS)
 class Org:
     pass
 
-org.wayround.utils.lxml.simple_exchange_class_factory(
+wayround_org.utils.lxml.simple_exchange_class_factory(
     Org,
     'ORG',
     NAMESPACE,
@@ -436,12 +436,12 @@ org.wayround.utils.lxml.simple_exchange_class_factory(
     ORG_CLASS_PROPS
     )
 
-org.wayround.utils.factory.class_generate_attributes_and_check(
+wayround_org.utils.factory.class_generate_attributes_and_check(
     Org,
     ORG_CLASS_PROPS
     )
 
-org.wayround.utils.lxml.checker_factory(
+wayround_org.utils.lxml.checker_factory(
     Org,
     ORG_ELEMENTS
     )
@@ -451,7 +451,7 @@ CATEGORIES_ELEMENTS = [
     ('KEYWORD', PCData, 'keyword', '+')
     ]
 
-org.wayround.utils.lxml.check_tagname_class_attrnames(CATEGORIES_ELEMENTS)
+wayround_org.utils.lxml.check_tagname_class_attrnames(CATEGORIES_ELEMENTS)
 
 CATEGORIES_CLASS_PROPS = list(i[2] for i in CATEGORIES_ELEMENTS)
 
@@ -459,7 +459,7 @@ CATEGORIES_CLASS_PROPS = list(i[2] for i in CATEGORIES_ELEMENTS)
 class Categories:
     pass
 
-org.wayround.utils.lxml.simple_exchange_class_factory(
+wayround_org.utils.lxml.simple_exchange_class_factory(
     Categories,
     'CATEGORIES',
     NAMESPACE,
@@ -467,12 +467,12 @@ org.wayround.utils.lxml.simple_exchange_class_factory(
     CATEGORIES_CLASS_PROPS
     )
 
-org.wayround.utils.factory.class_generate_attributes_and_check(
+wayround_org.utils.factory.class_generate_attributes_and_check(
     Categories,
     CATEGORIES_CLASS_PROPS
     )
 
-org.wayround.utils.lxml.checker_factory(
+wayround_org.utils.lxml.checker_factory(
     Categories,
     CATEGORIES_ELEMENTS
     )
@@ -484,7 +484,7 @@ SOUND_ELEMENTS = [
     (LXML_NAMESPACE + 'EXTVAL', PCData, 'extval', '?', 'External Value')
     ]
 
-org.wayround.utils.lxml.check_tagname_class_attrnames(SOUND_ELEMENTS)
+wayround_org.utils.lxml.check_tagname_class_attrnames(SOUND_ELEMENTS)
 
 SOUND_CLASS_PROPS = list(i[2] for i in SOUND_ELEMENTS)
 
@@ -492,7 +492,7 @@ SOUND_CLASS_PROPS = list(i[2] for i in SOUND_ELEMENTS)
 class Sound:
     pass
 
-org.wayround.utils.lxml.simple_exchange_class_factory(
+wayround_org.utils.lxml.simple_exchange_class_factory(
     Sound,
     'SOUND',
     NAMESPACE,
@@ -500,12 +500,12 @@ org.wayround.utils.lxml.simple_exchange_class_factory(
     SOUND_CLASS_PROPS
     )
 
-org.wayround.utils.factory.class_generate_attributes_and_check(
+wayround_org.utils.factory.class_generate_attributes_and_check(
     Sound,
     SOUND_CLASS_PROPS
     )
 
-org.wayround.utils.lxml.checker_factory(
+wayround_org.utils.lxml.checker_factory(
     Sound,
     SOUND_ELEMENTS
     )
@@ -518,7 +518,7 @@ CLASS_ELEMENTS = [
      'Confidential')
     ]
 
-org.wayround.utils.lxml.check_tagname_class_attrnames(CLASS_ELEMENTS)
+wayround_org.utils.lxml.check_tagname_class_attrnames(CLASS_ELEMENTS)
 
 CLASS_CLASS_PROPS = list(i[2] for i in CLASS_ELEMENTS)
 
@@ -526,7 +526,7 @@ CLASS_CLASS_PROPS = list(i[2] for i in CLASS_ELEMENTS)
 class Class:
     pass
 
-org.wayround.utils.lxml.simple_exchange_class_factory(
+wayround_org.utils.lxml.simple_exchange_class_factory(
     Class,
     'CLASS',
     NAMESPACE,
@@ -534,12 +534,12 @@ org.wayround.utils.lxml.simple_exchange_class_factory(
     CLASS_CLASS_PROPS
     )
 
-org.wayround.utils.factory.class_generate_attributes_and_check(
+wayround_org.utils.factory.class_generate_attributes_and_check(
     Class,
     CLASS_CLASS_PROPS
     )
 
-org.wayround.utils.lxml.checker_factory(
+wayround_org.utils.lxml.checker_factory(
     Class,
     CLASS_ELEMENTS
     )
@@ -549,7 +549,7 @@ KEY_ELEMENTS = [
     (LXML_NAMESPACE + 'CRED', PCData, 'cred', '', 'CRED?')
     ]
 
-org.wayround.utils.lxml.check_tagname_class_attrnames(KEY_ELEMENTS)
+wayround_org.utils.lxml.check_tagname_class_attrnames(KEY_ELEMENTS)
 
 KEY_CLASS_PROPS = list(i[2] for i in KEY_ELEMENTS)
 
@@ -557,7 +557,7 @@ KEY_CLASS_PROPS = list(i[2] for i in KEY_ELEMENTS)
 class Key:
     pass
 
-org.wayround.utils.lxml.simple_exchange_class_factory(
+wayround_org.utils.lxml.simple_exchange_class_factory(
     Key,
     'KEY',
     NAMESPACE,
@@ -565,12 +565,12 @@ org.wayround.utils.lxml.simple_exchange_class_factory(
     KEY_CLASS_PROPS
     )
 
-org.wayround.utils.factory.class_generate_attributes_and_check(
+wayround_org.utils.factory.class_generate_attributes_and_check(
     Key,
     KEY_CLASS_PROPS
     )
 
-org.wayround.utils.lxml.checker_factory(
+wayround_org.utils.lxml.checker_factory(
     Key,
     KEY_ELEMENTS
     )
@@ -588,7 +588,7 @@ class XCardTemp:
         return
 
     def check_order(self, value):
-        if not org.wayround.utils.types.struct_check(
+        if not wayround_org.utils.types.struct_check(
             value,
             {'t': list, '.':
              {'t': tuple, '<': 3, '>': 3}
@@ -599,7 +599,7 @@ class XCardTemp:
     @classmethod
     def new_from_element(cls, element):
 
-        tag = org.wayround.utils.lxml.parse_element_tag(
+        tag = wayround_org.utils.lxml.parse_element_tag(
             element,
             'vCard',
             [NAMESPACE]
@@ -612,7 +612,7 @@ class XCardTemp:
 
         order = []
 
-        org.wayround.utils.lxml.subelems_to_order(
+        wayround_org.utils.lxml.subelems_to_order(
             element, order,
             VCARD_ELEMENTS
             )
@@ -630,13 +630,13 @@ class XCardTemp:
         el = lxml.etree.Element('vCard')
         el.set('xmlns', NAMESPACE)
 
-        org.wayround.utils.lxml.order_to_subelems(
+        wayround_org.utils.lxml.order_to_subelems(
             self.get_order(), el
             )
 
         return el
 
-org.wayround.utils.factory.class_generate_attributes_and_check(
+wayround_org.utils.factory.class_generate_attributes_and_check(
     XCardTemp,
     ['order']
     )
@@ -681,7 +681,7 @@ VCARD_ELEMENTS = [
     (LXML_NAMESPACE + 'DESC', PCData, 'desc', '*', 'DESC')
     ]
 
-org.wayround.utils.lxml.check_tagname_class_attrnames(VCARD_ELEMENTS)
+wayround_org.utils.lxml.check_tagname_class_attrnames(VCARD_ELEMENTS)
 
 VCARD_CLASS_PROPS = list(i[2] for i in VCARD_ELEMENTS)
 
@@ -690,7 +690,7 @@ def is_xcard(element):
 
     ret = False
 
-    tag = org.wayround.utils.lxml.parse_element_tag(
+    tag = wayround_org.utils.lxml.parse_element_tag(
         element,
         'vCard',
         [NAMESPACE]

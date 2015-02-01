@@ -1,11 +1,11 @@
 
 import lxml.etree
 
-import org.wayround.utils.types
-import org.wayround.utils.factory
-import org.wayround.utils.lxml
+import wayround_org.utils.types
+import wayround_org.utils.factory
+import wayround_org.utils.lxml
 
-import org.wayround.xmpp.xdata_media_element
+import wayround_org.xmpp.xdata_media_element
 
 
 class InvalidForm(Exception):
@@ -52,13 +52,13 @@ class XData:
             raise ValueError("title must be str or None")
 
     def check_instructions(self, value):
-        if not org.wayround.utils.types.struct_check(
+        if not wayround_org.utils.types.struct_check(
             value, {'t': list, '.': {'t': str}}
             ):
             raise ValueError("instructions must be list of str")
 
     def check_fields(self, value):
-        if not org.wayround.utils.types.struct_check(
+        if not wayround_org.utils.types.struct_check(
             value,
             {'t': list, '.': {'t': XDataField}}
             ):
@@ -70,7 +70,7 @@ class XData:
     check_reported_fields = check_fields
 
     def check_reported_items(self, value):
-        if not org.wayround.utils.types.struct_check(
+        if not wayround_org.utils.types.struct_check(
             value,
             {'t': list, '.':
              {'t': list, '.':
@@ -87,10 +87,10 @@ class XData:
     @classmethod
     def new_from_element(cls, element):
 
-        if not org.wayround.utils.lxml.is_lxml_tag_element(element):
+        if not wayround_org.utils.lxml.is_lxml_tag_element(element):
             raise TypeError("`element' must be lxml.etree.Element")
 
-        tag = org.wayround.utils.lxml.parse_element_tag(
+        tag = wayround_org.utils.lxml.parse_element_tag(
             element, 'x', ['jabber:x:data']
             )[0]
 
@@ -235,12 +235,12 @@ class XData:
 
         return text
 
-org.wayround.utils.factory.class_generate_attributes(
+wayround_org.utils.factory.class_generate_attributes(
     XData,
     ['typ', 'title', 'instructions', 'fields', 'reported_fields',
      'reported_items']
     )
-org.wayround.utils.factory.class_generate_check(
+wayround_org.utils.factory.class_generate_check(
     XData,
     ['typ', 'title', 'instructions', 'fields', 'reported_fields',
      'reported_items']
@@ -273,13 +273,13 @@ class XDataField:
         return
 
     def check_options(self, value):
-        if not org.wayround.utils.types.struct_check(
+        if not wayround_org.utils.types.struct_check(
             value, {'t': list, '.': {'t': XDataOption}}
             ):
             raise ValueError("`options' must be list of XDataOption")
 
     def check_values(self, value):
-        if not org.wayround.utils.types.struct_check(
+        if not wayround_org.utils.types.struct_check(
             value, {'t': list, '.': {'t': XDataValue}}
             ):
             raise ValueError("`values' must be list of XDataValue")
@@ -312,14 +312,14 @@ class XDataField:
         if (value != None
             and
             not isinstance(
-                value, org.wayround.xmpp.xdata_media_element.Media)
+                value, wayround_org.xmpp.xdata_media_element.Media)
             ):
             raise TypeError("`media' must be None or str")
 
     @classmethod
     def new_from_element(cls, element):
 
-        if not org.wayround.utils.lxml.is_lxml_tag_element(element):
+        if not wayround_org.utils.lxml.is_lxml_tag_element(element):
             raise TypeError("`element' must be lxml.etree.Element")
 
         if element.tag != '{jabber:x:data}field':
@@ -342,7 +342,7 @@ class XDataField:
         d = element.find('{urn:xmpp:media-element}media')
         if d != None:
             ret.set_media(
-                org.wayround.xmpp.xdata_media_element.Media.new_from_element(d)
+                wayround_org.xmpp.xdata_media_element.Media.new_from_element(d)
                 )
 
         ret.set_required(element.find('{jabber:x:data}required') != None)
@@ -408,11 +408,11 @@ class XDataField:
 
         return e
 
-org.wayround.utils.factory.class_generate_attributes(
+wayround_org.utils.factory.class_generate_attributes(
     XDataField,
     ['var', 'label', 'type', 'desc', 'required', 'values', 'options', 'media']
     )
-org.wayround.utils.factory.class_generate_check(
+wayround_org.utils.factory.class_generate_check(
     XDataField,
     ['var', 'label', 'type', 'desc', 'required', 'values', 'options', 'media']
     )
@@ -428,7 +428,7 @@ class XDataOption:
     @classmethod
     def new_from_element(cls, element):
 
-        if not org.wayround.utils.lxml.is_lxml_tag_element(element):
+        if not wayround_org.utils.lxml.is_lxml_tag_element(element):
             raise TypeError("`element' must be lxml.etree.Element")
 
         if element.tag != '{jabber:x:data}option':
@@ -470,11 +470,11 @@ class XDataOption:
 
         return o
 
-org.wayround.utils.factory.class_generate_attributes(
+wayround_org.utils.factory.class_generate_attributes(
     XDataOption,
     ['label', 'value']
     )
-org.wayround.utils.factory.class_generate_check(
+wayround_org.utils.factory.class_generate_check(
     XDataOption,
     ['label', 'value']
     )
@@ -493,7 +493,7 @@ class XDataValue:
     @classmethod
     def new_from_element(cls, element):
 
-        if not org.wayround.utils.lxml.is_lxml_tag_element(element):
+        if not wayround_org.utils.lxml.is_lxml_tag_element(element):
             raise TypeError("`element' must be lxml.etree.Element")
 
         if element.tag != '{jabber:x:data}value':
@@ -513,11 +513,11 @@ class XDataValue:
         e.text = self._value
         return e
 
-org.wayround.utils.factory.class_generate_attributes(
+wayround_org.utils.factory.class_generate_attributes(
     XDataValue,
     ['value']
     )
-org.wayround.utils.factory.class_generate_check(
+wayround_org.utils.factory.class_generate_check(
     XDataValue,
     ['value']
     )
@@ -529,7 +529,7 @@ def get_x_data_elements(element):
     Search for jabber:x:data elements in supplied element
     """
 
-    if not org.wayround.utils.lxml.is_lxml_tag_element(element):
+    if not wayround_org.utils.lxml.is_lxml_tag_element(element):
         raise TypeError("`element' must be lxml.etree.Element")
 
     return element.findall('{jabber:x:data}x')

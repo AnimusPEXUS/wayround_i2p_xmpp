@@ -7,6 +7,6 @@
 /.settings
 /.build
 /sphinx/_build
-/org_wayround_xmpp.egg-info
+/*.egg-info
 /dist
 /build

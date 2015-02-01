@@ -5,9 +5,9 @@ import hashlib
 import logging
 import lxml.etree
 
-import org.wayround.utils.factory
-import org.wayround.utils.lxml
-import org.wayround.utils.checksum
+import wayround_org.utils.factory
+import wayround_org.utils.lxml
+import wayround_org.utils.checksum
 
 
 CID_RE = re.compile(r'^(cid\:)?(?P<method>\w+)\+(?P<value>\w+)\@bob\.xmpp\.org$')
@@ -117,7 +117,7 @@ class Data:
     @classmethod
     def new_from_element(cls, element):
 
-        tag = org.wayround.utils.lxml.parse_element_tag(
+        tag = wayround_org.utils.lxml.parse_element_tag(
             element,
             ['data'],
             ['urn:xmpp:bob']
@@ -128,7 +128,7 @@ class Data:
 
         cl = cls(element.get('cid'))
 
-        org.wayround.utils.lxml.elem_props_to_object_props(
+        wayround_org.utils.lxml.elem_props_to_object_props(
             element, cl,
             [
              ('max-age', 'max_age'),
@@ -152,7 +152,7 @@ class Data:
 
         el.set('cid', self.get_cid())
 
-        org.wayround.utils.lxml.object_props_to_elem_props(
+        wayround_org.utils.lxml.object_props_to_elem_props(
             self, el,
             [
              ('max_age', 'max-age'),
@@ -179,7 +179,7 @@ class Data:
             cid_parsed = parse_cid(self.get_cid())
 
             if cid_parsed != None:
-                res = org.wayround.utils.checksum.is_data_error(
+                res = wayround_org.utils.checksum.is_data_error(
                     cid_parsed['method'],
                     cid_parsed['value'],
                     data
@@ -190,11 +190,11 @@ class Data:
         return ret
 
 
-org.wayround.utils.factory.class_generate_attributes(
+wayround_org.utils.factory.class_generate_attributes(
     Data,
     ['cid', 'max_age', 'type_', 'data']
     )
-org.wayround.utils.factory.class_generate_check(
+wayround_org.utils.factory.class_generate_check(
     Data,
     ['cid', 'max_age', 'type_', 'data']
     )

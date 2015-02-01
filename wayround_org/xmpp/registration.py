@@ -2,11 +2,11 @@
 import collections
 
 import lxml.etree
-import org.wayround.utils.factory
-import org.wayround.utils.lxml
-import org.wayround.xmpp.core
-import org.wayround.xmpp.oob
-import org.wayround.xmpp.xdata
+import wayround_org.utils.factory
+import wayround_org.utils.lxml
+import wayround_org.xmpp.core
+import wayround_org.xmpp.oob
+import wayround_org.xmpp.xdata
 
 
 REGISTRATION_INPUT_FIELDS = [
@@ -66,18 +66,18 @@ class Query:
 
     def check_oob(self, value):
         if value is not None and not isinstance(
-                value, org.wayround.xmpp.oob.X
+                value, wayround_org.xmpp.oob.X
                 ):
             raise ValueError(
-                "`oob' must be None or org.wayround.xmpp.oob.X"
+                "`oob' must be None or wayround_org.xmpp.oob.X"
                 )
 
     def check_xdata(self, value):
         if value is not None and not isinstance(
-                value, org.wayround.xmpp.xdata.XData
+                value, wayround_org.xmpp.xdata.XData
                 ):
             raise ValueError(
-                "`xdata' must be None or org.wayround.xmpp.xdata.XData"
+                "`xdata' must be None or wayround_org.xmpp.xdata.XData"
                 )
 
     def check_registered(self, value):
@@ -103,7 +103,7 @@ def check_{i}(self, value):
     @classmethod
     def new_from_element(cls, element):
 
-        tag = org.wayround.utils.lxml.parse_element_tag(
+        tag = wayround_org.utils.lxml.parse_element_tag(
             element, 'query', ['jabber:iq:register']
             )[0]
 
@@ -129,14 +129,14 @@ def check_{i}(self, value):
 
         ins.set_input_fields(input_fields_value)
 
-        org.wayround.utils.lxml.subelems_to_object_props(
+        wayround_org.utils.lxml.subelems_to_object_props(
             element, ins,
             [
                 ('{jabber:x:data}x',
-                 org.wayround.xmpp.xdata.XData,
+                 wayround_org.xmpp.xdata.XData,
                  'xdata',
                  '*'),
-                ('{jabber:x:oob}x', org.wayround.xmpp.oob.X, 'oob', '*')
+                ('{jabber:x:oob}x', wayround_org.xmpp.oob.X, 'oob', '*')
                 ]
             )
 
@@ -167,7 +167,7 @@ def check_{i}(self, value):
                 e.text = _t
                 el.append(e)
 
-        org.wayround.utils.lxml.object_props_to_subelems(
+        wayround_org.utils.lxml.object_props_to_subelems(
             self, el,
             ['xdata', 'oob']
             )
@@ -205,12 +205,12 @@ def check_{i}(self, value):
 
         return ret
 
-org.wayround.utils.factory.class_generate_attributes(
+wayround_org.utils.factory.class_generate_attributes(
     Query,
     ['oob', 'xdata', 'instructions', 'remove', 'registered'] +
     REGISTRATION_INPUT_FIELDS
     )
-org.wayround.utils.factory.class_generate_check(
+wayround_org.utils.factory.class_generate_check(
     Query,
     ['oob', 'xdata', 'instructions', 'remove', 'registered'] +
     REGISTRATION_INPUT_FIELDS
@@ -219,7 +219,7 @@ org.wayround.utils.factory.class_generate_check(
 
 def get_query_from_element(element):
 
-    if not org.wayround.utils.lxml.is_lxml_tag_element(element):
+    if not wayround_org.utils.lxml.is_lxml_tag_element(element):
         raise TypeError("`element' must be lxml tag element")
 
     ret = None
@@ -240,13 +240,13 @@ def get_query_from_element(element):
 
 def get_query(from_jid, to_jid, stanza_processor, wait=True):
 
-    s = org.wayround.xmpp.core.Stanza('iq')
+    s = wayround_org.xmpp.core.Stanza('iq')
     s.set_typ('get')
     s.set_from_jid(from_jid)
     s.set_to_jid(to_jid)
     s.set_objects(
         [
-            org.wayround.xmpp.registration.Query()
+            wayround_org.xmpp.registration.Query()
             ]
         )
 
@@ -254,7 +254,7 @@ def get_query(from_jid, to_jid, stanza_processor, wait=True):
 
     res = stanza_processor.send(s, wait=wait)
 
-    if isinstance(res, org.wayround.xmpp.core.Stanza):
+    if isinstance(res, wayround_org.xmpp.core.Stanza):
         if not res.is_error():
             ret = get_query_from_element(res.get_element()), res
         else:
@@ -272,7 +272,7 @@ def set_query(
         emit_reply_anyway=False
         ):
 
-    s = org.wayround.xmpp.core.Stanza('iq')
+    s = wayround_org.xmpp.core.Stanza('iq')
     s.set_typ('set')
     s.set_from_jid(from_jid)
     s.set_to_jid(to_jid)
@@ -288,7 +288,7 @@ def set_query(
         emit_reply_anyway=emit_reply_anyway
         )
 
-    if isinstance(res, org.wayround.xmpp.core.Stanza):
+    if isinstance(res, wayround_org.xmpp.core.Stanza):
         if not res.is_error():
             ret = get_query_from_element(res.get_element())
         else:
@@ -298,5 +298,5 @@ def set_query(
 
 
 def unregister(from_jid, to_jid, stanza_processor, wait=True):
-    form = org.wayround.xmpp.registration.Query(remove=True)
+    form = wayround_org.xmpp.registration.Query(remove=True)
     return set_query(from_jid, to_jid, form, stanza_processor, wait)

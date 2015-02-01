@@ -5,25 +5,25 @@ Implementation of XMPP Ad-Hoc commands protocol
 
 import lxml.etree
 
-import org.wayround.utils.threading
-import org.wayround.utils.lxml
+import wayround_org.utils.threading
+import wayround_org.utils.lxml
 
-import org.wayround.xmpp.core
-import org.wayround.xmpp.disco
+import wayround_org.xmpp.core
+import wayround_org.xmpp.disco
 
 
 def get_commands_list(to_jid, from_jid, stanza_processor=None):
 
     ret = None
 
-    q = org.wayround.xmpp.disco.get_info(
+    q = wayround_org.xmpp.disco.get_info(
         to_jid, from_jid, None, stanza_processor
         )[0]
 
     if q is not None:
 
         if q.has_feature('http://jabber.org/protocol/commands'):
-            q = org.wayround.xmpp.disco.get_items(
+            q = wayround_org.xmpp.disco.get_items(
                 to_jid,
                 from_jid,
                 'http://jabber.org/protocol/commands',
@@ -52,20 +52,20 @@ def get_commands_list(to_jid, from_jid, stanza_processor=None):
 
 def is_command_element(element):
     return (
-        org.wayround.utils.lxml.is_lxml_tag_element(element) and
+        wayround_org.utils.lxml.is_lxml_tag_element(element) and
         element.tag == '{http://jabber.org/protocol/commands}command'
         )
 
 
 def extract_element_commands(element):
 
-    if not org.wayround.utils.lxml.is_lxml_tag_element(element):
+    if not wayround_org.utils.lxml.is_lxml_tag_element(element):
         raise TypeError("`element' must be of type lxml tag element")
 
     ret = []
 
     for i in element:
-        if org.wayround.utils.lxml.is_lxml_tag_element(i):
+        if wayround_org.utils.lxml.is_lxml_tag_element(i):
             if is_command_element(i):
                 ret.append(Command.new_from_element(i))
 
@@ -130,7 +130,7 @@ class Command:
                     )
 
     def check_note(self, value):
-        if not org.wayround.utils.types.struct_check(
+        if not wayround_org.utils.types.struct_check(
             value,
             {'t': list, '.': {'t': CommandNote}}
             ):
@@ -164,18 +164,18 @@ class Command:
             raise ValueError("`execute' must be str")
 
     def check_xdata(self, value):
-        if not org.wayround.utils.types.struct_check(
+        if not wayround_org.utils.types.struct_check(
             value,
-            {'t': list, '.': {'t': org.wayround.xmpp.xdata.XData}}
+            {'t': list, '.': {'t': wayround_org.xmpp.xdata.XData}}
             ):
             raise ValueError(
-                "`xdata' must be list of org.wayround.xmpp.xdata.XData"
+                "`xdata' must be list of wayround_org.xmpp.xdata.XData"
                 )
 
     @classmethod
     def new_from_element(cls, element):
 
-        tag = org.wayround.utils.lxml.parse_element_tag(
+        tag = wayround_org.utils.lxml.parse_element_tag(
             element, 'command', ['http://jabber.org/protocol/commands']
             )[0]
 
@@ -186,7 +186,7 @@ class Command:
 
         ret_class.set_element(element)
 
-        org.wayround.utils.lxml.elem_props_to_object_props(
+        wayround_org.utils.lxml.elem_props_to_object_props(
             element, ret_class,
             [
                 ('sessionid', 'sessionid'),
@@ -196,7 +196,7 @@ class Command:
                 ]
             )
 
-        org.wayround.utils.lxml.subelemsm_to_object_propsm(
+        wayround_org.utils.lxml.subelemsm_to_object_propsm(
             element, ret_class,
             [
              ('{http://jabber.org/protocol/commands}note',
@@ -205,7 +205,7 @@ class Command:
               '*'
               ),
              ('{jabber:x:data}x',
-              org.wayround.xmpp.xdata.XData,
+              wayround_org.xmpp.xdata.XData,
               'xdata', 
               '*'
               )
@@ -223,7 +223,7 @@ class Command:
         ret_element = lxml.etree.Element('command')
         ret_element.set('xmlns', 'http://jabber.org/protocol/commands')
 
-        org.wayround.utils.lxml.object_props_to_elem_props(
+        wayround_org.utils.lxml.object_props_to_elem_props(
             self, ret_element,
             [
                 ('sessionid', 'sessionid'),
@@ -233,7 +233,7 @@ class Command:
                 ]
             )
 
-        org.wayround.utils.lxml.object_propsm_to_subelemsm(
+        wayround_org.utils.lxml.object_propsm_to_subelemsm(
             self, ret_element,
             ['note', 'xdata']
             )
@@ -256,12 +256,12 @@ class Command:
 
         return ret_element
 
-org.wayround.utils.factory.class_generate_attributes(
+wayround_org.utils.factory.class_generate_attributes(
     Command,
     ['element', 'objects', 'note', 'sessionid', 'node', 'action', 'status',
      'actions', 'execute', 'xdata']
     )
-org.wayround.utils.factory.class_generate_check(
+wayround_org.utils.factory.class_generate_check(
     Command,
     ['element', 'objects', 'note', 'sessionid', 'node', 'action', 'status',
      'actions', 'execute', 'xdata']
@@ -286,7 +286,7 @@ class CommandNote:
     @classmethod
     def new_from_element(cls, element):
 
-        tag = org.wayround.utils.lxml.parse_element_tag(
+        tag = wayround_org.utils.lxml.parse_element_tag(
             element, 'note', ['http://jabber.org/protocol/commands']
             )[0]
 
@@ -295,7 +295,7 @@ class CommandNote:
 
         cl = cls()
 
-        org.wayround.utils.lxml.elem_props_to_object_props(
+        wayround_org.utils.lxml.elem_props_to_object_props(
             element, cl,
             [
              ('type', 'typ')
@@ -314,7 +314,7 @@ class CommandNote:
 
         element = lxml.etree.Element('note')
 
-        org.wayround.utils.lxml.object_props_to_elem_props(
+        wayround_org.utils.lxml.object_props_to_elem_props(
             self, element,
             [
              ('typ', 'type')
@@ -325,11 +325,11 @@ class CommandNote:
 
         return element
 
-org.wayround.utils.factory.class_generate_attributes(
+wayround_org.utils.factory.class_generate_attributes(
     CommandNote,
     ['text', 'typ']
     )
-org.wayround.utils.factory.class_generate_check(
+wayround_org.utils.factory.class_generate_check(
     CommandNote,
     ['text', 'typ']
     )

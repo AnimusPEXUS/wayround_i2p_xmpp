@@ -8,9 +8,9 @@ One of this module purposes is to ensure pickling possibility
 import logging
 import re
 import lxml.etree
-import org.wayround.utils.factory
-import org.wayround.utils.lxml
-import org.wayround.utils.types
+import wayround_org.utils.factory
+import wayround_org.utils.lxml
+import wayround_org.utils.types
 
 
 NAMESPACE = 'urn:ietf:params:xml:ns:vcard-4.0'
@@ -1583,7 +1583,7 @@ del CHILDLESS_BONES
 for i in SKELETON:
 
     try:
-        org.wayround.utils.lxml.simple_exchange_class_factory(
+        wayround_org.utils.lxml.simple_exchange_class_factory(
             i[0],
             i[1],
             i[2],
@@ -1592,12 +1592,12 @@ for i in SKELETON:
             i[5]
             )
 
-        org.wayround.utils.factory.class_generate_attributes_and_check(
+        wayround_org.utils.factory.class_generate_attributes_and_check(
             i[0],
             i[4]
             )
 
-        org.wayround.utils.lxml.checker_factory(
+        wayround_org.utils.lxml.checker_factory(
             i[0],
             i[3]
             )
@@ -1620,7 +1620,7 @@ class XCard:
         return
 
     def check_order(self, value):
-        if not org.wayround.utils.types.struct_check(
+        if not wayround_org.utils.types.struct_check(
             value,
             {'t': list, '.':
              {'t': tuple, '<': 3, '>': 3}
@@ -1631,7 +1631,7 @@ class XCard:
     @classmethod
     def new_from_element(cls, element):
 
-        tag = org.wayround.utils.lxml.parse_element_tag(
+        tag = wayround_org.utils.lxml.parse_element_tag(
             element,
             'vcard',
             [NAMESPACE]
@@ -1644,7 +1644,7 @@ class XCard:
 
         order = []
 
-        org.wayround.utils.lxml.subelems_to_order(
+        wayround_org.utils.lxml.subelems_to_order(
             element, order,
             VCARD_ELEMENTS
             )
@@ -1662,13 +1662,13 @@ class XCard:
         el = lxml.etree.Element('vcard')
         el.set('xmlns', NAMESPACE)
 
-        org.wayround.utils.lxml.subelems_to_order(
+        wayround_org.utils.lxml.subelems_to_order(
             self.get_order(), el
             )
 
         return el
 
-org.wayround.utils.factory.class_generate_attributes_and_check(
+wayround_org.utils.factory.class_generate_attributes_and_check(
     XCard,
     ['order']
     )
@@ -1710,7 +1710,7 @@ VCARD_ELEMENTS = [
     ('url', Url, 'url', '*')
     ]
 
-org.wayround.utils.lxml.check_tagname_class_attrnames(VCARD_ELEMENTS)
+wayround_org.utils.lxml.check_tagname_class_attrnames(VCARD_ELEMENTS)
 
 VCARD_CLASS_PROPS = list(i[2] for i in VCARD_ELEMENTS)
 
@@ -1721,7 +1721,7 @@ def is_xcard(element):
 
     ret = False
 
-    tag = org.wayround.utils.lxml.parse_element_tag(
+    tag = wayround_org.utils.lxml.parse_element_tag(
         element,
         'vcard',
         [NAMESPACE]

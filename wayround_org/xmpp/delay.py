@@ -2,8 +2,8 @@
 import datetime
 
 import lxml.etree
-import org.wayround.utils.factory
-import org.wayround.xmpp.datetime
+import wayround_org.utils.factory
+import wayround_org.xmpp.datetime
 
 
 class Delay:
@@ -29,7 +29,7 @@ class Delay:
     @classmethod
     def new_from_element(cls, element):
 
-        tag = org.wayround.utils.lxml.parse_element_tag(
+        tag = wayround_org.utils.lxml.parse_element_tag(
             element,
             'delay', ['urn:xmpp:delay']
             )[0]
@@ -39,11 +39,11 @@ class Delay:
 
         stamp = element.get('stamp')
         if stamp != None:
-            stamp = org.wayround.xmpp.datetime.str_to_datetime(stamp)
+            stamp = wayround_org.xmpp.datetime.str_to_datetime(stamp)
 
         cl = cls(stamp)
 
-        org.wayround.utils.lxml.elem_props_to_object_props(
+        wayround_org.utils.lxml.elem_props_to_object_props(
             element, cl,
             [
              ('from', 'from_')
@@ -63,7 +63,7 @@ class Delay:
         element = lxml.etree.Element('delay')
         element.set('xmlns', 'urn:xmpp:delay')
 
-        org.wayround.utils.lxml.object_props_to_elem_props(
+        wayround_org.utils.lxml.object_props_to_elem_props(
             self, element,
             [
              ('from_', 'from')
@@ -72,18 +72,18 @@ class Delay:
 
         stamp = self.get_stamp()
         if stamp != None:
-            stamp = org.wayround.xmpp.datetime.datetime_to_str(stamp)
+            stamp = wayround_org.xmpp.datetime.datetime_to_str(stamp)
             element.set('stamp', stamp)
 
         element.text = self.get_text()
 
         return element
 
-org.wayround.utils.factory.class_generate_attributes(
+wayround_org.utils.factory.class_generate_attributes(
     Delay,
     ['from_', 'stamp', 'text']
     )
-org.wayround.utils.factory.class_generate_check(
+wayround_org.utils.factory.class_generate_check(
     Delay,
     ['from_', 'stamp', 'text']
     )

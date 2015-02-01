@@ -4,18 +4,18 @@
 from setuptools import setup
 
 setup(
-    name='org_wayround_xmpp',
-    version='0.7.3',
+    name='wayround_org_xmpp',
+    version='0.8',
     description='XMPP protocol implementation',
     author='Alexey V Gorshkov',
     author_email='animus@wayround.org',
-    url='https://github.com/AnimusPEXUS/org_wayround_xmpp',
+    url='https://github.com/AnimusPEXUS/wayround_org_xmpp',
     packages=[
-        'org.wayround.xmpp'
+        'wayround_org.xmpp'
         ],
     install_requires=[
-        'org_wayround_utils',
-        'org_wayround_gsasl'
+        'wayround_org_utils',
+        'wayround_org_gsasl'
         ],
     classifiers=[
         'License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)',

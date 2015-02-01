@@ -1,9 +1,9 @@
 
 import lxml.etree
 
-import org.wayround.utils.factory
-import org.wayround.utils.lxml
-import org.wayround.utils.types
+import wayround_org.utils.factory
+import wayround_org.utils.lxml
+import wayround_org.utils.types
 
 
 class Media:
@@ -18,7 +18,7 @@ class Media:
         self.set_height(height)
 
     def check_uri(self, value):
-        if not org.wayround.utils.types.struct_check(
+        if not wayround_org.utils.types.struct_check(
             value,
             {'t': list, '.': {'t': URI}}
             ):
@@ -35,7 +35,7 @@ class Media:
     @classmethod
     def new_from_element(cls, element):
 
-        tag = org.wayround.utils.lxml.parse_element_tag(
+        tag = wayround_org.utils.lxml.parse_element_tag(
             element,
             ['media'],
             ['urn:xmpp:media-element']
@@ -46,7 +46,7 @@ class Media:
 
         cl = cls()
 
-        org.wayround.utils.lxml.elem_props_to_object_props(
+        wayround_org.utils.lxml.elem_props_to_object_props(
             element, cl,
             [
              ('width', 'width'),
@@ -54,7 +54,7 @@ class Media:
              ]
             )
 
-        org.wayround.utils.lxml.subelemsm_to_object_propsm(
+        wayround_org.utils.lxml.subelemsm_to_object_propsm(
             element, cl,
             [
              ('{urn:xmpp:media-element}uri', URI, 'uri', '*')
@@ -72,7 +72,7 @@ class Media:
         el = lxml.etree.Element('media')
         el.set('xmlns', 'urn:xmpp:media-element')
 
-        org.wayround.utils.lxml.object_props_to_elem_props(
+        wayround_org.utils.lxml.object_props_to_elem_props(
             self, el,
             [
              ('width', 'width'),
@@ -80,18 +80,18 @@ class Media:
              ]
             )
 
-        org.wayround.utils.lxml.object_propsm_to_subelemsm(
+        wayround_org.utils.lxml.object_propsm_to_subelemsm(
             self, el,
             ['uri']
             )
 
         return el
 
-org.wayround.utils.factory.class_generate_attributes(
+wayround_org.utils.factory.class_generate_attributes(
     Media,
     ['width', 'height', 'uri']
     )
-org.wayround.utils.factory.class_generate_check(
+wayround_org.utils.factory.class_generate_check(
     Media,
     ['width', 'height', 'uri']
     )
@@ -115,7 +115,7 @@ class URI:
     @classmethod
     def new_from_element(cls, element):
 
-        tag = org.wayround.utils.lxml.parse_element_tag(
+        tag = wayround_org.utils.lxml.parse_element_tag(
             element,
             ['uri'],
             ['urn:xmpp:media-element']
@@ -141,11 +141,11 @@ class URI:
 
         return el
 
-org.wayround.utils.factory.class_generate_attributes(
+wayround_org.utils.factory.class_generate_attributes(
     URI,
     ['type_', 'text']
     )
-org.wayround.utils.factory.class_generate_check(
+wayround_org.utils.factory.class_generate_check(
     URI,
     ['type_', 'text']
     )

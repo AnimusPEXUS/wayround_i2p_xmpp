@@ -1,8 +1,8 @@
 
 import lxml.etree
 
-import org.wayround.utils.factory
-import org.wayround.utils.lxml
+import wayround_org.utils.factory
+import wayround_org.utils.lxml
 
 
 class X:
@@ -29,7 +29,7 @@ class X:
             tag = 'query'
             ns = 'jabber:iq:oob'
 
-        tag, ns = org.wayround.utils.lxml.parse_element_tag(
+        tag, ns = wayround_org.utils.lxml.parse_element_tag(
             element, tag, [ns]
             )
 
@@ -59,7 +59,7 @@ class X:
         obj.set_desc(desc)
 
         # FIXME: error?
-        org.wayround.utils.lxml.subelems_to_object_props(
+        wayround_org.utils.lxml.subelems_to_object_props(
             element
             )
 
@@ -93,11 +93,11 @@ class X:
 
         return el
 
-org.wayround.utils.factory.class_generate_attributes(
+wayround_org.utils.factory.class_generate_attributes(
     X,
     ['url', 'desc']
     )
-org.wayround.utils.factory.class_generate_check(
+wayround_org.utils.factory.class_generate_check(
     X,
     ['url', 'desc']
     )
@@ -115,11 +115,11 @@ class Query(X):
         if value is not None and not isinstance(str, value):
             raise TypeError("`sid' must be str or None")
 
-org.wayround.utils.factory.class_generate_attributes(
+wayround_org.utils.factory.class_generate_attributes(
     Query,
     ['sid']
     )
-org.wayround.utils.factory.class_generate_check(
+wayround_org.utils.factory.class_generate_check(
     Query,
     ['sid']
     )
