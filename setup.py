@@ -5,7 +5,7 @@ from setuptools import setup
 
 setup(
     name='wayround_org_xmpp',
-    version='0.8',
+    version='0.8.1',
     description='XMPP protocol implementation',
     author='Alexey V Gorshkov',
     author_email='animus@wayround.org',
