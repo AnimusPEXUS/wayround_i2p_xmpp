@@ -1,10 +1,10 @@
 
 import lxml.etree
 
-import wayround_org.utils.factory
-import wayround_org.utils.lxml
+import wayround_i2p.utils.factory
+import wayround_i2p.utils.lxml
 
-import wayround_org.xmpp.xdata
+import wayround_i2p.xmpp.xdata
 
 
 class Captcha:
@@ -15,13 +15,13 @@ class Captcha:
 
     def check_x(self, value):
 
-        if not isinstance(value, wayround_org.xmpp.xdata.XData):
-            raise ValueError("`x' must be wayround_org.xmpp.xdata.XData")
+        if not isinstance(value, wayround_i2p.xmpp.xdata.XData):
+            raise ValueError("`x' must be wayround_i2p.xmpp.xdata.XData")
 
     @classmethod
     def new_from_element(cls, element):
 
-        tag = wayround_org.utils.lxml.parse_element_tag(
+        tag = wayround_i2p.utils.lxml.parse_element_tag(
             element,
             ['captcha'],
             ['urn:xmpp:captcha']
@@ -35,7 +35,7 @@ class Captcha:
         if xdata == None:
             raise ValueError("x form not found in captcha element")
 
-        cl = cls(wayround_org.xmpp.xdata.XData.new_from_element(xdata))
+        cl = cls(wayround_i2p.xmpp.xdata.XData.new_from_element(xdata))
 
         cl.check()
 
@@ -53,11 +53,11 @@ class Captcha:
         return el
 
 
-wayround_org.utils.factory.class_generate_attributes(
+wayround_i2p.utils.factory.class_generate_attributes(
     Captcha,
     ['x']
     )
-wayround_org.utils.factory.class_generate_check(
+wayround_i2p.utils.factory.class_generate_check(
     Captcha,
     ['x']
     )

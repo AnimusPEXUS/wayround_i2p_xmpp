@@ -10,12 +10,12 @@ import time
 
 import lxml.etree
 
-import wayround_org.utils.stream
-import wayround_org.utils.threading
-import wayround_org.utils.types
+import wayround_i2p.utils.stream
+import wayround_i2p.utils.threading
+import wayround_i2p.utils.types
 
-import wayround_org.xmpp.core
-import wayround_org.xmpp.muc
+import wayround_i2p.xmpp.core
+import wayround_i2p.xmpp.muc
 
 
 class XMPPC2SClient:
@@ -60,7 +60,7 @@ class XMPPC2SClient:
 
         self.socket = socket
 
-        self.sock_streamer = wayround_org.utils.stream.SocketStreamer(
+        self.sock_streamer = wayround_i2p.utils.stream.SocketStreamer(
             self.socket,
             socket_transfer_size=4096,
             debug=False
@@ -71,21 +71,21 @@ class XMPPC2SClient:
             self._connection_event_proxy
             )
 
-        self.io_machine = wayround_org.xmpp.core.XMPPIOStreamRWMachine()
+        self.io_machine = wayround_i2p.xmpp.core.XMPPIOStreamRWMachine()
         self.io_machine.set_objects(self.sock_streamer)
         self.io_machine.signal.connect(
             True,
             self._io_event_proxy
             )
 
-        self.stanza_processor = wayround_org.xmpp.core.StanzaProcessor()
+        self.stanza_processor = wayround_i2p.xmpp.core.StanzaProcessor()
         self.stanza_processor.connect_io_machine(self.io_machine)
         self.stanza_processor.signal.connect(
             True,
             self._stanza_processor_proxy
             )
 
-        self.signal = wayround_org.utils.threading.Signal(
+        self.signal = wayround_i2p.utils.threading.Signal(
             self,
             self.sock_streamer.signal.get_names(add_prefix='streamer_') +
             self.io_machine.signal.get_names(add_prefix='io_') +
@@ -150,7 +150,7 @@ class XMPPC2SClient:
                 )
 
             self.io_machine.send(
-                wayround_org.xmpp.core.start_stream_tpl(
+                wayround_i2p.xmpp.core.start_stream_tpl(
                     from_jid=from_jid,
                     to_jid=to_jid
                     )
@@ -175,20 +175,20 @@ class XMPPC2SClient:
                 and self.has_stream_out()
                 and self.has_connection()):
 
-                in_stop_waiter = wayround_org.utils.threading.SignalWaiter(
+                in_stop_waiter = wayround_i2p.utils.threading.SignalWaiter(
                     self.io_machine.signal,
                     'in_stop'
                     )
                 in_stop_waiter.start()
 
-                out_stop_waiter = wayround_org.utils.threading.SignalWaiter(
+                out_stop_waiter = wayround_i2p.utils.threading.SignalWaiter(
                     self.io_machine.signal,
                     'out_stop'
                     )
                 out_stop_waiter.start()
 
                 self.io_machine.send(
-                    wayround_org.xmpp.core.stop_stream_tpl()
+                    wayround_i2p.xmpp.core.stop_stream_tpl()
                     )
 
                 in_stop_waiter_r = in_stop_waiter.pop()
@@ -313,7 +313,7 @@ self.io_machine.stat() == {}
 
         if event == 'in_element_readed':
             el = attrs
-            if wayround_org.xmpp.core.is_features_element(el):
+            if wayround_i2p.xmpp.core.is_features_element(el):
                 self.signal.emit('features', self, el)
 
     def _stanza_processor_proxy(self, event, stanza_processor, stanza):
@@ -368,15 +368,15 @@ class Roster:
         if not isinstance(client, XMPPC2SClient):
             raise TypeError("`client' must be of type XMPPC2SClient")
 
-        if not isinstance(client_jid, wayround_org.xmpp.core.JID):
+        if not isinstance(client_jid, wayround_i2p.xmpp.core.JID):
             raise TypeError(
-                "`client_jid' must be of type wayround_org.xmpp.core.JID"
+                "`client_jid' must be of type wayround_i2p.xmpp.core.JID"
                 )
 
         self.client = client
         self.client_jid = client_jid
 
-        self.signal = wayround_org.utils.threading.Signal(
+        self.signal = wayround_i2p.utils.threading.Signal(
             self,
             ['push', 'push_invalid', 'push_invalid_from']
             )
@@ -406,9 +406,9 @@ class Roster:
 
         ret = None
 
-        query = wayround_org.xmpp.core.IQRoster()
+        query = wayround_i2p.xmpp.core.IQRoster()
 
-        stanza = wayround_org.xmpp.core.Stanza(
+        stanza = wayround_i2p.xmpp.core.Stanza(
             tag='iq',
             from_jid=from_jid,
             to_jid=to_jid,
@@ -423,7 +423,7 @@ class Roster:
             wait=wait
             )
 
-        if isinstance(res, wayround_org.xmpp.core.Stanza):
+        if isinstance(res, wayround_i2p.xmpp.core.Stanza):
             if res.is_error():
                 ret = res
             else:
@@ -431,7 +431,7 @@ class Roster:
                 query = res.get_element().find('{jabber:iq:roster}query')
 
                 if query != None:
-                    ret = wayround_org.xmpp.core.IQRoster.new_from_element(
+                    ret = wayround_i2p.xmpp.core.IQRoster.new_from_element(
                         query
                         )
 
@@ -463,9 +463,9 @@ class Roster:
         if groups == None:
             groups = []
 
-        query = wayround_org.xmpp.core.IQRoster()
+        query = wayround_i2p.xmpp.core.IQRoster()
 
-        item = wayround_org.xmpp.core.IQRosterItem(subject_jid)
+        item = wayround_i2p.xmpp.core.IQRosterItem(subject_jid)
 
         item.set_subscription(subscription)
         item.set_name(name)
@@ -479,7 +479,7 @@ class Roster:
         if from_jid == False:
             from_jid = self.client_jid.full()
 
-        stanza = wayround_org.xmpp.core.Stanza(
+        stanza = wayround_i2p.xmpp.core.Stanza(
             tag='iq',
             from_jid=from_jid,
             to_jid=to_jid,
@@ -494,7 +494,7 @@ class Roster:
             wait=wait
             )
 
-        if isinstance(res, wayround_org.xmpp.core.Stanza):
+        if isinstance(res, wayround_i2p.xmpp.core.Stanza):
             if res.is_error():
                 ret = res.gen_error()
             else:
@@ -522,7 +522,7 @@ class Roster:
         else:
 
             try:
-                roster = wayround_org.xmpp.core.IQRoster.new_from_element(
+                roster = wayround_i2p.xmpp.core.IQRoster.new_from_element(
                     query
                     )
             except:
@@ -565,15 +565,15 @@ class Presence:
         if not isinstance(client, XMPPC2SClient):
             raise TypeError("`client', must be of type XMPPC2SClient")
 
-        if not isinstance(client_jid, wayround_org.xmpp.core.JID):
+        if not isinstance(client_jid, wayround_i2p.xmpp.core.JID):
             raise TypeError(
-                "`client_jid' must be of type wayround_org.xmpp.core.JID"
+                "`client_jid' must be of type wayround_i2p.xmpp.core.JID"
                 )
 
         self.client = client
         self.client_jid = client_jid
 
-        self.signal = wayround_org.utils.threading.Signal(
+        self.signal = wayround_i2p.utils.threading.Signal(
             self,
             [
             'presence',
@@ -612,7 +612,7 @@ class Presence:
         if options == None:
             options = []
 
-        stanza = wayround_org.xmpp.core.Stanza(
+        stanza = wayround_i2p.xmpp.core.Stanza(
             tag='presence',
             from_jid=self.client_jid.bare(),
             to_jid=to_full_or_bare_jid
@@ -621,17 +621,17 @@ class Presence:
         stanza_objects = stanza.get_objects()
         if 'muc' in options:
             stanza_objects.append(
-                wayround_org.xmpp.muc.X()
+                wayround_i2p.xmpp.muc.X()
                 )
 
         if typ:
             stanza.set_typ(typ)
 
         if show:
-            stanza.set_show(wayround_org.xmpp.core.PresenceShow(show))
+            stanza.set_show(wayround_i2p.xmpp.core.PresenceShow(show))
 
         if status:
-            stanza.set_status([wayround_org.xmpp.core.PresenceStatus(status)])
+            stanza.set_status([wayround_i2p.xmpp.core.PresenceStatus(status)])
 
         ret = self.client.stanza_processor.send(stanza, wait=wait)
 
@@ -704,7 +704,7 @@ class Presence:
     def _in_stanza(self, event, client, stanza):
 
         """
-        :param wayround_org.xmpp.core.Stanza stanza:
+        :param wayround_i2p.xmpp.core.Stanza stanza:
         """
 
         if event == 'stanza_processor_new_stanza':
@@ -729,15 +729,15 @@ class Message:
         if not isinstance(client, XMPPC2SClient):
             raise TypeError("`client', must be of type XMPPC2SClient")
 
-        if not isinstance(client_jid, wayround_org.xmpp.core.JID):
+        if not isinstance(client_jid, wayround_i2p.xmpp.core.JID):
             raise TypeError(
-                "`client_jid' must be of type wayround_org.xmpp.core.JID"
+                "`client_jid' must be of type wayround_i2p.xmpp.core.JID"
                 )
 
         self.client = client
         self.client_jid = client_jid
 
-        self.signal = wayround_org.utils.threading.Signal(self, ['message'])
+        self.signal = wayround_i2p.utils.threading.Signal(self, ['message'])
 
         self.client.signal.connect(
             'stanza_processor_new_stanza',
@@ -761,20 +761,20 @@ class Message:
         if from_jid == False:
             from_jid = self.client_jid.full()
 
-        stanza = wayround_org.xmpp.core.Stanza(
+        stanza = wayround_i2p.xmpp.core.Stanza(
             tag='message',
             to_jid=to_jid,
             typ=typ
             )
 
         if thread != None:
-            stanza.set_thread(wayround_org.xmpp.core.MessageThread(thread))
+            stanza.set_thread(wayround_i2p.xmpp.core.MessageThread(thread))
 
         if subject != None:
             subjects = []
             for i in subject.keys():
                 subjects.append(
-                    wayround_org.xmpp.core.MessageSubject(
+                    wayround_i2p.xmpp.core.MessageSubject(
                         subject[i], xmllang=i
                         )
                     )
@@ -785,7 +785,7 @@ class Message:
             bodies = []
             for i in body.keys():
                 bodies.append(
-                    wayround_org.xmpp.core.MessageBody(body[i], xmllang=i)
+                    wayround_i2p.xmpp.core.MessageBody(body[i], xmllang=i)
                     )
             stanza.set_body(bodies)
 
@@ -796,7 +796,7 @@ class Message:
     def _in_stanza(self, event, client, stanza):
 
         """
-        :param wayround_org.xmpp.core.Stanza stanza:
+        :param wayround_i2p.xmpp.core.Stanza stanza:
         """
 
         if event == 'stanza_processor_new_stanza':
@@ -814,7 +814,7 @@ class Message:
 
 def can_drive_starttls(features_element):
 
-    if not wayround_org.xmpp.core.is_features_element(features_element):
+    if not wayround_i2p.xmpp.core.is_features_element(features_element):
         raise ValueError("`features_element' must features element")
 
     return features_element.find(
@@ -874,7 +874,7 @@ def drive_starttls(
     if not isinstance(client, XMPPC2SClient):
         raise TypeError("`client' must be of type XMPPC2SClient")
 
-    if not wayround_org.xmpp.core.is_features_element(features_element):
+    if not wayround_i2p.xmpp.core.is_features_element(features_element):
         raise ValueError("`features_element' must features element")
 
     if not isinstance(bare_from_jid, str):
@@ -897,7 +897,7 @@ def drive_starttls(
 
         logging.debug("Connecting SignalWaiter")
 
-        client_reactions_waiter = wayround_org.utils.threading.SignalWaiter(
+        client_reactions_waiter = wayround_i2p.utils.threading.SignalWaiter(
             client.signal,
             list(
                 set(client.signal.get_names())
@@ -917,7 +917,7 @@ def drive_starttls(
 
         client.send(
             lxml.etree.tostring(
-                wayround_org.xmpp.core.STARTTLS().gen_element()
+                wayround_i2p.xmpp.core.STARTTLS().gen_element()
                 )
             )
 
@@ -981,7 +981,7 @@ def drive_starttls(
         logging.debug("Starting new stream")
 
         client.io_machine.send(
-            wayround_org.xmpp.core.start_stream_tpl(
+            wayround_i2p.xmpp.core.start_stream_tpl(
                 from_jid=bare_from_jid,
                 to_jid=bare_to_jid
                 )
@@ -1023,7 +1023,7 @@ def drive_starttls(
 
         obj = c_r_w_result['args'][1]
 
-        if not wayround_org.xmpp.core.is_features_element(obj):
+        if not wayround_i2p.xmpp.core.is_features_element(obj):
             ret = 'error'
             logging.debug(
                 "Server must been give us an stream features, but it's not"
@@ -1048,7 +1048,7 @@ def drive_starttls(
 
 def can_drive_sasl(features_element, controller_callback):
 
-    if not wayround_org.xmpp.core.is_features_element(features_element):
+    if not wayround_i2p.xmpp.core.is_features_element(features_element):
         raise ValueError("`features_element' must features element")
 
     if not callable(controller_callback):
@@ -1100,7 +1100,7 @@ def drive_sasl(
     if not isinstance(client, XMPPC2SClient):
         raise TypeError("`client' must be of type XMPPC2SClient")
 
-    if not wayround_org.xmpp.core.is_features_element(features_element):
+    if not wayround_i2p.xmpp.core.is_features_element(features_element):
         raise ValueError("`features_element' must features element")
 
     if not isinstance(bare_from_jid, str):
@@ -1122,7 +1122,7 @@ def drive_sasl(
 
         logging.debug("Connecting SignalWaiter")
 
-        client_reactions_waiter = wayround_org.utils.threading.SignalWaiter(
+        client_reactions_waiter = wayround_i2p.utils.threading.SignalWaiter(
             client.signal,
             list(
                 set(client.signal.get_names())
@@ -1203,7 +1203,7 @@ def drive_sasl(
                 logging.debug("Starting new stream")
 
                 client.io_machine.send(
-                    wayround_org.xmpp.core.start_stream_tpl(
+                    wayround_i2p.xmpp.core.start_stream_tpl(
                         from_jid=bare_from_jid,
                         to_jid=bare_to_jid
                         )
@@ -1239,7 +1239,7 @@ def drive_sasl(
 
                         obj = c_r_w_result['args'][1]
 
-                        if not wayround_org.xmpp.core.is_features_element(obj):
+                        if not wayround_i2p.xmpp.core.is_features_element(obj):
                             ret = 'invalid server action 6'
                             logging.debug(
                                 "Server must been give us an stream features, "
@@ -1275,10 +1275,10 @@ def bind(client, resource=None, wait=True):
     if resource and not isinstance(resource, str):
         raise TypeError("`resource' must be a str")
 
-    binding_stanza = wayround_org.xmpp.core.Stanza(
+    binding_stanza = wayround_i2p.xmpp.core.Stanza(
         tag='iq',
         typ='set',
-        objects=[wayround_org.xmpp.core.Bind(
+        objects=[wayround_i2p.xmpp.core.Bind(
             typ='resource',
             value=resource
             )]
@@ -1289,7 +1289,7 @@ def bind(client, resource=None, wait=True):
         wait=wait
         )
 
-    if isinstance(ret, wayround_org.xmpp.core.Stanza):
+    if isinstance(ret, wayround_i2p.xmpp.core.Stanza):
         if ret.is_error():
             ret = ret.gen_error()
         else:
@@ -1325,11 +1325,11 @@ def session(client, to_jid, wait=True):
     if to_jid and not isinstance(to_jid, str):
         raise TypeError("`resource' must be a str")
 
-    session_starting_stanza = wayround_org.xmpp.core.Stanza(
+    session_starting_stanza = wayround_i2p.xmpp.core.Stanza(
         tag='iq',
         typ='set',
         to_jid=to_jid,
-        objects=[wayround_org.xmpp.core.Session()]
+        objects=[wayround_i2p.xmpp.core.Session()]
         )
 
     ret = client.stanza_processor.send(

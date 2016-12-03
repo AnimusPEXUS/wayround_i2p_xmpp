@@ -4,9 +4,9 @@ XMPP Disco protocol implementation
 """
 
 import lxml.etree
-import wayround_org.utils.factory
-import wayround_org.utils.timer
-import wayround_org.xmpp.core
+import wayround_i2p.utils.factory
+import wayround_i2p.utils.timer
+import wayround_i2p.xmpp.core
 
 
 class IQDisco:
@@ -47,33 +47,33 @@ class IQDisco:
             raise ValueError("`node' must be None or str")
 
     def check_identity(self, value):
-        if not wayround_org.utils.types.struct_check(
+        if not wayround_i2p.utils.types.struct_check(
             value,
             {'t': list, '.': {'t': IQDiscoIdentity}}
             ):
             raise ValueError("`identity' must be list of IQDiscoIdentity")
 
     def check_item(self, value):
-        if not wayround_org.utils.types.struct_check(
+        if not wayround_i2p.utils.types.struct_check(
             value,
             {'t': list, '.': {'t': IQDiscoItem}}
             ):
             raise ValueError("`item' must be list of IQDiscoIdentity")
 
     def check_feature(self, value):
-        if not wayround_org.utils.types.struct_check(
+        if not wayround_i2p.utils.types.struct_check(
             value,
             {'t': list, '.': {'t': str}}
             ):
             raise ValueError("`feature' must be list of str")
 
     def check_xdata(self, value):
-        if not wayround_org.utils.types.struct_check(
+        if not wayround_i2p.utils.types.struct_check(
             value,
-            {'t': list, '.': {'t': wayround_org.xmpp.xdata.XData}}
+            {'t': list, '.': {'t': wayround_i2p.xmpp.xdata.XData}}
             ):
             raise ValueError(
-                "`xdata' must be list of wayround_org.xmpp.xdata.XData"
+                "`xdata' must be list of wayround_i2p.xmpp.xdata.XData"
                 )
 
     def has_identity(self, category, typ):
@@ -106,7 +106,7 @@ class IQDisco:
     @classmethod
     def new_from_element(cls, element):
 
-        tag, ns = wayround_org.utils.lxml.parse_element_tag(
+        tag, ns = wayround_i2p.utils.lxml.parse_element_tag(
             element,
             'query',
             [
@@ -122,7 +122,7 @@ class IQDisco:
 
         cl.set_mode(ns[33:])
 
-        wayround_org.utils.lxml.subelemsm_to_object_propsm(
+        wayround_i2p.utils.lxml.subelemsm_to_object_propsm(
             element, cl,
             [
              ('{http://jabber.org/protocol/disco#info}identity',
@@ -132,12 +132,12 @@ class IQDisco:
               IQDiscoItem,
               'item', '*'),
              ('{jabber:x:data}x',
-              wayround_org.xmpp.xdata.XData,
+              wayround_i2p.xmpp.xdata.XData,
               'xdata', '*')
              ]
             )
 
-        wayround_org.utils.lxml.elem_props_to_object_props(
+        wayround_i2p.utils.lxml.elem_props_to_object_props(
             element, cl,
             [
              ('node', 'node')
@@ -176,14 +176,14 @@ class IQDisco:
                 )
             )
 
-        wayround_org.utils.lxml.object_props_to_elem_props(
+        wayround_i2p.utils.lxml.object_props_to_elem_props(
             self, element,
             [
              ('node', 'node')
              ]
             )
 
-        wayround_org.utils.lxml.object_propsm_to_subelemsm(
+        wayround_i2p.utils.lxml.object_propsm_to_subelemsm(
             self, element,
             ['identity', 'item', 'xdata']
             )
@@ -196,11 +196,11 @@ class IQDisco:
 
         return element
 
-wayround_org.utils.factory.class_generate_attributes(
+wayround_i2p.utils.factory.class_generate_attributes(
     IQDisco,
     ['mode', 'node', 'identity', 'feature', 'item', 'xdata']
     )
-wayround_org.utils.factory.class_generate_check(
+wayround_i2p.utils.factory.class_generate_check(
     IQDisco,
     ['mode', 'node', 'identity', 'feature', 'item', 'xdata']
     )
@@ -229,7 +229,7 @@ class IQDiscoIdentity:
     @classmethod
     def new_from_element(cls, element):
 
-        tag = wayround_org.utils.lxml.parse_element_tag(
+        tag = wayround_i2p.utils.lxml.parse_element_tag(
             element,
             'identity',
             [
@@ -242,7 +242,7 @@ class IQDiscoIdentity:
 
         cl = cls(category=element.get('category'), typ=element.get('type'))
 
-        wayround_org.utils.lxml.elem_props_to_object_props(
+        wayround_i2p.utils.lxml.elem_props_to_object_props(
             element, cl,
             [
              ('name', 'name')
@@ -259,7 +259,7 @@ class IQDiscoIdentity:
 
         element = lxml.etree.Element('identity')
 
-        wayround_org.utils.lxml.object_props_to_elem_props(
+        wayround_i2p.utils.lxml.object_props_to_elem_props(
             self, element,
             [
              ('category', 'category'),
@@ -270,11 +270,11 @@ class IQDiscoIdentity:
 
         return element
 
-wayround_org.utils.factory.class_generate_attributes(
+wayround_i2p.utils.factory.class_generate_attributes(
     IQDiscoIdentity,
     ['category', 'typ', 'name']
     )
-wayround_org.utils.factory.class_generate_check(
+wayround_i2p.utils.factory.class_generate_check(
     IQDiscoIdentity,
     ['category', 'typ', 'name']
     )
@@ -290,7 +290,7 @@ class IQDiscoItem:
 
     def check_jid(self, value):
         try:
-            wayround_org.xmpp.core.JID.new_from_string(value)
+            wayround_i2p.xmpp.core.JID.new_from_string(value)
         except:
             raise ValueError("`jid' must be str with valid jid")
 
@@ -305,7 +305,7 @@ class IQDiscoItem:
     @classmethod
     def new_from_element(cls, element):
 
-        tag = wayround_org.utils.lxml.parse_element_tag(
+        tag = wayround_i2p.utils.lxml.parse_element_tag(
             element,
             'item',
             ['http://jabber.org/protocol/disco#items']
@@ -316,7 +316,7 @@ class IQDiscoItem:
 
         cl = cls(jid=element.get('jid'))
 
-        wayround_org.utils.lxml.elem_props_to_object_props(
+        wayround_i2p.utils.lxml.elem_props_to_object_props(
             element, cl,
             [
              ('node', 'node'),
@@ -334,7 +334,7 @@ class IQDiscoItem:
 
         element = lxml.etree.Element('item')
 
-        wayround_org.utils.lxml.object_props_to_elem_props(
+        wayround_i2p.utils.lxml.object_props_to_elem_props(
             self, element,
             [
              ('jid', 'jid'),
@@ -345,11 +345,11 @@ class IQDiscoItem:
 
         return element
 
-wayround_org.utils.factory.class_generate_attributes(
+wayround_i2p.utils.factory.class_generate_attributes(
     IQDiscoItem,
     ['jid', 'node', 'name']
     )
-wayround_org.utils.factory.class_generate_check(
+wayround_i2p.utils.factory.class_generate_check(
     IQDiscoItem,
     ['jid', 'node', 'name']
     )
@@ -361,24 +361,24 @@ def _x(
     mode='info', wait=True
     ):
     """
-    :param wayround_org.xmpp.core.StanzaProcessor stanza_processor:
+    :param wayround_i2p.xmpp.core.StanzaProcessor stanza_processor:
     """
 
     if not mode in ['info', 'items']:
         raise ValueError("`mode' invalid")
 
     if not isinstance(
-            stanza_processor, wayround_org.xmpp.core.StanzaProcessor
+            stanza_processor, wayround_i2p.xmpp.core.StanzaProcessor
             ):
         raise TypeError(
             "`stanza_processor' must be of type "
-            "wayround_org.xmpp.core.StanzaProcessor"
+            "wayround_i2p.xmpp.core.StanzaProcessor"
             )
 
     q = IQDisco(mode)
     q.set_node(node)
 
-    stanza = wayround_org.xmpp.core.Stanza(
+    stanza = wayround_i2p.xmpp.core.Stanza(
         tag='iq',
         from_jid=from_jid,
         to_jid=to_jid,
@@ -403,7 +403,7 @@ def get_info(to_jid, from_jid, node=None, stanza_processor=None, wait=True):
         wait=wait
         )
 
-    if isinstance(res, wayround_org.xmpp.core.Stanza):
+    if isinstance(res, wayround_i2p.xmpp.core.Stanza):
         element = res.get_element().find(
             '{http://jabber.org/protocol/disco#info}query'
             )
@@ -424,7 +424,7 @@ def get_items(to_jid, from_jid, node=None, stanza_processor=None, wait=True):
         wait=wait
         )
 
-    if isinstance(res, wayround_org.xmpp.core.Stanza):
+    if isinstance(res, wayround_i2p.xmpp.core.Stanza):
         element = res.get_element().find(
             '{http://jabber.org/protocol/disco#items}query'
             )
@@ -466,7 +466,7 @@ class DiscoService:
     def _in_stanza(self, event, stanza_processor, stanza):
 
         """
-        :param wayround_org.xmpp.core.Stanza stanza:
+        :param wayround_i2p.xmpp.core.Stanza stanza:
         """
 
         if event == 'new_stanza':
@@ -483,7 +483,7 @@ class DiscoService:
 
                         if len(query) == 0:
 
-                            rstanza = wayround_org.xmpp.core.Stanza('iq')
+                            rstanza = wayround_i2p.xmpp.core.Stanza('iq')
                             rstanza.set_ide(stanza.get_ide())
                             rstanza.set_typ('result')
                             rstanza.set_from_jid(self._own_jid.full())

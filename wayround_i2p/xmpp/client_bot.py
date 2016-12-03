@@ -12,11 +12,11 @@ from gi.repository import Gsasl
 
 
 import lxml.etree
-import wayround_org.utils.file
-import wayround_org.utils.program
-import wayround_org.utils.shlex
-import wayround_org.xmpp.client
-import wayround_org.xmpp.core
+import wayround_i2p.utils.file
+import wayround_i2p.utils.program
+import wayround_i2p.utils.shlex
+import wayround_i2p.xmpp.client
+import wayround_i2p.xmpp.core
 
 
 class AuthLocalDriver:
@@ -182,14 +182,14 @@ class Bot:
 
     def __init__(self):
         """
-        :param wayround_org.pyabber.main.ProfileSession profile:
+        :param wayround_i2p.pyabber.main.ProfileSession profile:
         """
 
-        self.self_disco_info = wayround_org.xmpp.disco.IQDisco(mode='info')
+        self.self_disco_info = wayround_i2p.xmpp.disco.IQDisco(mode='info')
 
         self.self_disco_info.set_identity(
             [
-                wayround_org.xmpp.disco.IQDiscoIdentity(
+                wayround_i2p.xmpp.disco.IQDiscoIdentity(
                     'client', 'bot', 'simplybot'
                     )
                 ]
@@ -228,9 +228,9 @@ class Bot:
 
         ret = 0
 
-        if not isinstance(jid, wayround_org.xmpp.core.JID):
+        if not isinstance(jid, wayround_i2p.xmpp.core.JID):
             raise TypeError(
-                "`jid' must be of type wayround_org.xmpp.core.JID"
+                "`jid' must be of type wayround_i2p.xmpp.core.JID"
                 )
 
         self.disconnect()
@@ -251,21 +251,21 @@ class Bot:
         # make non-blocking socket
         self.sock.settimeout(0)
 
-        self.client = wayround_org.xmpp.client.XMPPC2SClient(
+        self.client = wayround_i2p.xmpp.client.XMPPC2SClient(
             self.sock
             )
 
-        self.message_client = wayround_org.xmpp.client.Message(
+        self.message_client = wayround_i2p.xmpp.client.Message(
             self.client,
             self.jid
             )
 
-        self.roster_client = wayround_org.xmpp.client.Roster(
+        self.roster_client = wayround_i2p.xmpp.client.Roster(
             self.client,
             self.jid
             )
 
-        self.presence_client = wayround_org.xmpp.client.Presence(
+        self.presence_client = wayround_i2p.xmpp.client.Presence(
             self.client,
             self.jid
             )
@@ -283,7 +283,7 @@ class Bot:
             self._on_stream_io_event
             )
 
-        features_waiter = wayround_org.utils.threading.SignalWaiter(
+        features_waiter = wayround_i2p.utils.threading.SignalWaiter(
             self.client.signal,
             'features'
             )
@@ -317,7 +317,7 @@ class Bot:
 
             logging.debug("Starting TLS")
 
-            res = wayround_org.xmpp.client.drive_starttls(
+            res = wayround_i2p.xmpp.client.drive_starttls(
                 self.client,
                 last_features,
                 self.jid.bare(),
@@ -325,7 +325,7 @@ class Bot:
                 self._auto_starttls_controller
                 )
 
-            if not wayround_org.xmpp.core.is_features_element(res):
+            if not wayround_i2p.xmpp.core.is_features_element(res):
                 logging.debug("Can't establish TLS encryption")
                 ret = 2
             else:
@@ -353,7 +353,7 @@ class Bot:
                     )
                 )
 
-            res = wayround_org.xmpp.client.drive_sasl(
+            res = wayround_i2p.xmpp.client.drive_sasl(
                 self.client,
                 last_features,
                 self.jid.bare(),
@@ -363,7 +363,7 @@ class Bot:
 
             self._simple_gsasl = None
 
-            if not wayround_org.xmpp.core.is_features_element(res):
+            if not wayround_i2p.xmpp.core.is_features_element(res):
                 logging.debug("Can't authenticate: {}".format(res))
                 ret = 3
             else:
@@ -373,7 +373,7 @@ class Bot:
         if (not self._disconnection_flag.is_set()
                 and ret == 0):
 
-            res = wayround_org.xmpp.client.bind(
+            res = wayround_i2p.xmpp.client.bind(
                 self.client,
                 self.jid.resource
                 )
@@ -382,7 +382,7 @@ class Bot:
                 ret = 4
             else:
                 self.jid.update(
-                    wayround_org.xmpp.core.JID.new_from_str(res)
+                    wayround_i2p.xmpp.core.JID.new_from_str(res)
                     )
                 logging.debug(
                     "Bound jid is: {}".format(self.jid.full())
@@ -393,12 +393,12 @@ class Bot:
 
             logging.debug("Starting session")
 
-            res = wayround_org.xmpp.client.session(
+            res = wayround_i2p.xmpp.client.session(
                 self.client,
                 self.jid.domain
                 )
 
-            if (not isinstance(res, wayround_org.xmpp.core.Stanza)
+            if (not isinstance(res, wayround_i2p.xmpp.core.Stanza)
                     or res.is_error()):
                 logging.debug("Session establishing error")
                 ret = 5
@@ -649,15 +649,15 @@ class Bot:
 
     def _inbound_stanzas(self, obj):
 
-        if not isinstance(obj, wayround_org.xmpp.core.Stanza):
+        if not isinstance(obj, wayround_i2p.xmpp.core.Stanza):
             raise TypeError(
-                "`obj' must be wayround_org.xmpp.core.Stanza inst"
+                "`obj' must be wayround_i2p.xmpp.core.Stanza inst"
                 )
 
         if obj.get_tag() == 'message' and obj.get_typ() == 'chat':
 
             # FIXME: get_body()[0] - is incorrect
-            cmd_line = wayround_org.utils.shlex.split(
+            cmd_line = wayround_i2p.utils.shlex.split(
                 obj.get_body()[0].get_text().splitlines()[0]
                 )
 
@@ -667,23 +667,23 @@ class Bot:
 
                 messages = []
 
-                ret_stanza = wayround_org.xmpp.core.Stanza(
+                ret_stanza = wayround_i2p.xmpp.core.Stanza(
                     from_jid=self.jid.bare(),
                     to_jid=obj.get_from_jid(),
                     tag='message',
                     typ='chat',
                     body=[
-                        wayround_org.xmpp.core.MessageBody(
+                        wayround_i2p.xmpp.core.MessageBody(
                             text=''
                             )
                         ]
                     )
 
-                asker_jid = wayround_org.xmpp.core.JID.new_from_str(
+                asker_jid = wayround_i2p.xmpp.core.JID.new_from_str(
                     obj.get_from_jid()
                     ).bare()
 
-                res = wayround_org.utils.program.command_processor(
+                res = wayround_i2p.utils.program.command_processor(
                     command_name=None,
                     commands=self._commands,
                     opts_and_args_list=cmd_line,
@@ -719,7 +719,7 @@ class Bot:
 
                 for i in ret_stanza.get_body():
 
-                    if isinstance(i, wayround_org.xmpp.core.MessageBody):
+                    if isinstance(i, wayround_i2p.xmpp.core.MessageBody):
 
                         t = ''
 

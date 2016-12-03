@@ -5,9 +5,9 @@ import hashlib
 import logging
 import lxml.etree
 
-import wayround_org.utils.factory
-import wayround_org.utils.lxml
-import wayround_org.utils.checksum
+import wayround_i2p.utils.factory
+import wayround_i2p.utils.lxml
+import wayround_i2p.utils.checksum
 
 
 CID_RE = re.compile(r'^(cid\:)?(?P<method>\w+)\+(?P<value>\w+)\@bob\.xmpp\.org$')
@@ -117,7 +117,7 @@ class Data:
     @classmethod
     def new_from_element(cls, element):
 
-        tag = wayround_org.utils.lxml.parse_element_tag(
+        tag = wayround_i2p.utils.lxml.parse_element_tag(
             element,
             ['data'],
             ['urn:xmpp:bob']
@@ -128,7 +128,7 @@ class Data:
 
         cl = cls(element.get('cid'))
 
-        wayround_org.utils.lxml.elem_props_to_object_props(
+        wayround_i2p.utils.lxml.elem_props_to_object_props(
             element, cl,
             [
              ('max-age', 'max_age'),
@@ -152,7 +152,7 @@ class Data:
 
         el.set('cid', self.get_cid())
 
-        wayround_org.utils.lxml.object_props_to_elem_props(
+        wayround_i2p.utils.lxml.object_props_to_elem_props(
             self, el,
             [
              ('max_age', 'max-age'),
@@ -179,7 +179,7 @@ class Data:
             cid_parsed = parse_cid(self.get_cid())
 
             if cid_parsed != None:
-                res = wayround_org.utils.checksum.is_data_error(
+                res = wayround_i2p.utils.checksum.is_data_error(
                     cid_parsed['method'],
                     cid_parsed['value'],
                     data
@@ -190,11 +190,11 @@ class Data:
         return ret
 
 
-wayround_org.utils.factory.class_generate_attributes(
+wayround_i2p.utils.factory.class_generate_attributes(
     Data,
     ['cid', 'max_age', 'type_', 'data']
     )
-wayround_org.utils.factory.class_generate_check(
+wayround_i2p.utils.factory.class_generate_check(
     Data,
     ['cid', 'max_age', 'type_', 'data']
     )

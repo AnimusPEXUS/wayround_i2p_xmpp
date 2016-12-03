@@ -4,10 +4,10 @@ import threading
 
 import lxml.etree
 
-import wayround_org.utils.factory
-import wayround_org.utils.types
+import wayround_i2p.utils.factory
+import wayround_i2p.utils.types
 
-import wayround_org.xmpp.core
+import wayround_i2p.xmpp.core
 
 
 class Query:
@@ -30,7 +30,7 @@ class Query:
             raise ValueError("`default' must be None or Default")
 
     def check_lst(self, value):
-        if not wayround_org.utils.types.struct_check(
+        if not wayround_i2p.utils.types.struct_check(
             value,
             {'t': list, '.': {'t': List}}
             ):
@@ -43,7 +43,7 @@ class Query:
         Return list of newly creates Query elements
         """
 
-        if not wayround_org.xmpp.core.is_stanza_element(element):
+        if not wayround_i2p.xmpp.core.is_stanza_element(element):
             raise ValueError("not a stanza element")
 
         ret = []
@@ -58,7 +58,7 @@ class Query:
     @classmethod
     def new_from_element(cls, element):
 
-        tag = wayround_org.utils.lxml.parse_element_tag(
+        tag = wayround_i2p.utils.lxml.parse_element_tag(
             element, 'query', ['jabber:iq:privacy']
             )[0]
 
@@ -67,7 +67,7 @@ class Query:
 
         cl = cls()
 
-        wayround_org.utils.lxml.subelems_to_object_props(
+        wayround_i2p.utils.lxml.subelems_to_object_props(
             element, cl,
             [
              ('{jabber:iq:privacy}active', Active, 'active', '*'),
@@ -75,7 +75,7 @@ class Query:
              ]
             )
 
-        wayround_org.utils.lxml.subelemsm_to_object_propsm(
+        wayround_i2p.utils.lxml.subelemsm_to_object_propsm(
             element, cl,
             [
              ('{jabber:iq:privacy}list', List, 'lst', '*')
@@ -93,23 +93,23 @@ class Query:
         el = lxml.etree.Element('query')
         el.set('xmlns', 'jabber:iq:privacy')
 
-        wayround_org.utils.lxml.object_props_to_subelems(
+        wayround_i2p.utils.lxml.object_props_to_subelems(
             self, el,
             ['active', 'default']
             )
 
-        wayround_org.utils.lxml.object_propsm_to_subelemsm(
+        wayround_i2p.utils.lxml.object_propsm_to_subelemsm(
             self, el,
             ['lst']
             )
 
         return el
 
-wayround_org.utils.factory.class_generate_attributes(
+wayround_i2p.utils.factory.class_generate_attributes(
     Query,
     ['active', 'default', 'lst']
     )
-wayround_org.utils.factory.class_generate_check(
+wayround_i2p.utils.factory.class_generate_check(
     Query,
     ['active', 'default', 'lst']
     )
@@ -157,7 +157,7 @@ class ActiveAndDefault:
         if not impl in ['active', 'default']:
             raise ValueError("invalid `impl'")
 
-        tag = wayround_org.utils.lxml.parse_element_tag(
+        tag = wayround_i2p.utils.lxml.parse_element_tag(
             element, impl, ['jabber:iq:privacy']
             )[0]
 
@@ -189,11 +189,11 @@ class ActiveAndDefault:
 
         return el
 
-wayround_org.utils.factory.class_generate_attributes(
+wayround_i2p.utils.factory.class_generate_attributes(
     ActiveAndDefault,
     ['token', 'name']
     )
-wayround_org.utils.factory.class_generate_check(
+wayround_i2p.utils.factory.class_generate_check(
     ActiveAndDefault,
     ['token', 'name']
     )
@@ -234,7 +234,7 @@ class List:
             raise ValueError("`name' must be str")
 
     def check_item(self, value):
-        if not wayround_org.utils.types.struct_check(
+        if not wayround_i2p.utils.types.struct_check(
             value,
             {'t': list, '.': {'t': Item}}
             ):
@@ -243,7 +243,7 @@ class List:
     @classmethod
     def new_from_element(cls, element):
 
-        tag = wayround_org.utils.lxml.parse_element_tag(
+        tag = wayround_i2p.utils.lxml.parse_element_tag(
             element, 'list', ['jabber:iq:privacy']
             )[0]
 
@@ -252,7 +252,7 @@ class List:
 
         cl = cls(element.get('name'))
 
-        wayround_org.utils.lxml.subelemsm_to_object_propsm(
+        wayround_i2p.utils.lxml.subelemsm_to_object_propsm(
             element, cl,
             [
              ('{jabber:iq:privacy}item', Item, 'item', '*')
@@ -269,7 +269,7 @@ class List:
 
         el = lxml.etree.Element('list')
 
-        wayround_org.utils.lxml.object_propsm_to_subelemsm(
+        wayround_i2p.utils.lxml.object_propsm_to_subelemsm(
             self, el,
             ['item']
             )
@@ -280,11 +280,11 @@ class List:
 
         return el
 
-wayround_org.utils.factory.class_generate_attributes(
+wayround_i2p.utils.factory.class_generate_attributes(
     List,
     ['item', 'name']
     )
-wayround_org.utils.factory.class_generate_check(
+wayround_i2p.utils.factory.class_generate_check(
     List,
     ['item', 'name']
     )
@@ -347,7 +347,7 @@ class Item:
     @classmethod
     def new_from_element(cls, element):
 
-        tag = wayround_org.utils.lxml.parse_element_tag(
+        tag = wayround_i2p.utils.lxml.parse_element_tag(
             element, 'item', ['jabber:iq:privacy']
             )[0]
 
@@ -365,7 +365,7 @@ class Item:
                 element.find('{{jabber:iq:privacy}}{}'.format(nn)) != None
                 )
 
-        wayround_org.utils.lxml.elem_props_to_object_props(
+        wayround_i2p.utils.lxml.elem_props_to_object_props(
             element, cl,
             [
              ('type', 'typ'),
@@ -396,7 +396,7 @@ class Item:
         if val is not None:
             el.set('order', str(val))
 
-        wayround_org.utils.lxml.object_props_to_elem_props(
+        wayround_i2p.utils.lxml.object_props_to_elem_props(
             self, el,
             [
              ('action', 'action'),
@@ -407,12 +407,12 @@ class Item:
 
         return el
 
-wayround_org.utils.factory.class_generate_attributes(
+wayround_i2p.utils.factory.class_generate_attributes(
     Item,
     ['iq', 'message', 'presence_in', 'presence_out', 'action', 'order', 'typ',
      'value']
     )
-wayround_org.utils.factory.class_generate_check(
+wayround_i2p.utils.factory.class_generate_check(
     Item,
     ['iq', 'message', 'presence_in', 'presence_out', 'action', 'order', 'typ',
      'value']
@@ -426,7 +426,7 @@ class PrivacyClient:
         self._from_jid = jid
         self._client = client
 
-        self.signal = wayround_org.utils.threading.Signal(
+        self.signal = wayround_i2p.utils.threading.Signal(
             self, ['push']
             )
 
@@ -446,7 +446,7 @@ class PrivacyClient:
 
                 for i in Query.new_from_stanza_lxml(stanza.get_element()):
 
-                    new_stanza = wayround_org.xmpp.core.Stanza(
+                    new_stanza = wayround_i2p.xmpp.core.Stanza(
                         tag='iq',
                         to_jid=stanza.get_from_jid(),
                         from_jid=str(self._from_jid),
@@ -469,7 +469,7 @@ class PrivacyClient:
 
 
 def _make_stanza(from_jid, to_jid):
-    return wayround_org.xmpp.core.Stanza(
+    return wayround_i2p.xmpp.core.Stanza(
         tag='iq',
         from_jid=from_jid,
         to_jid=to_jid
@@ -482,7 +482,7 @@ def _result(stanza, stanza_processor, wait):
 
     ret = None
 
-    if isinstance(res, wayround_org.xmpp.core.Stanza):
+    if isinstance(res, wayround_i2p.xmpp.core.Stanza):
         if res.is_error():
             ret = res.gen_error()
         else:
@@ -537,7 +537,7 @@ def get_list(name, to_jid, from_jid, stanza_processor, wait=None):
 
 def set_list(name, items, to_jid, from_jid, stanza_processor, wait=None):
 
-    if not wayround_org.utils.types.struct_check(
+    if not wayround_i2p.utils.types.struct_check(
         items,
         {'t': list, '.': {'t': Item}}
         ):

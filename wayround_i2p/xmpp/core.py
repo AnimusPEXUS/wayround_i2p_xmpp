@@ -8,12 +8,12 @@ import uuid
 import xml.sax.saxutils
 
 import lxml.etree
-import wayround_org.utils.error
-import wayround_org.utils.factory
-import wayround_org.utils.lxml
-import wayround_org.utils.threading
-import wayround_org.utils.stream
-import wayround_org.utils.types
+import wayround_i2p.utils.error
+import wayround_i2p.utils.factory
+import wayround_i2p.utils.lxml
+import wayround_i2p.utils.threading
+import wayround_i2p.utils.stream
+import wayround_i2p.utils.types
 
 
 # TODO: figure out how to take it from lxml
@@ -222,7 +222,7 @@ class JID:
 
         self._values = {}
 
-        self.signal = wayround_org.utils.threading.Signal(
+        self.signal = wayround_i2p.utils.threading.Signal(
             self,
             [
                 'changed',          # self, old_value_copy
@@ -550,7 +550,7 @@ class XMPPStreamParserTarget:
             read complete
         """
 
-        self.signal = wayround_org.utils.threading.Signal(
+        self.signal = wayround_i2p.utils.threading.Signal(
             self,
             ['start', 'stop', 'error', 'element_readed']
             )
@@ -764,7 +764,7 @@ class XMPPInputStreamReader:
             if not self._stream_reader_thread:
 
                 try:
-                    self._stream_reader_thread = wayround_org.utils.stream.cat(
+                    self._stream_reader_thread = wayround_i2p.utils.stream.cat(
                         stdin=self._read_from,
                         stdout=self,
                         read_type='async',
@@ -1092,7 +1092,7 @@ class XMPPOutputStreamWriter:
             snd_obj = obj
         elif isinstance(obj, str):
             snd_obj = bytes(obj, encoding='utf-8')
-        elif wayround_org.utils.lxml.is_lxml_tag_element(obj):
+        elif wayround_i2p.utils.lxml.is_lxml_tag_element(obj):
             snd_obj = bytes(
                 lxml.etree.tostring(
                     obj,
@@ -1142,7 +1142,7 @@ class XMPPStreamMachine:
 
         self.mode = mode
 
-        self.signal = wayround_org.utils.threading.Signal(
+        self.signal = wayround_i2p.utils.threading.Signal(
             self,
             ['start', 'stop', 'error', 'element_readed']
             )
@@ -1305,7 +1305,7 @@ class XMPPIOStreamRWMachine:
         self.out_machine = XMPPStreamMachine(mode='writer')
 
         logging.debug("XMPPIOStreamRWMachine __init__()")
-        self.signal = wayround_org.utils.threading.Signal(
+        self.signal = wayround_i2p.utils.threading.Signal(
             self,
             self.in_machine.signal.get_names(add_prefix='in_')
             + self.in_machine.signal.get_names(add_prefix='out_')
@@ -1528,14 +1528,14 @@ class Stanza:
             raise ValueError("`thread' must be MessageThread")
 
     def check_subject(self, value):
-        if not wayround_org.utils.types.struct_check(
+        if not wayround_i2p.utils.types.struct_check(
                 value,
                 {'t': list, '.': {'t': MessageSubject}}
                 ):
             raise ValueError("`subject' must be list of MessageSubject")
 
     def check_body(self, value):
-        if not wayround_org.utils.types.struct_check(
+        if not wayround_i2p.utils.types.struct_check(
                 value,
                 {'t': list, '.': {'t': MessageBody}}
                 ):
@@ -1546,7 +1546,7 @@ class Stanza:
             raise ValueError("`show' must be PresenceShow")
 
     def check_status(self, value):
-        if not wayround_org.utils.types.struct_check(
+        if not wayround_i2p.utils.types.struct_check(
                 value,
                 {'t': list, '.': {'t': PresenceStatus}}
                 ):
@@ -1562,7 +1562,7 @@ class Stanza:
     @classmethod
     def new_from_element(cls, element):
 
-        tag, ns = wayround_org.utils.lxml.parse_element_tag(
+        tag, ns = wayround_i2p.utils.lxml.parse_element_tag(
             element,
             ['message', 'presence', 'iq'],
             ['jabber:client', 'jabber:server']
@@ -1578,7 +1578,7 @@ class Stanza:
 
         cl.set_element(element)
 
-        wayround_org.utils.lxml.subelems_to_object_props(
+        wayround_i2p.utils.lxml.subelems_to_object_props(
             element, cl,
             [
                 ('{{{}}}thread'.format(ns), MessageThread, 'thread', '*')
@@ -1595,7 +1595,7 @@ class Stanza:
             cl.set_show(show)
         del show
 
-        wayround_org.utils.lxml.subelemsm_to_object_propsm(
+        wayround_i2p.utils.lxml.subelemsm_to_object_propsm(
             element, cl,
             [
                 ('{{{}}}status'.format(ns), PresenceStatus, 'status', '*'),
@@ -1604,7 +1604,7 @@ class Stanza:
                 ]
             )
 
-        wayround_org.utils.lxml.elem_props_to_object_props(
+        wayround_i2p.utils.lxml.elem_props_to_object_props(
             element, cl,
             [
                 ('id', 'ide'),
@@ -1648,7 +1648,7 @@ class Stanza:
 
         el = lxml.etree.Element(self.get_tag())
 
-        wayround_org.utils.lxml.object_props_to_elem_props(
+        wayround_i2p.utils.lxml.object_props_to_elem_props(
             self, el,
             [
                 # ('xmlns', 'xmlns'),
@@ -1660,7 +1660,7 @@ class Stanza:
                 ]
             )
 
-        wayround_org.utils.lxml.object_props_to_subelems(
+        wayround_i2p.utils.lxml.object_props_to_subelems(
             self, el,
             [
                 ('thread'),
@@ -1668,7 +1668,7 @@ class Stanza:
                 ]
             )
 
-        wayround_org.utils.lxml.object_propsm_to_subelemsm(
+        wayround_i2p.utils.lxml.object_propsm_to_subelemsm(
             self, el,
             [
                 ('status'),
@@ -1766,14 +1766,14 @@ class Stanza:
         """
         return self.get_typ() == 'error'
 
-wayround_org.utils.factory.class_generate_attributes(
+wayround_i2p.utils.factory.class_generate_attributes(
     Stanza,
     [
         'element', 'objects', 'tag', 'ide', 'from_jid', 'to_jid', 'typ',
         'xmlns', 'xmllang', 'thread', 'subject', 'body', 'show', 'status',
         'priority']
     )
-wayround_org.utils.factory.class_generate_check(
+wayround_i2p.utils.factory.class_generate_check(
     Stanza,
     [
         'element', 'objects', 'tag', 'ide', 'from_jid', 'to_jid', 'typ',
@@ -1800,10 +1800,10 @@ class MessageBody:
     @classmethod
     def new_from_element(cls, element):
 
-        if not wayround_org.utils.lxml.is_lxml_tag_element(element):
+        if not wayround_i2p.utils.lxml.is_lxml_tag_element(element):
             raise ValueError("`element' must be lxml.etree.Element")
 
-        tag = wayround_org.utils.lxml.parse_element_tag(
+        tag = wayround_i2p.utils.lxml.parse_element_tag(
             element, 'body', None
             )[0]
 
@@ -1841,11 +1841,11 @@ class MessageBody:
 
         return el
 
-wayround_org.utils.factory.class_generate_attributes(
+wayround_i2p.utils.factory.class_generate_attributes(
     MessageBody,
     ['xmllang', 'text']
     )
-wayround_org.utils.factory.class_generate_check(
+wayround_i2p.utils.factory.class_generate_check(
     MessageBody,
     ['xmllang', 'text']
     )
@@ -1869,10 +1869,10 @@ class MessageSubject:
     @classmethod
     def new_from_element(cls, element):
 
-        if not wayround_org.utils.lxml.is_lxml_tag_element(element):
+        if not wayround_i2p.utils.lxml.is_lxml_tag_element(element):
             raise ValueError("`element' must be lxml.etree.Element")
 
-        tag = wayround_org.utils.lxml.parse_element_tag(
+        tag = wayround_i2p.utils.lxml.parse_element_tag(
             element, 'subject', None
             )[0]
 
@@ -1910,11 +1910,11 @@ class MessageSubject:
 
         return el
 
-wayround_org.utils.factory.class_generate_attributes(
+wayround_i2p.utils.factory.class_generate_attributes(
     MessageSubject,
     ['xmllang', 'text']
     )
-wayround_org.utils.factory.class_generate_check(
+wayround_i2p.utils.factory.class_generate_check(
     MessageSubject,
     ['xmllang', 'text']
     )
@@ -1938,10 +1938,10 @@ class MessageThread:
     @classmethod
     def new_from_element(cls, element):
 
-        if not wayround_org.utils.lxml.is_lxml_tag_element(element):
+        if not wayround_i2p.utils.lxml.is_lxml_tag_element(element):
             raise ValueError("`element' must be lxml.etree.Element")
 
-        tag = wayround_org.utils.lxml.parse_element_tag(
+        tag = wayround_i2p.utils.lxml.parse_element_tag(
             element, 'thread', None
             )[0]
 
@@ -1971,11 +1971,11 @@ class MessageThread:
 
         return el
 
-wayround_org.utils.factory.class_generate_attributes(
+wayround_i2p.utils.factory.class_generate_attributes(
     MessageThread,
     ['parent', 'thread']
     )
-wayround_org.utils.factory.class_generate_check(
+wayround_i2p.utils.factory.class_generate_check(
     MessageThread,
     ['parent', 'thread']
     )
@@ -1998,10 +1998,10 @@ class PresenceShow:
     @classmethod
     def new_from_element(cls, element):
 
-        if not wayround_org.utils.lxml.is_lxml_tag_element(element):
+        if not wayround_i2p.utils.lxml.is_lxml_tag_element(element):
             raise ValueError("`element' must be lxml.etree.Element")
 
-        tag = wayround_org.utils.lxml.parse_element_tag(
+        tag = wayround_i2p.utils.lxml.parse_element_tag(
             element, 'show', None
             )[0]
 
@@ -2026,11 +2026,11 @@ class PresenceShow:
 
         return el
 
-wayround_org.utils.factory.class_generate_attributes(
+wayround_i2p.utils.factory.class_generate_attributes(
     PresenceShow,
     ['text']
     )
-wayround_org.utils.factory.class_generate_check(
+wayround_i2p.utils.factory.class_generate_check(
     PresenceShow,
     ['text']
     )
@@ -2054,10 +2054,10 @@ class PresenceStatus:
     @classmethod
     def new_from_element(cls, element):
 
-        if not wayround_org.utils.lxml.is_lxml_tag_element(element):
+        if not wayround_i2p.utils.lxml.is_lxml_tag_element(element):
             raise ValueError("`element' must be lxml.etree.Element")
 
-        tag = wayround_org.utils.lxml.parse_element_tag(
+        tag = wayround_i2p.utils.lxml.parse_element_tag(
             element, 'status', None
             )[0]
 
@@ -2089,11 +2089,11 @@ class PresenceStatus:
 
         return el
 
-wayround_org.utils.factory.class_generate_attributes(
+wayround_i2p.utils.factory.class_generate_attributes(
     PresenceStatus,
     ['xmllang', 'text']
     )
-wayround_org.utils.factory.class_generate_check(
+wayround_i2p.utils.factory.class_generate_check(
     PresenceStatus,
     ['xmllang', 'text']
     )
@@ -2235,11 +2235,11 @@ Text:
 
     gen_text = to_text
 
-wayround_org.utils.factory.class_generate_attributes(
+wayround_i2p.utils.factory.class_generate_attributes(
     StanzaError,
     ['xmlns', 'error_type', 'condition', 'text', 'code']
     )
-wayround_org.utils.factory.class_generate_check(
+wayround_i2p.utils.factory.class_generate_check(
     StanzaError,
     ['xmlns', 'error_type', 'condition', 'text', 'code']
     )
@@ -2256,7 +2256,7 @@ class StanzaProcessor:
 
     def __init__(self):
 
-        self.signal = wayround_org.utils.threading.Signal(
+        self.signal = wayround_i2p.utils.threading.Signal(
             self,
             ['new_stanza', 'defective_stanza']
             )
@@ -2598,10 +2598,10 @@ class STARTTLS:
     @classmethod
     def new_from_element(cls, element):
 
-        if not wayround_org.utils.lxml.is_lxml_tag_element(element):
+        if not wayround_i2p.utils.lxml.is_lxml_tag_element(element):
             raise ValueError("`element' must be lxml.etree.Element")
 
-        tag = wayround_org.utils.lxml.parse_element_tag(
+        tag = wayround_i2p.utils.lxml.parse_element_tag(
             element, 'starttls', ['urn:ietf:params:xml:ns:xmpp-tls']
             )[0]
 
@@ -2663,11 +2663,11 @@ class Bind:
 
         return el
 
-wayround_org.utils.factory.class_generate_attributes(
+wayround_i2p.utils.factory.class_generate_attributes(
     Bind,
     ['typ', 'value']
     )
-wayround_org.utils.factory.class_generate_check(
+wayround_i2p.utils.factory.class_generate_check(
     Bind,
     ['typ', 'value']
     )
@@ -2678,10 +2678,10 @@ class Session:
     @classmethod
     def new_from_element(cls, element):
 
-        if not wayround_org.utils.lxml.is_lxml_tag_element(element):
+        if not wayround_i2p.utils.lxml.is_lxml_tag_element(element):
             raise ValueError("`element' must be lxml.etree.Element")
 
-        tag = wayround_org.utils.lxml.parse_element_tag(
+        tag = wayround_i2p.utils.lxml.parse_element_tag(
             element, 'session', ['urn:ietf:params:xml:ns:xmpp-session']
             )[0]
 
@@ -2706,7 +2706,7 @@ class IQRoster:
         self.set_ver(ver)
 
     def check_item(self, value):
-        if not wayround_org.utils.types.struct_check(
+        if not wayround_i2p.utils.types.struct_check(
                 value,
                 {'t': list, '.': {'t': IQRosterItem}}
                 ):
@@ -2728,7 +2728,7 @@ class IQRoster:
     @classmethod
     def new_from_element(cls, element):
 
-        tag = wayround_org.utils.lxml.parse_element_tag(
+        tag = wayround_i2p.utils.lxml.parse_element_tag(
             element,
             'query',
             ['jabber:iq:roster']
@@ -2739,14 +2739,14 @@ class IQRoster:
 
         cl = cls()
 
-        wayround_org.utils.lxml.elem_props_to_object_props(
+        wayround_i2p.utils.lxml.elem_props_to_object_props(
             element, cl,
             [
                 ('ver', 'ver')
                 ]
             )
 
-        wayround_org.utils.lxml.subelemsm_to_object_propsm(
+        wayround_i2p.utils.lxml.subelemsm_to_object_propsm(
             element, cl,
             [
                 ('{jabber:iq:roster}item', IQRosterItem, 'item', '*')
@@ -2764,14 +2764,14 @@ class IQRoster:
         element = lxml.etree.Element('query')
         element.set('xmlns', 'jabber:iq:roster')
 
-        wayround_org.utils.lxml.object_props_to_elem_props(
+        wayround_i2p.utils.lxml.object_props_to_elem_props(
             self, element,
             [
                 ('ver', 'ver')
                 ]
             )
 
-        wayround_org.utils.lxml.object_propsm_to_subelemsm(
+        wayround_i2p.utils.lxml.object_propsm_to_subelemsm(
             self, element,
             ['item']
             )
@@ -2779,11 +2779,11 @@ class IQRoster:
         return element
 
 
-wayround_org.utils.factory.class_generate_attributes(
+wayround_i2p.utils.factory.class_generate_attributes(
     IQRoster,
     ['item', 'ver']
     )
-wayround_org.utils.factory.class_generate_check(
+wayround_i2p.utils.factory.class_generate_check(
     IQRoster,
     ['item', 'ver']
     )
@@ -2808,7 +2808,7 @@ class IQRosterItem:
         self.set_subscription(subscription)
 
     def check_group(self, value):
-        if not wayround_org.utils.types.struct_check(
+        if not wayround_i2p.utils.types.struct_check(
                 value,
                 {'t': list, '.': {'t': str}}
                 ):
@@ -2841,7 +2841,7 @@ class IQRosterItem:
     @classmethod
     def new_from_element(cls, element):
 
-        tag = wayround_org.utils.lxml.parse_element_tag(
+        tag = wayround_i2p.utils.lxml.parse_element_tag(
             element,
             'item',
             ['jabber:iq:roster']
@@ -2854,7 +2854,7 @@ class IQRosterItem:
 
         cl.set_approved(element.get('approved') in ['1', 'true'])
 
-        wayround_org.utils.lxml.elem_props_to_object_props(
+        wayround_i2p.utils.lxml.elem_props_to_object_props(
             element, cl,
             [
                 ('ask', 'ask'),
@@ -2876,7 +2876,7 @@ class IQRosterItem:
 
         element = lxml.etree.Element('item')
 
-        wayround_org.utils.lxml.object_props_to_elem_props(
+        wayround_i2p.utils.lxml.object_props_to_elem_props(
             self, element,
             [
                 ('ask', 'ask'),
@@ -2900,11 +2900,11 @@ class IQRosterItem:
 
         return element
 
-wayround_org.utils.factory.class_generate_attributes(
+wayround_i2p.utils.factory.class_generate_attributes(
     IQRosterItem,
     ['group', 'approved', 'ask', 'jid', 'name', 'subscription']
     )
-wayround_org.utils.factory.class_generate_check(
+wayround_i2p.utils.factory.class_generate_check(
     IQRosterItem,
     ['group', 'approved', 'ask', 'jid', 'name', 'subscription']
     )
@@ -2927,7 +2927,7 @@ def determine_stream_error(xml_element):
 
     ret = None
 
-    if not wayround_org.utils.lxml.is_lxml_tag_element(xml_element):
+    if not wayround_i2p.utils.lxml.is_lxml_tag_element(xml_element):
         ret = False
 
     else:
@@ -2939,7 +2939,7 @@ def determine_stream_error(xml_element):
 
             for i in xml_element:
 
-                if wayround_org.utils.lxml.is_lxml_tag_element(i):
+                if wayround_i2p.utils.lxml.is_lxml_tag_element(i):
 
                     parsed_qn = lxml.etree.QName(i)
                     ns = parsed_qn.namespace
@@ -3006,7 +3006,7 @@ def determine_stanza_error(stanza):
 
 def determine_stanza_element_error(element):
 
-    if not wayround_org.utils.lxml.is_lxml_tag_element(element):
+    if not wayround_i2p.utils.lxml.is_lxml_tag_element(element):
         raise TypeError("`element' must be lxml tag element")
 
     if not element.tag == '{jabber:client}error':
@@ -3078,7 +3078,7 @@ def determine_stanza_element_error(element):
 
 
 def is_features_element(obj):
-    return (wayround_org.utils.lxml.is_lxml_tag_element(obj)
+    return (wayround_i2p.utils.lxml.is_lxml_tag_element(obj)
             and obj.tag == '{http://etherx.jabber.org/streams}features')
 
 
@@ -3088,7 +3088,7 @@ def is_stanza_element(obj):
     """
     ret = True
 
-    if not wayround_org.utils.lxml.is_lxml_tag_element(obj):
+    if not wayround_i2p.utils.lxml.is_lxml_tag_element(obj):
         ret = False
 
     else:
